@@ -6,9 +6,123 @@
     "path": "blockcraft/",
     "desc": "Bauen, Überleben und Erkunden in einer riesigen Blockwelt – mit Haustieren, Autos, Flugzeugen, Wetter und der gemeinsamen Hauptwelt.",
     "players": "1–20 Spieler",
-    "tags": ["Online", "Bauen", "Survival"],
-    "colors": ["#3aa655", "#1f6f8b"],
+    "tags": [
+      "Online",
+      "Bauen",
+      "Survival"
+    ],
+    "colors": [
+      "#3aa655",
+      "#1f6f8b"
+    ],
     "badge": "Update 2.1"
+  },
+  {
+    "id": "schach",
+    "title": "Schach",
+    "emoji": "♟️",
+    "path": "schach/",
+    "desc": "Echtes Schach mit allen Regeln, edlen Figuren, Elo hinter dem Namen und Spielanalyse wie bei den Profis – online, zu zweit oder gegen Stockfish.",
+    "players": "1–2 Spieler",
+    "tags": [
+      "Online",
+      "Elo",
+      "Analyse"
+    ],
+    "colors": [
+      "#3b2a1a",
+      "#c9a227"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "turbo-rennen",
+    "title": "Turbo Rennen 3D",
+    "emoji": "🏎️",
+    "path": "turbo-rennen/",
+    "desc": "3D-Rennen auf Sonnenküste, Neon City und Alpenpass. Bots an/aus, Runden, Tageszeit, Regen, Boost-Felder und Nitro – online mit bis zu 8 Freunden.",
+    "players": "1–8 Spieler",
+    "tags": [
+      "Online",
+      "3D",
+      "Rennen"
+    ],
+    "colors": [
+      "#ff3d2e",
+      "#ffb300"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "nachtjagd",
+    "title": "Nachtjagd 3D",
+    "emoji": "🚓",
+    "path": "nachtjagd/",
+    "desc": "Eine Stadt bei Nacht: Autos klauen, Cops abhängen, Läden, Waffen und Karren. Jetzt online mit Freunden in derselben Stadt und einstellbarer Polizei.",
+    "players": "1–8 Spieler",
+    "tags": [
+      "Online",
+      "3D",
+      "Action"
+    ],
+    "colors": [
+      "#1b2a6b",
+      "#ff2e4d"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "iron-gym",
+    "title": "Iron Gym 3D",
+    "emoji": "💪",
+    "path": "iron-gym/",
+    "desc": "Trainiere vom Strichmännchen zum Muskel-Universum: Combos, Haustiere, Rebirths, Boss-Armdrücken und Duelle gegen Freunde im selben Gym.",
+    "players": "1–8 Spieler",
+    "tags": [
+      "Online",
+      "Simulator",
+      "Duelle"
+    ],
+    "colors": [
+      "#ff8a00",
+      "#9b5de5"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "uno",
+    "title": "Uno",
+    "emoji": "🃏",
+    "path": "uno/",
+    "desc": "Das Kartenspiel mit +2, +4, Aussetzen und UNO-Ruf. Online mit Freunden, Bots füllen auf. Hausregeln wie Stapeln einstellbar.",
+    "players": "1–6 Spieler",
+    "tags": [
+      "Online",
+      "Karten",
+      "Bots"
+    ],
+    "colors": [
+      "#e8262d",
+      "#1f8f3a"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "schiffe-versenken",
+    "title": "Schiffe versenken",
+    "emoji": "🚢",
+    "path": "schiffe-versenken/",
+    "desc": "Flotte verstecken, Koordinaten raten, Schiffe versenken. Online gegeneinander oder gegen den schlauen Computer.",
+    "players": "1–2 Spieler",
+    "tags": [
+      "Online",
+      "Taktik"
+    ],
+    "colors": [
+      "#0b4f7c",
+      "#38b6ff"
+    ],
+    "badge": "Neu"
   },
   {
     "id": "vier-gewinnt",
@@ -17,8 +131,15 @@
     "path": "vier-gewinnt/",
     "desc": "Der Klassiker: Bring vier Steine in eine Reihe. Online mit Raum-Code, zu zweit an einem iPad oder gegen den Computer.",
     "players": "1–2 Spieler",
-    "tags": ["Online", "Denken", "Schnell"],
-    "colors": ["#2f5bd8", "#ff4d5e"],
-    "badge": "Neu"
+    "tags": [
+      "Online",
+      "Denken",
+      "Schnell"
+    ],
+    "colors": [
+      "#2f5bd8",
+      "#ff4d5e"
+    ],
+    "badge": ""
   }
 ]
