@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Vier gewinnt Online</title>
+<style>
+:root{--bg:#141b2d;--card:#1f2942;--line:#2e3b5c;--txt:#eef2ff;--mut:#9aa6c4;--red:#ff4d5e;--yel:#ffd23f;--blue:#2f5bd8;--acc:#5ad1a0}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:-apple-system,"Segoe UI",Roboto,sans-serif;user-select:none;-webkit-user-select:none}
+body{display:flex;flex-direction:column;align-items:center;min-height:100%;padding:16px 16px 24px}
+a{color:var(--mut)}
+.top{width:100%;max-width:640px;display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.top a{text-decoration:none;font-size:15px;padding:8px 12px;border-radius:10px;background:var(--card)}
+.top h1{font-size:22px;margin:0;flex:1;text-align:center}
+.panel{width:100%;max-width:440px;background:var(--card);border-radius:18px;padding:20px;margin-top:8px}
+.panel h2{margin:0 0 12px;font-size:18px}
+input{width:100%;font-size:18px;padding:12px 14px;border-radius:12px;border:2px solid var(--line);background:#121829;color:var(--txt);outline:none}
+input:focus{border-color:var(--acc)}
+button{font:inherit;font-size:17px;font-weight:600;border:0;border-radius:12px;padding:13px 16px;cursor:pointer;background:var(--line);color:var(--txt)}
+button.pri{background:var(--acc);color:#0b2a1e}
+button:active{transform:scale(.97)}
+.col{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:10px}.row>*{flex:1}
+.code{font-size:44px;letter-spacing:10px;font-weight:800;text-align:center;margin:8px 0;color:var(--yel)}
+.mut{color:var(--mut);font-size:14px;line-height:1.4}
+.err{color:var(--red);font-size:14px;min-height:18px}
+#game{display:none;flex-direction:column;align-items:center;width:100%}
+.players{display:flex;gap:10px;width:100%;max-width:640px;margin-bottom:12px}
+.pl{flex:1;display:flex;align-items:center;gap:10px;background:var(--card);border-radius:14px;padding:10px 12px;border:3px solid transparent;transition:border-color .2s}
+.pl.turn{border-color:var(--acc)}
+.dot{width:26px;height:26px;border-radius:50%;flex:none;box-shadow:inset 0 -3px 0 rgba(0,0,0,.25)}
+.pl b{display:block;font-size:16px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pl span{font-size:13px;color:var(--mut)}
+#status{font-size:18px;font-weight:600;margin:4px 0 12px;min-height:24px;text-align:center}
+.board{position:relative;width:min(92vw,620px,calc((100vh - 250px) * 7 / 6));aspect-ratio:7/6;background:var(--blue);border-radius:16px;padding:1.6%;display:grid;grid-template-columns:repeat(7,1fr);grid-template-rows:repeat(6,1fr);gap:1.6%;box-shadow:0 10px 0 #1d3c97}
+.cell{border-radius:50%;background:var(--bg);position:relative;overflow:visible}
+.disc{position:absolute;inset:0;border-radius:50%;box-shadow:inset 0 -5px 0 rgba(0,0,0,.22),inset 0 4px 0 rgba(255,255,255,.25)}
+.disc.r{background:var(--red)}.disc.y{background:var(--yel)}
+.disc.drop{animation:drop var(--d) cubic-bezier(.45,0,.85,.4)}
+@keyframes drop{from{transform:translateY(var(--from))}to{transform:none}}
+.disc.win{animation:pulse .7s ease-in-out infinite alternate}
+@keyframes pulse{to{transform:scale(.82);filter:brightness(1.3)}}
+.hit{position:absolute;inset:0;display:grid;grid-template-columns:repeat(7,1fr)}
+.hit div{cursor:pointer}
+.hit div:hover{background:rgba(255,255,255,.06)}
+.bar{display:flex;gap:8px;margin-top:20px;flex-wrap:wrap;justify-content:center}
+.bar button{font-size:22px;padding:8px 12px;background:var(--card)}
+.bar button.txt{font-size:16px}
+.bubble{position:fixed;left:50%;top:40%;transform:translate(-50%,-50%);font-size:80px;pointer-events:none;animation:pop 1.4s ease-out forwards}
+@keyframes pop{0%{opacity:0;transform:translate(-50%,-30%) scale(.5)}20%{opacity:1;transform:translate(-50%,-50%) scale(1.1)}100%{opacity:0;transform:translate(-50%,-90%) scale(1)}}
+</style>
+</head>
+<body>
+<div class="top"><a href="../">← Spiele</a><h1>🔴 Vier gewinnt 🟡</h1><span style="width:80px"></span></div>
+
+<div id="menu" class="panel col">
+  <input id="name" maxlength="14" placeholder="Dein Name">
+  <button class="pri" id="bCreate">🌐 Online-Raum erstellen</button>
+  <div class="row"><input id="code" maxlength="4" placeholder="CODE" style="text-transform:uppercase;text-align:center;letter-spacing:6px;font-weight:700"><button id="bJoin">Beitreten</button></div>
+  <div class="row"><button id="bLocal">👥 Zu zweit an einem Gerät</button></div>
+  <div class="row"><button id="bAi">🤖 Gegen den Computer</button></div>
+  <div class="err" id="err"></div>
+  <p class="mut">Online: Einer erstellt einen Raum und sagt den Code. Der andere gibt ihn ein und tippt auf „Beitreten“.</p>
+</div>
+
+<div id="wait" class="panel col" style="display:none;text-align:center">
+  <h2>Dein Raum-Code</h2><div class="code" id="myCode">····</div>
+  <p class="mut">Sag den Code deinem Gegner. Das Spiel startet, sobald er beitritt.</p>
+  <button id="bCancel">Abbrechen</button>
+</div>
+
+<div id="game">
+  <div class="players">
+    <div class="pl" id="pl0"><div class="dot" style="background:var(--red)"></div><div><b id="n0">Rot</b><span id="s0">0 Siege</span></div></div>
+    <div class="pl" id="pl1"><div class="dot" style="background:var(--yel)"></div><div><b id="n1">Gelb</b><span id="s1">0 Siege</span></div></div>
+  </div>
+  <div id="status"></div>
+  <div class="board" id="board"><div class="hit" id="hit"></div></div>
+  <div class="bar" id="emo"><button>👍</button><button>😂</button><button>😮</button><button>😎</button><button>😭</button><button>🔥</button><button class="txt" id="bAgain" style="display:none">🔄 Nochmal</button><button class="txt" id="bLeave">Verlassen</button></div>
+</div>
+
+<script src="peerjs.min.js"></script>
+<script>
+'use strict';
+const $ = id => document.getElementById(id), ROWS = 6, COLS = 7;
+const LS = { get: k => { try { return localStorage.getItem(k) } catch (e) { return null } }, set: (k, v) => { try { localStorage.setItem(k, v) } catch (e) {} } };
+$('name').value = LS.get('vg_name') || LS.get('bc2_name') || '';
+let mode = null, me = 0, names = ['Rot', 'Gelb'], wins = [0, 0], grid, turn, first = 0, over = false, peer = null, conn = null, busy = false;
+
+// ---------- Netzwerk (PeerJS, wie bei BlockCraft) ----------
+function peerOpts() { const o = { debug: 0, config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }] } }; const q = new URLSearchParams(location.search).get('peer'); if (q) { const [h, p] = q.split(':'); Object.assign(o, { host: h, port: +p, path: '/', secure: false }); } return o; }
+const PID = c => 'vg1-' + location.host.replace(/[^a-z0-9]/gi, '').slice(0, 12) + '-' + c;
+const err = t => { $('err').textContent = t || ''; };
+function myName() { const n = $('name').value.trim().slice(0, 14) || 'Spieler'; LS.set('vg_name', n); return n; }
+function send(m) { if (conn && conn.open) conn.send(m); }
+function wire(c) {
+  conn = c;
+  c.on('data', onMsg);
+  c.on('close', () => { if (mode === 'online') { setStatus('❌ Verbindung getrennt.'); over = true; $('bAgain').style.display = 'none'; } });
+}
+function createRoom() {
+  if (typeof Peer === 'undefined') return err('Online geht gerade nicht (Netzwerk blockiert?).');
+  const code = Array.from({ length: 4 }, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ'[Math.random() * 24 | 0]).join('');
+  myName(); err(''); peer = new Peer(PID(code), peerOpts());
+  peer.on('open', () => { $('myCode').textContent = code; show('wait'); });
+  peer.on('error', e => { err(e.type === 'unavailable-id' ? 'Code schon vergeben – nochmal versuchen.' : 'Online-Fehler: ' + e.type); show('menu'); });
+  peer.on('connection', c => { if (conn && conn.open) { c.on('open', () => { c.send({ t: 'full' }); setTimeout(() => c.close(), 300); }); return; } c.on('open', () => { wire(c); }); });
+}
+function joinRoom() {
+  if (typeof Peer === 'undefined') return err('Online geht gerade nicht (Netzwerk blockiert?).');
+  const code = $('code').value.trim().toUpperCase(); if (code.length !== 4) return err('Bitte den 4-stelligen Code eingeben.');
+  myName(); err('Verbinde …'); peer = new Peer(peerOpts());
+  peer.on('error', e => err(e.type === 'peer-unavailable' ? 'Raum nicht gefunden. Code richtig?' : 'Online-Fehler: ' + e.type));
+  peer.on('open', () => { const c = peer.connect(PID(code), { reliable: true }); c.on('open', () => { wire(c); send({ t: 'hello', name: myName() }); }); });
+}
+function onMsg(m) {
+  if (!m || typeof m.t !== 'string') return;
+  if (m.t === 'full') return err('Der Raum ist schon voll.');
+  if (m.t === 'hello' && mode !== 'online') { mode = 'online'; me = 0; names = [myName(), String(m.name || 'Gast').slice(0, 14)]; first = 0; send({ t: 'start', names, first }); start(); }
+  if (m.t === 'start') { mode = 'online'; me = 1; names = m.names; first = m.first; start(); }
+  if (m.t === 'move' && turn !== me) play(m.col, true);
+  if (m.t === 'again') { first = m.first; start(); }
+  if (m.t === 'emo') bubble(m.e);
+}
+
+// ---------- Spiel ----------
+function show(id) { for (const p of ['menu', 'wait']) $(p).style.display = p === id ? 'flex' : 'none'; $('game').style.display = id === 'game' ? 'flex' : 'none'; }
+function setStatus(t) { $('status').textContent = t; }
+function start() {
+  grid = Array.from({ length: ROWS }, () => Array(COLS).fill(-1)); turn = first; over = false; busy = false;
+  const b = $('board'); b.querySelectorAll('.cell').forEach(c => c.remove());
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) { const d = document.createElement('div'); d.className = 'cell'; d.id = 'c' + r + c; b.insertBefore(d, $('hit')); }
+  $('hit').innerHTML = ''; for (let c = 0; c < COLS; c++) { const h = document.createElement('div'); h.onclick = () => tap(c); $('hit').appendChild(h); }
+  $('n0').textContent = names[0]; $('n1').textContent = names[1]; $('bAgain').style.display = 'none';
+  $('emo').querySelectorAll('button:not(.txt)').forEach(x => x.style.display = mode === 'online' ? '' : 'none');
+  show('game'); updateTurn();
+  if (mode === 'ai' && turn === 1) setTimeout(aiMove, 600);
+}
+function updateTurn() {
+  for (let i = 0; i < 2; i++) { $('pl' + i).classList.toggle('turn', !over && turn === i); $('s' + i).textContent = wins[i] + (wins[i] === 1 ? ' Sieg' : ' Siege'); }
+  if (over) return;
+  if (mode === 'online') setStatus(turn === me ? '👉 Du bist dran!' : '⏳ ' + names[turn] + ' ist dran …');
+  else if (mode === 'ai') setStatus(turn === 0 ? '👉 Du bist dran!' : '🤖 Computer denkt nach …');
+  else setStatus((turn === 0 ? '🔴 ' : '🟡 ') + names[turn] + ' ist dran');
+}
+const freeRow = (g, c) => { for (let r = ROWS - 1; r >= 0; r--) if (g[r][c] < 0) return r; return -1; };
+function tap(c) {
+  if (over || busy) return;
+  if (mode === 'online' && turn !== me) return; if (mode === 'ai' && turn !== 0) return;
+  if (freeRow(grid, c) < 0) return;
+  if (mode === 'online') send({ t: 'move', col: c });
+  play(c);
+}
+function play(c, remote) {
+  const r = freeRow(grid, c); if (r < 0) return;
+  grid[r][c] = turn; busy = true;
+  const cell = $('c' + r + c), d = document.createElement('div'); d.className = 'disc drop ' + (turn ? 'y' : 'r');
+  d.style.setProperty('--from', -(r + 1) * 117 + '%'); d.style.setProperty('--d', (0.18 + r * 0.05) + 's'); cell.appendChild(d);
+  tick(300 + r * 40);
+  setTimeout(() => { busy = false; after(r, c); }, 180 + r * 50);
+}
+function lineAt(g, r, c) {
+  const p = g[r][c];
+  for (const [dr, dc] of [[0, 1], [1, 0], [1, 1], [1, -1]]) {
+    const L = [[r, c]];
+    for (const s of [1, -1]) { let rr = r + dr * s, cc = c + dc * s; while (rr >= 0 && rr < ROWS && cc >= 0 && cc < COLS && g[rr][cc] === p) { L.push([rr, cc]); rr += dr * s; cc += dc * s; } }
+    if (L.length >= 4) return L;
+  }
+  return null;
+}
+function after(r, c) {
+  const L = lineAt(grid, r, c);
+  if (L) {
+    over = true; wins[turn]++; L.forEach(([a, b]) => $('c' + a + b).firstChild.classList.add('win'));
+    const mine = mode === 'local' || (mode === 'online' ? turn === me : turn === 0);
+    setStatus(mode === 'local' ? '🎉 ' + names[turn] + ' gewinnt!' : mine ? '🎉 Du hast gewonnen!' : (mode === 'ai' ? '🤖 Der Computer gewinnt!' : '😢 ' + names[turn] + ' gewinnt!'));
+    if (mine) fanfare(); endRound(); return;
+  }
+  if (grid[0].every(v => v >= 0)) { over = true; setStatus('🤝 Unentschieden!'); endRound(); return; }
+  turn = 1 - turn; updateTurn();
+  if (mode === 'ai' && turn === 1) setTimeout(aiMove, 450);
+}
+function endRound() { updateTurn(); if (mode !== 'online' || me === 0) $('bAgain').style.display = ''; else setTimeout(() => { if (over) setStatus($('status').textContent + ' – warte auf Revanche …'); }, 1500); }
+$('bAgain').onclick = () => { first = 1 - first; if (mode === 'online') send({ t: 'again', first }); start(); };
+
+// ---------- Computer-Gegner ----------
+function score(g, p) {
+  let s = 0; const W = [[0, 1], [1, 0], [1, 1], [1, -1]];
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) for (const [dr, dc] of W) {
+    const er = r + dr * 3, ec = c + dc * 3; if (er < 0 || er >= ROWS || ec < 0 || ec >= COLS) continue;
+    let m = 0, o = 0; for (let k = 0; k < 4; k++) { const v = g[r + dr * k][c + dc * k]; if (v === p) m++; else if (v === 1 - p) o++; }
+    if (m && !o) s += [0, 1, 6, 40, 1000][m]; if (o && !m) s -= [0, 1, 7, 60, 1000][o];
+  }
+  for (let r = 0; r < ROWS; r++) if (g[r][3] === p) s += 3;
+  return s;
+}
+function minimax(g, depth, p, a, b) {
+  const moves = [3, 2, 4, 1, 5, 0, 6].filter(c => freeRow(g, c) >= 0);
+  if (!depth || !moves.length) return [score(g, 1), -1];
+  let best = p === 1 ? [-1e9, moves[0]] : [1e9, moves[0]];
+  for (const c of moves) {
+    const r = freeRow(g, c); g[r][c] = p;
+    let v; if (lineAt(g, r, c)) v = p === 1 ? 1e6 + depth : -1e6 - depth; else v = minimax(g, depth - 1, 1 - p, a, b)[0];
+    g[r][c] = -1;
+    if (p === 1) { if (v > best[0]) best = [v, c]; a = Math.max(a, v); } else { if (v < best[0]) best = [v, c]; b = Math.min(b, v); }
+    if (a >= b) break;
+  }
+  return best;
+}
+function aiMove() { if (over || turn !== 1) return; const g = grid.map(r => r.slice()); let c = minimax(g, 5, 1, -1e9, 1e9)[1]; if (Math.random() < .12) { const ms = [0, 1, 2, 3, 4, 5, 6].filter(x => freeRow(grid, x) >= 0); c = ms[Math.random() * ms.length | 0]; } play(c); }
+
+// ---------- Effekte ----------
+let AC = null; function ac() { try { AC = AC || new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {} return AC; }
+function beep(f, t, v = .12, type = 'triangle', at = 0) { const a = ac(); if (!a) return; const o = a.createOscillator(), g = a.createGain(); o.type = type; o.frequency.value = f; g.gain.setValueAtTime(v, a.currentTime + at); g.gain.exponentialRampToValueAtTime(.001, a.currentTime + at + t); o.connect(g); g.connect(a.destination); o.start(a.currentTime + at); o.stop(a.currentTime + at + t); }
+function tick(ms) { setTimeout(() => beep(180, .08, .2, 'square'), ms - 120); }
+function fanfare() { [523, 659, 784, 1046].forEach((f, i) => beep(f, .3, .12, 'triangle', i * .12)); }
+function bubble(e) { const d = document.createElement('div'); d.className = 'bubble'; d.textContent = e; document.body.appendChild(d); setTimeout(() => d.remove(), 1500); }
+$('emo').querySelectorAll('button:not(.txt)').forEach(b => b.onclick = () => { bubble(b.textContent); send({ t: 'emo', e: b.textContent }); });
+
+// ---------- Menü ----------
+$('bCreate').onclick = () => { ac(); createRoom(); };
+$('bJoin').onclick = () => { ac(); joinRoom(); };
+$('bLocal').onclick = () => { ac(); mode = 'local'; names = ['Rot', 'Gelb']; wins = [0, 0]; first = 0; start(); };
+$('bAi').onclick = () => { ac(); mode = 'ai'; names = [myName(), 'Computer']; wins = [0, 0]; first = 0; start(); };
+$('bCancel').onclick = $('bLeave').onclick = () => { try { if (conn) conn.close(); if (peer) peer.destroy(); } catch (e) {} conn = peer = null; mode = null; wins = [0, 0]; err(''); show('menu'); };
+$('code').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
+const qc = new URLSearchParams(location.search).get('code'); if (qc) $('code').value = qc.toUpperCase();
+</script>
+</body>
+</html>
