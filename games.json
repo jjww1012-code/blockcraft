@@ -18,6 +18,76 @@
     "badge": "Update 2.1"
   },
   {
+    "id": "sturm-royale",
+    "title": "Sturm Royale",
+    "emoji": "🪂",
+    "path": "sturm-royale/",
+    "desc": "Battle Royale auf einer Insel: abspringen, Waffen looten, Wände und Rampen bauen und vor dem Sturm fliehen. Online mit Freunden, Bots füllen auf.",
+    "players": "1–16 + Bots",
+    "tags": [
+      "Online",
+      "3D",
+      "Bots"
+    ],
+    "colors": [
+      "#7d3cff",
+      "#ffb300"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "snake-io",
+    "title": "Snake.io",
+    "emoji": "🐍",
+    "path": "snake-io/",
+    "desc": "Friss Leuchtpunkte, werde riesig und lass andere in dich krachen. Skins, Power-ups, Rangliste – online mit Freunden und Bots.",
+    "players": "1–10 Spieler",
+    "tags": [
+      "Online",
+      "Schnell",
+      "Bots"
+    ],
+    "colors": [
+      "#0bd17a",
+      "#05a6ff"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "pizza-profi",
+    "title": "Pizza Profi",
+    "emoji": "🍕",
+    "path": "pizza-profi/",
+    "desc": "Back Pizzas, bediene Kunden, kassier ab und bau dein Restaurant aus – mit Mitarbeitern, Tischen und Drive-in.",
+    "players": "1 Spieler",
+    "tags": [
+      "Idle",
+      "Aufbau"
+    ],
+    "colors": [
+      "#e8471c",
+      "#ffb347"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "goldminer",
+    "title": "Goldminer",
+    "emoji": "⛏️",
+    "path": "goldminer/",
+    "desc": "Schwing den Haken, zieh Gold und Diamanten hoch, spreng Steine weg und erreiche das Ziel. Mit Laden und Online-Duell.",
+    "players": "1–2 Spieler",
+    "tags": [
+      "Klassiker",
+      "Online-Duell"
+    ],
+    "colors": [
+      "#c98a1a",
+      "#5a2f10"
+    ],
+    "badge": "Neu"
+  },
+  {
     "id": "schach",
     "title": "Schach",
     "emoji": "♟️",
@@ -33,7 +103,7 @@
       "#3b2a1a",
       "#c9a227"
     ],
-    "badge": "Neu"
+    "badge": ""
   },
   {
     "id": "turbo-rennen",
@@ -51,7 +121,7 @@
       "#ff3d2e",
       "#ffb300"
     ],
-    "badge": "Neu"
+    "badge": ""
   },
   {
     "id": "nachtjagd",
@@ -69,7 +139,7 @@
       "#1b2a6b",
       "#ff2e4d"
     ],
-    "badge": "Neu"
+    "badge": ""
   },
   {
     "id": "iron-gym",
@@ -87,7 +157,7 @@
       "#ff8a00",
       "#9b5de5"
     ],
-    "badge": "Neu"
+    "badge": ""
   },
   {
     "id": "uno",
@@ -105,7 +175,7 @@
       "#e8262d",
       "#1f8f3a"
     ],
-    "badge": "Neu"
+    "badge": ""
   },
   {
     "id": "schiffe-versenken",
@@ -122,7 +192,7 @@
       "#0b4f7c",
       "#38b6ff"
     ],
-    "badge": "Neu"
+    "badge": ""
   },
   {
     "id": "vier-gewinnt",
