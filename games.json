@@ -18,6 +18,129 @@
   "badge": ""
  },
  {
+  "id": "horden",
+  "title": "Horden-Überleben",
+  "emoji": "🧛",
+  "path": "horden/",
+  "desc": "Du läufst, deine Waffen feuern von allein! Sammle Kristalle, wähle Upgrades und überlebe 10 Minuten gegen riesige Monsterhorden und Drachen.",
+  "players": "1 Spieler",
+  "tags": [
+   "Action",
+   "Upgrades"
+  ],
+  "colors": [
+   "#a78bfa",
+   "#ef4444"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "huepf",
+  "title": "Hüpf-Höhe",
+  "emoji": "🐸",
+  "path": "huepf/",
+  "desc": "Hopsi hüpft immer höher: bewegliche und zerbrechliche Plattformen, Federn, Propeller, Raketen – und Monster, auf die du springen kannst.",
+  "players": "1 Spieler",
+  "tags": [
+   "Geschick",
+   "Endlos"
+  ],
+  "colors": [
+   "#34d399",
+   "#60a5fa"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "billard",
+  "title": "Billard",
+  "emoji": "🎱",
+  "path": "billard/",
+  "desc": "8-Ball mit echter Kugel-Physik und Ziellinie. Gegen die KI, zu zweit an einem Gerät oder online.",
+  "players": "1–2 Spieler",
+  "tags": [
+   "Online",
+   "Sport",
+   "KI"
+  ],
+  "colors": [
+   "#16a34a",
+   "#facc15"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "kopfball",
+  "title": "Kopf-Fußball",
+  "emoji": "⚽",
+  "path": "kopfball/",
+  "desc": "1 gegen 1 mit riesigen Köpfen: köpfen, schießen, Superschuss! Gegen KI, zu zweit an einem Gerät oder online.",
+  "players": "1–2 Spieler",
+  "tags": [
+   "Online",
+   "Sport",
+   "KI"
+  ],
+  "colors": [
+   "#16a34a",
+   "#f59e0b"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "wort",
+  "title": "Wort-Raten",
+  "emoji": "🔤",
+  "path": "wort/",
+  "desc": "Finde das Wort aus 5 Buchstaben in 6 Versuchen. Mit Tageswort, Endlos-Modus und Online-Duell.",
+  "players": "1–8 Spieler",
+  "tags": [
+   "Online",
+   "Wörter",
+   "Rätsel"
+  ],
+  "colors": [
+   "#16a34a",
+   "#ca8a04"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "beat",
+  "title": "Beat-Tapper",
+  "emoji": "🎵",
+  "path": "beat/",
+  "desc": "Tippe die Noten im Takt – die Melodie erklingt nur, wenn du triffst! 4 Songs, 3 Schwierigkeitsstufen.",
+  "players": "1 Spieler",
+  "tags": [
+   "Musik",
+   "Rhythmus"
+  ],
+  "colors": [
+   "#ec4899",
+   "#22d3ee"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "minigolf",
+  "title": "Minigolf",
+  "emoji": "⛳",
+  "path": "minigolf/",
+  "desc": "9 verrückte Bahnen mit Windmühlen, Wasser, Sand, Bumpern und Portalen. Allein, zu mehreren an einem Gerät oder online.",
+  "players": "1–6 Spieler",
+  "tags": [
+   "Online",
+   "Sport",
+   "Party"
+  ],
+  "colors": [
+   "#22c55e",
+   "#ef4444"
+  ],
+  "badge": "Neu"
+ },
+ {
   "id": "blockfall",
   "title": "Blockfall Duell",
   "emoji": "🧱",
@@ -120,7 +243,7 @@
    "#ff4757",
    "#1b2a4a"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "montagsmaler",
@@ -138,7 +261,7 @@
    "#ff9f1a",
    "#7d5fff"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "quiz",
@@ -156,7 +279,7 @@
    "#b15cff",
    "#4b1d8a"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "poker",
@@ -174,7 +297,7 @@
    "#1e8449",
    "#145a32"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "stadtmogul",
@@ -192,7 +315,7 @@
    "#c0392b",
    "#f39c12"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "maumau",
@@ -210,7 +333,7 @@
    "#27ae60",
    "#f1c40f"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "ludo",
@@ -228,7 +351,7 @@
    "#e74c3c",
    "#3498db"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "stapelmeister",
@@ -246,7 +369,7 @@
    "#2e86de",
    "#ff9f1a"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "dame",
@@ -264,7 +387,7 @@
    "#8e5a2b",
    "#3a2414"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "zellfresser",
@@ -282,7 +405,7 @@
    "#0bd17a",
    "#05a6ff"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "revier",
@@ -300,7 +423,7 @@
    "#2ed573",
    "#ffb300"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "panzer",
@@ -318,7 +441,7 @@
    "#ff9f1a",
    "#c0392b"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "bomben",
@@ -336,7 +459,7 @@
    "#ffb300",
    "#e84118"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "airhockey",
@@ -353,7 +476,7 @@
    "#0abde3",
    "#ee5253"
   ],
-  "badge": ""
+  "badge": "Neu"
  },
  {
   "id": "sturm-royale",

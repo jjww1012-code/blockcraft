@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/nozoom.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Hüpf-Höhe</title>
+<link rel="stylesheet" href="../shared/kit.css">
+<style>:root{--a:#34d399;--b:#60a5fa}</style>
+</head>
+<body>
+<script src="../shared/peerjs.min.js"></script>
+<script src="../shared/net.js"></script>
+<script src="../shared/kit.js"></script>
+<script>
+'use strict';
+/* HÜPF-HÖHE – immer höher springen. */
+const W=420,H=720,G=1500,JV=-760,TAU=Math.PI*2;
+let P=null,plats=[],mons=[],items=[],parts=[],camY=0,topH=0,score=0,best=K.store.get('hh_best',0),state='menu',genY=0,dir=0,pops=[],skin=K.store.get('hh_skin',0);
+const SK=[['#34d399','#059669'],['#f472b6','#db2777'],['#60a5fa','#2563eb'],['#fbbf24','#d97706'],['#a78bfa','#7c3aed']];
+const C=K.canvas(W,H),x=C.x;
+function start(){P={x:W/2,y:H-120,vx:0,vy:JV,face:1,sq:0,jet:0,prop:0,dead:false,shield:0};plats=[{x:W/2-35,y:H-60,w:70,k:'n'}];mons=[];items=[];parts=[];pops=[];camY=0;topH=0;score=0;genY=H-60;gen();state='play';K.hideAll();back.style.display=''}
+function gen(){while(genY>camY-H){const h=-genY/10,diff=Math.min(1,h/6000);genY-=K.rnd(55,75+diff*85);const r=Math.random();let k='n';if(h>300&&r<.18+diff*.2)k='m';else if(h>800&&r<.3+diff*.2)k='b';else if(h>1500&&r<.38+diff*.15)k='v';
+ const p={x:K.rnd(5,W-75),y:genY,w:70,k,vx:k==='m'?K.rnd(60,110+diff*80)*(Math.random()<.5?-1:1):0,gone:false};plats.push(p);
+ if(k==="b"){genY-=12;const q={x:(p.x+W/2-35)%(W-75)+5,y:genY,w:70,k:"n"};plats.push(q)}
+ if(k!=='b'&&k!=='v'&&Math.random()<.07)items.push({k:'spring',p,ox:K.rnd(8,50)});else if(k==='n'&&h>200&&Math.random()<.012)items.push({k:'prop',p,ox:25});else if(k==='n'&&h>600&&Math.random()<.007)items.push({k:'jet',p,ox:25});else if(k==='n'&&h>400&&Math.random()<.01)items.push({k:'shield',p,ox:25});
+ if(h>1000&&Math.random()<.035+diff*.05){mons.push({x:K.rnd(40,W-40),y:genY-80,ph:Math.random()*6,t:K.pick(['👾','👹','🦑','🐙']),vx:Math.random()<.5?0:60});genY-=60}}}
+function input(){const k=K.dirKeys();dir=k.x||touchDir}
+let touchDir=0;const tch=new Map();addEventListener('pointerdown',e=>{if(state!=='play'||e.target.closest('button,a,.k-scr'))return;tch.set(e.pointerId,e.clientX<innerWidth/2?-1:1);upd()});addEventListener('pointerup',e=>{tch.delete(e.pointerId);upd()});addEventListener('pointercancel',e=>{tch.delete(e.pointerId);upd()});
+addEventListener('pointermove',e=>{if(tch.has(e.pointerId)){tch.set(e.pointerId,e.clientX<innerWidth/2?-1:1);upd()}});function upd(){let s=0;for(const v of tch.values())s=v;touchDir=s}
+function bounce(v,p){P.vy=v;P.sq=1;K.sfx(v<-1000?'level':'jump');for(let i=0;i<6;i++)parts.push([P.x,P.y+20,(Math.random()-.5)*160,Math.random()*60,.4,'#fff'])}
+function step(dt){if(state!=='play')return;input();P.vx=K.lerp(P.vx,dir*360,.18);if(dir)P.face=dir;P.x+=P.vx*dt;if(P.x<-20)P.x=W+20;if(P.x>W+20)P.x=-20;P.sq=Math.max(0,P.sq-dt*4);P.shield=Math.max(0,P.shield-dt);
+ if(P.jet>0){P.jet-=dt;P.vy=-1150;parts.push([P.x-P.face*12,P.y+22,(Math.random()-.5)*60,300,.4,K.pick(['#fb923c','#fde047','#ef4444'])])}else if(P.prop>0){P.prop-=dt;P.vy=-820}else P.vy+=G*dt;
+ const py=P.y;P.y+=P.vy*dt;
+ for(const p of plats){if(p.k==='m'){p.x+=p.vx*dt;if(p.x<0||p.x>W-p.w)p.vx*=-1}if(p.gone)continue;
+  if(P.vy>0&&!P.dead&&P.jet<=0&&P.prop<=0&&py+24<=p.y+2&&P.y+24>=p.y&&P.x+14>p.x&&P.x-14<p.x+p.w){
+   const sp=items.find(i=>i.k==='spring'&&i.p===p&&!i.used&&Math.abs(P.x-(p.x+i.ox+8))<20);
+   if(p.k==='b'){p.gone=true;p.fall=0;K.sfx('bad');for(let i=0;i<8;i++)parts.push([p.x+Math.random()*p.w,p.y,(Math.random()-.5)*100,100,.6,'#92400e']);continue}
+   P.y=p.y-24;if(sp){sp.used=.3;bounce(-1300,p)}else bounce(JV,p);if(p.k==='v'){p.gone=true;K.sfx('pop')}}}
+ for(const i of items){if(i.used>0)i.used-=dt;if(i.k==='spring'||i.got)continue;const ix=i.p.x+i.ox,iy=i.p.y-22;if(Math.hypot(P.x-ix,P.y-iy)<28&&!P.dead){i.got=1;if(i.k==='jet'){P.jet=2.6;K.sfx('whoosh')}else if(i.k==='prop'){P.prop=2;K.sfx('whoosh')}else{P.shield=10;K.sfx('coin')}}}
+ for(const m of mons){m.ph+=dt;if(m.vx){m.x+=m.vx*dt;if(m.x<30||m.x>W-30)m.vx*=-1}if(m.dead){m.y+=500*dt;continue}const mx=m.x,my=m.y+Math.sin(m.ph*3)*6;if(Math.hypot(P.x-mx,P.y-my)<36&&!P.dead){
+   if(P.vy>0&&P.y<my-8||P.jet>0||P.prop>0||P.shield>0){m.dead=true;if(P.vy>0)bounce(JV,null);K.sfx('boom');score+=50;pops.push([mx,my,'+50',1]);for(let i=0;i<14;i++)parts.push([mx,my,(Math.random()-.5)*300,(Math.random()-.5)*300,.6,'#a855f7'])}
+   else{P.dead=true;P.vy=-300;K.sfx('hit')}}}
+ const target=P.y-H*.42;if(target<camY)camY=target;topH=Math.max(topH,-(P.y-(H-120)));score=Math.max(score,Math.floor(topH/10));gen();
+ plats=plats.filter(p=>p.y<camY+H-4);items=items.filter(i=>plats.includes(i.p));mons=mons.filter(m=>m.y<camY+H+200);
+ for(const p of parts){p[0]+=p[2]*dt;p[1]+=p[3]*dt;p[4]-=dt}parts=parts.filter(p=>p[4]>0);
+ if(P.y>camY+H+40)over()}
+function over(){if(state!=='play')return;state='end';back.style.display='none';K.sfx('lose');const nb=score>best;if(nb){best=score;K.store.set('hh_best',best)}
+ K.result(nb?'🎉 NEUER REKORD!':'💫 ABGESTÜRZT',`<p style="font-size:24px">Höhe: <b>${score}</b> m</p><p>🏆 Rekord: ${best} m</p>`,[{t:'🔁 Nochmal',f:start},{t:'Menü',f:toMenu}])}
+function toMenu(){state='menu';back.style.display='none';menu()}
+function hero(X,Y,t){const s=SK[skin],sq=P?P.sq:0;x.save();x.translate(X,Y);x.scale((P?P.face:1)*(1+sq*.15),1-sq*.15);
+ if(P&&P.prop>0){x.fillStyle='#ef4444';x.save();x.translate(0,-36);x.scale(Math.cos(t*40),1);x.fillRect(-22,-3,44,6);x.restore();x.fillStyle='#fde047';x.fillRect(-3,-36,6,10)}
+ if(P&&P.jet>0){x.fillStyle='#94a3b8';K.rr(x,-26,-10,12,26,4);x.fill()}
+ x.lineWidth=3;x.strokeStyle='#1f2937';x.fillStyle=s[0];x.beginPath();x.moveTo(-12,18);x.lineTo(-14,26);x.moveTo(6,18);x.lineTo(4,26);x.stroke();
+ x.beginPath();x.ellipse(0,0,20,22,0,0,TAU);x.fill();x.stroke();x.fillStyle=s[1];x.beginPath();x.ellipse(0,10,16,9,0,0,Math.PI);x.fill();
+ x.strokeStyle='#1f2937';x.beginPath();x.moveTo(-6,-20);x.quadraticCurveTo(-12,-34,-6,-38);x.moveTo(6,-20);x.quadraticCurveTo(12,-34,16,-36);x.stroke();x.fillStyle='#fde047';x.beginPath();x.arc(-6,-38,4,0,TAU);x.arc(16,-36,4,0,TAU);x.fill();
+ x.fillStyle='#fff';x.beginPath();x.arc(7,-6,7,0,TAU);x.fill();x.stroke();x.fillStyle='#111';x.beginPath();x.arc(9,-6,3.2,0,TAU);x.fill();x.strokeStyle='#1f2937';x.beginPath();x.arc(8,6,6,.2,Math.PI-.6);x.stroke();
+ x.restore();if(P&&P.shield>0){x.strokeStyle=`rgba(96,165,250,${.5+.3*Math.sin(t*10)})`;x.lineWidth=4;x.beginPath();x.arc(X,Y,34,0,TAU);x.stroke()}}
+function draw(dt,t){C.begin('#f5efe0');x.fillStyle='#fbf6ea';x.fillRect(0,0,W,H);const off=((camY%24)+24)%24;x.strokeStyle='rgba(120,150,200,.25)';x.lineWidth=1;for(let y=-off;y<H;y+=24){x.beginPath();x.moveTo(0,y);x.lineTo(W,y);x.stroke()}for(let i=0;i<W;i+=24){x.beginPath();x.moveTo(i,0);x.lineTo(i,H);x.stroke()}
+ if(state==='menu'){hero(W/2,H/2+Math.sin(t*4)*-60,t);return}
+ x.save();x.translate(0,-camY);
+ const by=(H-120)-best*10+24;if(best>0&&by>camY-20&&by<camY+H){x.strokeStyle='#ef4444';x.setLineDash([8,6]);x.lineWidth=2;x.beginPath();x.moveTo(0,by);x.lineTo(W,by);x.stroke();x.setLineDash([]);x.fillStyle='#ef4444';x.font='800 13px system-ui';x.fillText('🏆 Rekord',8,by-6)}
+ for(const p of plats){if(p.gone&&p.k==='b'){p.fall=(p.fall||0)+dt;x.globalAlpha=Math.max(0,1-p.fall*2);x.save();x.translate(p.x+p.w/2,p.y+p.fall*300);x.rotate(p.fall*2);x.fillStyle='#b45309';x.fillRect(-p.w/2,0,p.w/2-2,14);x.fillRect(2,0,p.w/2-2,14);x.restore();x.globalAlpha=1;continue}if(p.gone)continue;
+  const c={n:['#4ade80','#15803d'],m:['#60a5fa','#1d4ed8'],b:['#d97706','#78350f'],v:['#f8fafc','#94a3b8']}[p.k];x.fillStyle=c[0];x.strokeStyle=c[1];x.lineWidth=2.5;K.rr(x,p.x,p.y,p.w,15,7);x.fill();x.stroke();if(p.k==='b'){x.beginPath();x.moveTo(p.x+p.w/2-4,p.y);x.lineTo(p.x+p.w/2+3,p.y+8);x.lineTo(p.x+p.w/2-2,p.y+15);x.stroke()}
+  x.fillStyle='rgba(255,255,255,.4)';x.fillRect(p.x+8,p.y+3,p.w-16,3)}
+ for(const i of items){const ix=i.p.x+i.ox,iy=i.p.y;if(i.k==='spring'){const c=i.used>0?14:0;x.strokeStyle='#64748b';x.lineWidth=3;x.beginPath();for(let k=0;k<4;k++){x.moveTo(ix,iy-k*(4+c/4)-2);x.lineTo(ix+16,iy-k*(4+c/4)-4)}x.stroke();x.fillStyle='#fbbf24';x.fillRect(ix-2,iy-16-c,20,5)}
+  else if(!i.got){x.font='30px system-ui';x.textAlign='center';x.fillText(i.k==='jet'?'🚀':i.k==='prop'?'🚁':'🛡️',ix,iy-6+Math.sin(t*4)*3)}}
+ for(const m of mons){x.save();x.translate(m.x,m.y+Math.sin(m.ph*3)*6);if(m.dead)x.rotate(m.ph*6);x.font='54px system-ui';x.textAlign='center';x.textBaseline='middle';x.fillText(m.t,0,0);x.restore()}
+ for(const p of parts){x.globalAlpha=Math.min(1,p[4]*2);x.fillStyle=p[5];x.fillRect(p[0]-3,p[1]-3,6,6)}x.globalAlpha=1;
+ if(P)hero(P.x,P.y,t);
+ pops=pops.filter(p=>(p[3]-=dt)>0);for(const p of pops){x.globalAlpha=p[3];x.font='900 22px system-ui';x.fillStyle='#7c3aed';x.textAlign='center';x.fillText(p[2],p[0],p[1]-(1-p[3])*40)}x.globalAlpha=1;
+ x.restore();
+ x.fillStyle='rgba(255,255,255,.8)';x.fillRect(0,0,W,48);x.font='900 30px system-ui';x.textAlign='left';x.fillStyle='#1f2937';x.fillText(score+' m',12,36);x.font='700 13px system-ui';x.textAlign='right';x.fillText('🏆 '+best+' m',W-80,30)}
+K.loop((dt,t)=>{step(Math.min(dt,.033));draw(dt,t)});
+const back=document.createElement('button');back.className='k-btn-float';back.style.cssText='right:10px;top:max(8px,env(safe-area-inset-top));display:none';back.textContent='✕';back.onclick=toMenu;document.body.appendChild(back);
+function menu(){K.menu({title:'HÜPF-HÖHE',emoji:'🐸',sub:'Hopsi hüpft von selbst – du lenkst! Tippe links oder rechts (oder ← →). Federn, Propeller und Raketen bringen dich nach oben. Springe Monstern auf den Kopf!',noName:true,
+ body:`<div class="k-box"><div class="k-set"><span>🎨 Farbe</span><div class="k-chips" id="hhS">${SK.map((s,i)=>`<button data-i="${i}" class="${i===skin?'on':''}" style="background:${s[0]};min-width:44px">${i===skin?'✔':''}</button>`).join('')}</div></div><p class="k-mut" style="text-align:center">🏆 Rekord: ${best} m</p></div>`,solo:[{t:'▶ Hüpfen!',f:start}],help:'Plattformen: 🟩 normal · 🟦 bewegt sich · 🟫 zerbricht · ⬜ verschwindet nach einem Sprung. 🛡️ macht dich 10 Sekunden unverwundbar.'});
+ document.querySelectorAll('#hhS button').forEach(b=>b.onclick=()=>{skin=+b.dataset.i;K.store.set('hh_skin',skin);K.sfx('click');menu()})}
+menu();window.HH={get P(){return P},get score(){return score},plats:()=>plats};
+
+</script>
+</body>
+</html>

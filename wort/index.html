@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/nozoom.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Wort-Raten</title>
+<link rel="stylesheet" href="../shared/kit.css">
+<style>:root{--a:#16a34a;--b:#ca8a04}</style>
+</head>
+<body>
+<script src="../shared/peerjs.min.js"></script>
+<script src="../shared/net.js"></script>
+<script src="../shared/kit.js"></script>
+<script>
+'use strict';
+/* WORT-RATEN – finde das Wort aus 5 Buchstaben in 6 Versuchen. */
+const RAW=`APFEL BIRNE TISCH STUHL LAMPE BLUME WOLKE SONNE REGEN NEBEL STERN FEUER KATZE PFERD ZEBRA TIGER ADLER HECHT ROBBE OTTER KAMEL HONIG TORTE PIZZA NUDEL SALAT SUPPE SPECK WURST GURKE BEERE MANGO ERBSE BOHNE LINSE HECKE STALL STADT GASSE PLATZ INSEL WELLE BUCHT HAFEN WIESE ACKER WEIDE BLATT ZWEIG RINDE BLITZ HAGEL FROST HITZE STURM MUSIK GEIGE HARFE ORGEL KLANG SPORT RUDER BOXEN TAFEL FARBE MAPPE PAUSE BEINE OHREN AUGEN HAARE ZEHEN LEBER NIERE BAUCH KLEID HOSEN JACKE SCHAL SOCKE KAPPE BLUSE WEISS BRAUN SECHS APRIL ABEND NACHT WOCHE GROSS KLEIN LEISE MUTIG STARK SAUER WEICH GLATT FLACH LESEN MALEN BAUEN RUFEN GEBEN HOLEN SAGEN LEBEN LEGEN HEBEN ENTEN EULEN FUCHS HASEN RABEN SCHAF SPATZ TAUBE ZIEGE KRAKE KREBS KERZE GABEL TASSE KANNE DECKE REGAL KISTE RADIO HANDY FOTOS KARTE BRIEF PAKET MARKE KRONE PERLE AUTOS BUSSE TAXIS HALLE MARKT LADEN ENGEL HEXEN PRINZ ZWERG RIESE GEIST PIRAT PUPPE ONKEL TANTE VATER TRAUM ANGST LIEBE FRAGE IDEEN SPASS ZIMMER GARTEN BODEN WAGEN ZETTEL ZANGE NADEL FADEN KNOPF SEIFE BUERSTE KAMM SALBE PILLE ZELTE HUETTE KABEL STROM ZUNGE LIPPE WANGE STIRN NACKEN SPIEL PUNKT LINIE KREIS FLECK STAUB ASCHE KOHLE KUGEL WUERFEL PFEIL BOGEN SCHILD LANZE HELME SEGEL ANKER INSELN MOTOR REIFE BREMSE SITZE DAMPF FLAMME RAUCH WAFFE KREIDE BLOCK STIFT HEFTE BUCHE EICHE TANNE BIRKE LINDE PALME KAKAO SAHNE QUARK JOGHURT BROTE SEMMEL ZUCKER KEKSE WAFFEL KNETE DRACHE MOEWE LACHS FORELLE MUSCHEL HUMMER QUALLE DELFIN FINKE MEISE AMSEL DROSSEL ELSTER KRAEHE GEIER FALKE STORCH KRANICH REHE HIRSCH LUCHS DACHS MARDER BIBER WIESEL HAMSTER RATTE MAEUSE KRAUT MOHN SENF ESSIG OLIVE TRAUBE FEIGE DATTEL MELONE KIWIS ZITRONE LIMETTE PFLAUME KIRSCHE ERDBEERE HIMBEERE BANANE ANANAS NUESSE MANDEL PFEFFER CURRY NUDELN REISE URLAUB KOFFER ZUGE FLUGE STRAND WUESTE OASE DUENE KLIPPE HOEHLE TUNNEL BRUNNEN QUELLE GLOCKE WECKER UHREN SPIEGEL BILDER RAHMEN VASEN TEPPICH VORHANG FENSTER TUEREN TREPPE AUFZUG KELLER DACHS GIEBEL MAUER ZIEGEL BALKEN BRETT NAGEL SCHRAUBE HAMMER SAEGE BOHRER LEITER EIMER BESEN LAPPEN SCHWAMM`;
+const WORDS=[...new Set(RAW.split(/\s+/).filter(w=>/^[A-Z]{5}$/.test(w)))];
+const ROWS=[['Q','W','E','R','T','Z','U','I','O','P'],['A','S','D','F','G','H','J','K','L'],['⏎','Y','X','C','V','B','N','M','⌫']];
+let target='',grid=[],cur='',row=0,done=false,won=false,mode='daily',room=null,isHost=false,me=K.uid(),opp={},t0=0,state='menu',keyState={};
+const stats=K.store.get('wr_stats',{p:0,w:0,s:0,b:0,d:[0,0,0,0,0,0]});
+function dayIdx(){const d=new Date();return Math.floor((Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()))/864e5)}
+function pickWord(seed){const r=K.rng(seed);const sh=WORDS.slice();for(let i=sh.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[sh[i],sh[j]]=[sh[j],sh[i]]}return sh[0]}
+const root=document.createElement('div');root.className='wr';root.style.display='none';document.body.appendChild(root);
+function begin(m,seed){mode=m;target=m==='daily'?pickWord(dayIdx()*7919):pickWord(seed??K.ri(1,1e9));grid=[];cur='';row=0;done=false;won=false;keyState={};t0=Date.now();state='play';K.hideAll();root.style.display='flex';
+ if(m==='daily'){const sv=K.store.get('wr_daily',null);if(sv&&sv.day===dayIdx()&&sv.v===2){grid=sv.grid.map(o=>Object.assign(o.c.split(''),{w:o.w}));row=grid.length;done=sv.done;won=sv.won;grid.forEach(g=>g.forEach((c,i)=>mark(g.w[i],c)))}}render();if(done)setTimeout(()=>showEnd(true),300)}
+function score(g){const res=Array(5).fill('x'),t=target.split('');for(let i=0;i<5;i++)if(g[i]===t[i]){res[i]='g';t[i]=null}for(let i=0;i<5;i++)if(res[i]!=='g'){const k=t.indexOf(g[i]);if(k>=0){res[i]='y';t[k]=null}}return res}
+function mark(l,c){const o=keyState[l];if(o==='g')return;if(o==='y'&&c==='x')return;keyState[l]=c}
+function key(k){if(state!=='play'||done)return;if(k==='⌫'||k==='BACKSPACE'){cur=cur.slice(0,-1);K.sfx('tick')}else if(k==='⏎'||k==='ENTER'){submit();return}else if(/^[A-ZÄÖÜ]$/.test(k)&&cur.length<5){cur+=k;K.sfx('click')}render()}
+function submit(){if(cur.length<5){K.toast('Zu kurz – 5 Buchstaben!');shakeRow();return}const r=score(cur);const g=r.slice();g.w=cur;grid.push(g);[...cur].forEach((l,i)=>mark(l,r[i]));row++;const guess=cur;cur='';
+ if(guess===target){done=true;won=true}else if(row>=6)done=true;render(true);
+ if(mode==='duel'&&room){const m={t:'wp',id:me,rows:grid.map(g=>g.join('')),done,won,ms:Date.now()-t0,nm:K.name()};room.send(m);onWp(m)}
+ if(mode==='daily')K.store.set('wr_daily',{v:2,day:dayIdx(),grid:grid.map(g=>({c:g.join(''),w:g.w})),done,won});
+ setTimeout(()=>{if(won){K.sfx('win')}else if(done)K.sfx('lose');else K.sfx(r.includes('g')?'good':'blip');if(done)setTimeout(()=>showEnd(false),900)},5*260)}
+function shakeRow(){const el=root.querySelector('.wrr.cur');if(el){el.classList.remove('shk');void el.offsetWidth;el.classList.add('shk')}K.sfx('bad')}
+function render(flip){const rows=[];for(let r=0;r<6;r++){const g=grid[r];let cells='';for(let i=0;i<5;i++){const l=g?g.w[i]:r===row?cur[i]||'':'';const c=g?g[i]:'';cells+=`<div class="wrc ${c} ${l&&!g?'fill':''} ${flip&&r===row-1?'flip':''}" style="animation-delay:${i*.26}s;transition-delay:${flip&&r===row-1?i*.26+.13:0}s">${l}</div>`}rows.push(`<div class="wrr ${r===row?'cur':''}">${cells}</div>`)}
+ const opps=Object.values(opp).filter(o=>o.id!==me);
+ root.innerHTML=`<div class="wrt"><a href="#" id="wrB">← Menü</a><b>🔤 WORT-RATEN</b><span>${mode==='daily'?'Tageswort':mode==='duel'?'Duell':'Endlos'}</span></div>
+ <div class="wrm">${opps.length?`<div class="wro">${opps.map(o=>`<div><small>${K.esc(o.nm)} ${o.won?'✅':o.done?'❌':'…'}</small>${o.rows.map(r=>`<div class="wrmr">${[...r].map(c=>`<i class="${c}"></i>`).join('')}</div>`).join('')}</div>`).join('')}</div>`:''}<div class="wrg">${rows.join('')}</div></div>
+ <div class="wrk">${ROWS.map(r=>`<div>${r.map(k=>`<button data-k="${k}" class="${keyState[k]||''} ${k.length>1||k==='⏎'||k==='⌫'?'wide':''}">${k}</button>`).join('')}</div>`).join('')}</div>`;
+ K.$('wrB').onclick=e=>{e.preventDefault();toMenu()};root.querySelectorAll('.wrk button').forEach(b=>b.onclick=()=>key(b.dataset.k))}
+addEventListener('keydown',e=>{if(state!=='play'||e.target.tagName==='INPUT')return;const k=e.key.toUpperCase();if(k==='ENTER'||k==='BACKSPACE'||/^[A-ZÄÖÜ]$/.test(k)){e.preventDefault();key(k)}});
+function emoji(){return grid.map(g=>g.map(c=>c==='g'?'🟩':c==='y'?'🟨':'⬜').join('')).join('\n')}
+function showEnd(already){if(state!=='play')return;if(mode==='duel'){const all=Object.values(opp);if(all.some(o=>!o.done))return;}
+ if(!already&&mode!=='duel'){stats.p++;if(won){stats.w++;stats.s++;stats.b=Math.max(stats.b,stats.s);stats.d[row-1]++}else stats.s=0;K.store.set('wr_stats',stats)}
+ state='end';root.style.display='none';let extra='';if(mode==='duel'){const rk=Object.values(opp).sort((a,b)=>(b.won-a.won)||(a.rows.length-b.rows.length)||(a.ms-b.ms));extra=`<table class="k-table">${rk.map((o,i)=>`<tr><td>${['🥇','🥈','🥉'][i]||i+1+'.'} ${K.esc(o.nm)}</td><td>${o.won?o.rows.length+' Versuche · '+(o.ms/1000).toFixed(0)+' s':'nicht gelöst'}</td></tr>`).join('')}</table>`}
+ const mx=Math.max(1,...stats.d);
+ K.result(won?'🎉 GESCHAFFT!':'😵 LEIDER NICHT',`<p style="font-size:20px">Das Wort war <b style="letter-spacing:3px">${target}</b></p><pre style="font-size:22px;line-height:1.1;margin:6px">${emoji()}</pre>${extra}
+  ${mode!=='duel'?`<div class="k-mut">Gespielt ${stats.p} · Gewonnen ${stats.p?Math.round(stats.w/stats.p*100):0}% · Serie ${stats.s} · Beste ${stats.b}</div>${stats.d.map((n,i)=>`<div style="display:flex;gap:6px;align-items:center;font-size:13px"><b style="width:12px">${i+1}</b><div style="background:${won&&row===i+1?'#22c55e':'#475569'};height:16px;width:${8+n/mx*200}px;border-radius:4px;text-align:right;padding-right:4px">${n}</div></div>`).join('')}`:''}`,
+  [...(mode==='daily'?[{t:'📋 Ergebnis kopieren',f:()=>{navigator.clipboard&&navigator.clipboard.writeText('Wort-Raten '+(won?row:'X')+'/6\n'+emoji()).then(()=>K.toast('Kopiert!'),()=>{});}},{t:'♾️ Endlos spielen',f:()=>begin('free')}]:mode==='free'?[{t:'▶ Nächstes Wort',f:()=>begin('free')}]:isHost?[{t:'🔁 Neues Duell',f:()=>hostStart(room)}]:[]),{t:'Menü',f:toMenu}])}
+function toMenu(){K.leaveRoom();room=null;state='menu';root.style.display='none';opp={};menu()}
+function onWp(m){opp[m.id]={id:m.id,nm:m.nm,rows:m.rows,done:m.done,won:m.won,ms:m.ms};if(state==='play')render();if(done&&mode==='duel')showEnd(false)}
+function hostStart(r){room=r;isHost=true;const seed=K.ri(1,1e9);opp={};for(const p of r.peers)opp[p.id]={id:p.id,nm:p.name,rows:[],done:false,won:false,ms:0};r.send({t:'go',seed,ps:r.peers.map(p=>({id:p.id,nm:p.name}))});begin('duel',seed)}
+function wire(){room.on('msg',(m,from)=>{if(m.t==='go'&&!isHost){opp={};for(const p of m.ps)opp[p.id]={id:p.id,nm:p.nm,rows:[],done:false,won:false,ms:0};begin('duel',m.seed);return}if(m.t==='wp'){if(isHost&&from!==me&&m.id===from)room.send(m);if(m.id!==me)onWp(m)}});
+ room.on('leave',id=>{if(opp[id]){opp[id].done=true;if(done&&mode==='duel')showEnd(false)}})}
+const _lobby=K.lobby;K.lobby=o=>{if(K.room&&!K.room._w){K.room._w=1;room=K.room;isHost=K.room.isHost;wire()}_lobby(o)};
+const st=document.createElement('style');st.textContent=`.wr{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;gap:10px;padding:max(10px,env(safe-area-inset-top)) 8px max(10px,env(safe-area-inset-bottom));background:radial-gradient(900px 600px at 50% 20%,#1e3a5f,#0b1220)}
+.wrt{display:flex;justify-content:space-between;width:min(520px,100%);font-weight:800;align-items:center}.wrt a{color:#fff;text-decoration:none;background:rgba(255,255,255,.1);padding:6px 10px;border-radius:10px}
+.wrm{flex:1;display:flex;align-items:center;justify-content:center;gap:16px;min-height:0}.wrg{display:grid;gap:6px}.wrr{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}.wrr.shk{animation:wsh .4s}@keyframes wsh{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}
+.wrc{width:min(62px,13vw,8.5vh);aspect-ratio:1;display:grid;place-items:center;font-size:min(32px,7vw,4.6vh);font-weight:900;border:3px solid #334155;border-radius:10px;background:#0f172a;transition:background .1s,border-color .1s}.wrc.fill{border-color:#94a3b8;animation:wpop .12s}
+.wrc.g{background:#16a34a;border-color:#16a34a}.wrc.y{background:#ca8a04;border-color:#ca8a04}.wrc.x{background:#374151;border-color:#374151}.wrc.flip{animation:wflip .52s both}@keyframes wflip{0%{transform:rotateX(0);background:#0f172a;border-color:#94a3b8}49%{background:#0f172a;border-color:#94a3b8}50%{transform:rotateX(90deg)}100%{transform:rotateX(0)}}@keyframes wpop{50%{transform:scale(1.1)}}
+.wrk{display:flex;flex-direction:column;gap:6px;width:min(560px,100%)}.wrk>div{display:flex;gap:5px;justify-content:center}.wrk button{flex:1;max-width:48px;height:min(56px,7.5vh);padding:0;font-size:18px;font-weight:800;background:#64748b;border-radius:8px}.wrk button.wide{max-width:72px;flex:1.5}
+.wrk button.g{background:#16a34a}.wrk button.y{background:#ca8a04}.wrk button.x{background:#1f2937;color:#64748b}.wro{display:flex;flex-direction:column;gap:10px}.wro small{display:block;font-weight:700;margin-bottom:3px}.wrmr{display:flex;gap:2px;margin-bottom:2px}.wrmr i{width:12px;height:12px;border-radius:2px;background:#374151}.wrmr i.g{background:#16a34a}.wrmr i.y{background:#ca8a04}`;document.head.appendChild(st);
+function menu(){const sv=K.store.get('wr_daily',null),today=sv&&sv.day===dayIdx()&&sv.done;K.menu({title:'WORT-RATEN',emoji:'🔤',sub:'Finde das geheime Wort aus 5 Buchstaben in 6 Versuchen. 🟩 richtig · 🟨 kommt vor, aber woanders · ⬜ kommt nicht vor.',
+ body:`<div class="k-box" style="text-align:center">${WORDS.length} Wörter · Serie: ${stats.s} 🔥</div>`,solo:[{t:today?'📅 Tageswort (erledigt ✅)':'📅 Tageswort',f:()=>begin('daily')},{t:'♾️ Endlos',f:()=>begin('free')}],online:{game:'wort',max:8,min:2,onStart:hostStart,botsNote:'Alle bekommen dasselbe Wort – wer löst es mit weniger Versuchen (und schneller)?'},
+ help:'Umlaute werden als AE, OE, UE geschrieben (z. B. MOEWE). Du siehst im Duell die Farben deiner Gegner, aber nicht ihre Buchstaben!'})}
+menu();window.WR={get target(){return target},key};
+
+</script>
+</body>
+</html>

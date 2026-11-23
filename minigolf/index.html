@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/nozoom.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Minigolf</title>
+<link rel="stylesheet" href="../shared/kit.css">
+<style>:root{--a:#22c55e;--b:#ef4444}</style>
+</head>
+<body>
+<script src="../shared/peerjs.min.js"></script>
+<script src="../shared/net.js"></script>
+<script src="../shared/kit.js"></script>
+<script>
+'use strict';
+/* MINIGOLF – 9 Bahnen. Zurückziehen und loslassen! */
+const FW=800,FH=500,BR=8,CR=13,TAU=Math.PI*2,MAXS=8;
+const R4=(x,y,w,h)=>[[x,y,x+w,y],[x+w,y,x+w,y+h],[x+w,y+h,x,y+h],[x,y+h,x,y]];
+const PL=pts=>pts.map((p,i)=>[p[0],p[1],pts[(i+1)%pts.length][0],pts[(i+1)%pts.length][1]]);
+const HOLES=[
+ {n:'Aufwärmen',par:2,s:[100,250],c:[700,250],w:[...R4(40,140,720,220),...R4(380,215,40,70)],grass:[[40,140,720,220]]},
+ {n:'Um die Ecke',par:3,s:[100,390],c:[680,110],w:PL([[40,320],[400,320],[400,40],[760,40],[760,460],[40,460]]),grass:[[40,320,720,140],[400,40,360,420]]},
+ {n:'Windmühle',par:3,s:[100,250],c:[700,250],w:[...R4(40,60,720,380),[400,60,400,185],[400,315,400,440]],mill:[[400,250,150,1.6]],grass:[[40,60,720,380]]},
+ {n:'Flipper',par:3,s:[90,250],c:[720,250],w:R4(40,60,720,380),bump:[[300,170,26],[300,330,26],[470,250,30],[220,250,18]],sand:[[560,150,110,200]],grass:[[40,60,720,380]]},
+ {n:'Die Brücke',par:3,s:[100,250],c:[700,250],w:[...R4(40,60,720,380),[250,220,550,220],[250,280,550,280]],water:[[250,60,300,160],[250,280,300,160]],grass:[[40,60,720,380]]},
+ {n:'Zickzack',par:4,s:[130,110],c:[700,400],w:[...R4(40,40,720,420),[250,40,250,330],[450,170,450,460],[620,40,620,330]],grass:[[40,40,720,420]]},
+ {n:'Der Hügel',par:3,s:[100,400],c:[700,110],w:R4(40,60,720,380),slope:[[260,60,280,380,0,380]],bump:[[640,260,20]],grass:[[40,60,720,380]]},
+ {n:'Portal',par:2,s:[100,120],c:[700,380],w:[...R4(40,60,720,380),[400,60,400,440]],portal:[[300,330,520,170]],bump:[[620,300,18]],grass:[[40,60,720,380]]},
+ {n:'Finale',par:4,s:[80,250],c:[725,250],w:R4(40,40,720,420),mill:[[300,250,130,-1.9],[560,250,130,2.3]],water:[[400,40,60,130],[400,330,60,130]],sand:[[640,180,50,140]],bump:[[430,250,22]],grass:[[40,40,720,420]]}];
+let H=null,hi=0,ball=null,state='menu',players=[],cur=0,mode='solo',room=null,isHost=false,me=K.uid(),ghosts={},aim=null,msg=null,simT=0,millA=[],lastPos=null,nLocal=2;
+const C=K.canvas(FW,FH+60),x=C.x;
+function loadHole(i){hi=i;H=HOLES[i];millA=(H.mill||[]).map(()=>0);ball={x:H.s[0],y:H.s[1],vx:0,vy:0,in:false,sink:0};lastPos=[ball.x,ball.y];aim=null;msg={s:`Bahn ${i+1}: ${H.n} · Par ${H.par}`,l:2.5}}
+function segsNow(){const s=H.w.slice();(H.mill||[]).forEach((m,i)=>{const a=millA[i];for(const off of [0,Math.PI/2]){const c=Math.cos(a+off)*m[2]/2,d=Math.sin(a+off)*m[2]/2;s.push([m[0]-c,m[1]-d,m[0]+c,m[1]+d])}});return s}
+function inR(r,px,py){return px>r[0]&&px<r[0]+r[2]&&py>r[1]&&py<r[1]+r[3]}
+function phys(dt){const n=8,h=dt/n;for(let k=0;k<n;k++){(H.mill||[]).forEach((m,i)=>millA[i]+=m[3]*h);if(ball.in||!moving())continue;
+ const P=players[cur];let fr=1.2;if((H.sand||[]).some(r=>inR(r,ball.x,ball.y)))fr=5;for(const s of H.slope||[])if(inR(s,ball.x,ball.y)){ball.vx+=s[4]*h;ball.vy+=s[5]*h}
+ ball.x+=ball.vx*h;ball.y+=ball.vy*h;const sp=Math.hypot(ball.vx,ball.vy);const ns=Math.max(0,sp-(sp*fr*.5+25)*h);if(sp>0){ball.vx*=ns/sp;ball.vy*=ns/sp}
+ for(const sg of segsNow()){const [ax,ay,bx,by]=sg,dx=bx-ax,dy=by-ay,L2=dx*dx+dy*dy;const t=K.clamp(((ball.x-ax)*dx+(ball.y-ay)*dy)/L2,0,1),qx=ax+dx*t,qy=ay+dy*t,ex=ball.x-qx,ey=ball.y-qy,d=Math.hypot(ex,ey);if(d<BR+3&&d>0){const nx=ex/d,ny=ey/d;ball.x=qx+nx*(BR+3);ball.y=qy+ny*(BR+3);const vn=ball.vx*nx+ball.vy*ny;if(vn<0){ball.vx-=1.75*vn*nx;ball.vy-=1.75*vn*ny;if(-vn>60)K.tone(300,.04,Math.min(.15,-vn/3000),'square')}}}
+ for(const b of H.bump||[]){const dx=ball.x-b[0],dy=ball.y-b[1],d=Math.hypot(dx,dy);if(d<b[2]+BR){const nx=dx/d,ny=dy/d;ball.x=b[0]+nx*(b[2]+BR);ball.y=b[1]+ny*(b[2]+BR);const vn=ball.vx*nx+ball.vy*ny;ball.vx-=2*vn*nx;ball.vy-=2*vn*ny;ball.vx+=nx*160;ball.vy+=ny*160;b.hit=.3;K.tone(600,.08,.12,'sine',0,900)}}
+ for(const p of H.portal||[]){if(Math.hypot(ball.x-p[0],ball.y-p[1])<16&&!ball.pc){ball.x=p[2]+Math.sign(ball.vx||1)*22;ball.y=p[3];ball.pc=.4;K.sfx('whoosh')}}if(ball.pc)ball.pc=Math.max(0,ball.pc-h);
+ if((H.water||[]).some(r=>inR(r,ball.x,ball.y))){K.sfx('bad');K.burst(ball.x,ball.y,14,'#60a5fa',140,.5,4);ball.x=lastPos[0];ball.y=lastPos[1];ball.vx=ball.vy=0;P.st[hi]++;msg={s:'💦 Platsch! +1 Schlag',l:1.6};}
+ const cd=Math.hypot(ball.x-H.c[0],ball.y-H.c[1]);if(cd<CR){const s=Math.hypot(ball.vx,ball.vy);if(s<520){ball.in=true;ball.vx=ball.vy=0;sunk()}else{ball.vx+=(H.c[0]-ball.x)*2;ball.vy+=(H.c[1]-ball.y)*2}}else if(cd<CR*2.2){const s=Math.hypot(ball.vx,ball.vy);if(s<160){ball.vx+=(H.c[0]-ball.x)/cd*300*h;ball.vy+=(H.c[1]-ball.y)/cd*300*h}}}
+ if(!moving()&&!ball.in&&ball.wasM){ball.wasM=false;const P=players[cur];if(P.st[hi]>=MAXS){msg={s:'Max. Schläge – aufgehoben',l:1.6};ball.in=true;sunk(true)}else if(mode==='local'&&players.length>1){}}if(moving())ball.wasM=true}
+const moving=()=>Math.hypot(ball.vx,ball.vy)>4;
+function sunk(pick){const P=players[cur],s=P.st[hi],d=s-H.par;if(!pick){K.sfx('coin');setTimeout(()=>K.sfx(d<0?'win':'good'),200);msg={s:s===1?'⛳ HOLE-IN-ONE!!':({'-3':'🦅 Albatros!','-2':'🦅 Eagle!','-1':'🐦 Birdie!','0':'👍 Par','1':'Bogey','2':'Doppel-Bogey'})[d]||`+${d}`,l:2.2};if(s===1)for(let i=0;i<40;i++)K.burst(H.c[0],H.c[1],1,K.pick(['#ffd23f','#ff4757','#2ed573','#18dcff']),300,1,5)}
+ P.done[hi]=true;sendG(true);setTimeout(()=>advance(),1800)}
+function advance(){if(state!=='play')return;if(mode==='local'){const nx=players.findIndex(p=>!p.done[hi]);if(nx>=0){cur=nx;ball={x:H.s[0],y:H.s[1],vx:0,vy:0,in:false};lastPos=[ball.x,ball.y];msg={s:`${players[cur].name} ist dran`,l:2};return}}
+ if(mode==='online'){if(!isHost)return;if(Object.values(ghosts).some(g=>!g.done)||!players[0].done[hi])return;setTimeout(()=>{room.send({t:'next',h:hi+1});nextHole()},1200);return}nextHole()}
+function nextHole(){if(hi+1>=HOLES.length){finish();return}showCard(()=>{loadHole(hi+1);cur=mode==='local'?0:cur;for(const g of Object.values(ghosts)){g.done=false;g.x=H.s[0];g.y=H.s[1]}})}
+function showCard(then){const d=document.createElement('div');d.className='mgc';d.innerHTML=`<div><h2>Zwischenstand</h2><div style="overflow:auto">${table()}</div><p class="k-mut">Nächste Bahn kommt gleich …</p></div>`;document.body.appendChild(d);state='card';setTimeout(()=>{d.remove();if(state==='card'){state='play';then()}},2800)}
+function table(){const all=mode==='online'?[{name:K.name(),st:players[0].st},...Object.values(ghosts)]:players;return`<table class="k-table" style="font-size:13px"><tr><td></td>${HOLES.map((h,i)=>`<td>${i+1}</td>`).join('')}<td>Σ</td></tr><tr><td>Par</td>${HOLES.map(h=>`<td>${h.par}</td>`).join('')}<td>${HOLES.reduce((a,h)=>a+h.par,0)}</td></tr>${all.map(p=>`<tr><td>${K.esc(p.name)}</td>${HOLES.map((h,i)=>`<td>${p.st[i]||'–'}</td>`).join('')}<td><b>${p.st.reduce((a,b)=>a+(b||0),0)}</b></td></tr>`).join('')}</table>`}
+function finish(){state='end';back.style.display='none';const all=mode==='online'?[{name:K.name(),st:players[0].st},...Object.values(ghosts)]:players;const tot=p=>p.st.reduce((a,b)=>a+(b||0),0);const w=[...all].sort((a,b)=>tot(a)-tot(b))[0];const par=HOLES.reduce((a,h)=>a+h.par,0);
+ if(mode==='solo'){const b=K.store.get('mg_best',999);if(tot(all[0])<b)K.store.set('mg_best',tot(all[0]))}K.sfx('win');
+ K.result(all.length>1?'🏆 '+K.esc(w.name)+' gewinnt!':'⛳ RUNDE BEENDET',`<p>${all.length===1?`${tot(all[0])} Schläge (${tot(all[0])-par>=0?'+':''}${tot(all[0])-par} zu Par)`:''}</p><div style="overflow:auto">${table()}</div>`,[...(mode!=='online'||isHost?[{t:'🔁 Neue Runde',f:again}]:[]),{t:'Menü',f:toMenu}])}
+function again(){if(mode==='online')hostStart(room);else startLocal(mode)}
+function toMenu(){K.leaveRoom();room=null;state='menu';back.style.display='none';menu()}
+function startLocal(m){mode=m;room=null;isHost=true;const n=m==='solo'?1:nLocal;players=[...Array(n)].map((_,i)=>({name:n===1?K.name():'Spieler '+(i+1),st:Array(9).fill(0),done:Array(9).fill(false),col:['#fff','#fde047','#f472b6','#60a5fa'][i]}));cur=0;ghosts={};loadHole(0);state='play';K.hideAll();back.style.display=''}
+function hostStart(r){room=r;isHost=true;mode='online';ghosts={};for(const p of r.peers)if(p.id!==me)ghosts[p.id]={name:p.name,x:HOLES[0].s[0],y:HOLES[0].s[1],st:Array(9).fill(0),done:false};r.send({t:'go',ps:r.peers.map(p=>({id:p.id,name:p.name}))});begin()}
+function begin(){players=[{name:K.name(),st:Array(9).fill(0),done:Array(9).fill(false),col:'#fff'}];cur=0;loadHole(0);state='play';K.hideAll();back.style.display=''}
+let gT=0;function sendG(force){if(mode!=='online'||!room)return;gT-=1/60;if(!force&&gT>0)return;gT=.1;const m={t:'gb',id:me,x:Math.round(ball.x),y:Math.round(ball.y),h:hi,st:players[0].st,done:players[0].done[hi]};room.send(m)}
+function wire(){room.on('msg',(m,from)=>{if(m.t==='go'&&!isHost){mode='online';ghosts={};for(const p of m.ps)if(p.id!==me)ghosts[p.id]={name:p.name,x:0,y:0,st:Array(9).fill(0),done:false};begin();return}
+ if(m.t==='gb'){if(isHost&&from!==me&&m.id===from)room.send(m);if(m.id===me||!ghosts[m.id])return;const g=ghosts[m.id];if(m.h===hi){g.x=m.x;g.y=m.y;g.done=m.done}g.st=m.st;if(m.h>hi)g.done=true;if(isHost&&players[0].done[hi])advance();return}
+ if(m.t==='next'&&!isHost){if(m.h>=HOLES.length)finish();else nextHoleTo(m.h)}});room.on('leave',id=>{if(ghosts[id]){ghosts[id].done=true;ghosts[id].left=1;if(isHost&&players[0].done[hi])advance()}})}
+function nextHoleTo(h){showCard(()=>{loadHole(h);for(const g of Object.values(ghosts)){g.done=false}})}
+const _lobby=K.lobby;K.lobby=o=>{if(K.room&&!K.room._w){K.room._w=1;room=K.room;isHost=K.room.isHost;wire()}_lobby(o)};
+/* Eingabe */
+C.cv.addEventListener('pointerdown',e=>{if(state!=='play'||ball.in||moving())return;const p=C.pt(e);aim={sx:p.x,sy:p.y,dx:0,dy:0}});
+C.cv.addEventListener('pointermove',e=>{if(!aim)return;const p=C.pt(e);aim.dx=p.x-aim.sx;aim.dy=p.y-aim.sy});
+C.cv.addEventListener('pointerup',()=>{if(!aim)return;const d=Math.hypot(aim.dx,aim.dy);if(d>8&&!ball.in&&!moving()){const pw=Math.min(1,d/220);const sp=pw*1150;ball.vx=-aim.dx/d*sp;ball.vy=-aim.dy/d*sp;lastPos=[ball.x,ball.y];players[cur].st[hi]++;K.tone(200+pw*200,.06,.25,'triangle');ball.wasM=true}aim=null});
+/* Zeichnen */
+function draw(dt,T){C.begin('#14532d');x.fillStyle='#0f3d22';x.fillRect(0,0,FW,FH+60);if(!H||state==='menu')return;
+ for(let i=0;i<40;i++){x.fillStyle='rgba(255,255,255,.03)';x.beginPath();x.arc((i*97)%FW,(i*53)%FH,20,0,TAU);x.fill()}
+ for(const g of H.grass){const gr=x.createLinearGradient(g[0],0,g[0]+g[2],0);for(let i=0;i<=8;i++)gr.addColorStop(i/8,i%2?'#3fae4a':'#46b952');x.fillStyle=gr;x.fillRect(g[0],g[1],g[2],g[3])}
+ for(const s of H.slope||[]){x.fillStyle='rgba(0,0,0,.12)';x.fillRect(s[0],s[1],s[2],s[3]);x.strokeStyle='rgba(255,255,255,.35)';x.lineWidth=3;const off=(T*40)%40;for(let yy=s[1]+off;yy<s[1]+s[3];yy+=40)for(let xx=s[0]+30;xx<s[0]+s[2];xx+=60){x.beginPath();x.moveTo(xx-8,yy-6);x.lineTo(xx,yy+2);x.lineTo(xx+8,yy-6);x.stroke()}}
+ for(const s of H.sand||[]){x.fillStyle='#e9d49a';K.rr(x,s[0],s[1],s[2],s[3],30);x.fill();x.fillStyle='rgba(160,120,60,.35)';for(let i=0;i<40;i++)x.fillRect(s[0]+(i*37)%s[2],s[1]+(i*53)%s[3],2,2)}
+ for(const w of H.water||[]){x.fillStyle='#2563eb';x.fillRect(w[0],w[1],w[2],w[3]);x.strokeStyle='rgba(255,255,255,.35)';x.lineWidth=2;for(let yy=w[1]+12;yy<w[1]+w[3];yy+=18){x.beginPath();for(let xx=w[0];xx<=w[0]+w[2];xx+=10)x.lineTo(xx,yy+Math.sin(xx/14+T*3)*3);x.stroke()}}
+ for(const p of H.portal||[]){for(const [px,py,c] of [[p[0],p[1],'#a855f7'],[p[2],p[3],'#f97316']]){x.save();x.translate(px,py);x.rotate(T*3);for(let i=0;i<3;i++){x.strokeStyle=c;x.globalAlpha=1-i*.3;x.lineWidth=3;x.beginPath();x.arc(0,0,16-i*4,i,i+4.5);x.stroke()}x.restore();x.globalAlpha=1}}
+ x.fillStyle='#111';x.beginPath();x.arc(H.c[0],H.c[1],CR,0,TAU);x.fill();x.strokeStyle='#e5e7eb';x.lineWidth=2;x.stroke();x.strokeStyle='#e5e7eb';x.lineWidth=3;x.beginPath();x.moveTo(H.c[0],H.c[1]);x.lineTo(H.c[0],H.c[1]-50);x.stroke();x.fillStyle='#ef4444';x.beginPath();x.moveTo(H.c[0],H.c[1]-50);x.lineTo(H.c[0]+26+Math.sin(T*5)*3,H.c[1]-42);x.lineTo(H.c[0],H.c[1]-34);x.fill();
+ for(const b of H.bump||[]){b.hit=Math.max(0,(b.hit||0)-dt);x.fillStyle='rgba(0,0,0,.25)';x.beginPath();x.arc(b[0]+3,b[1]+4,b[2],0,TAU);x.fill();x.fillStyle='#ef4444';x.beginPath();x.arc(b[0],b[1],b[2]+b.hit*10,0,TAU);x.fill();x.fillStyle='#fca5a5';x.beginPath();x.arc(b[0],b[1],b[2]*.55,0,TAU);x.fill()}
+ x.lineCap='round';for(const s of H.w){x.strokeStyle='rgba(0,0,0,.3)';x.lineWidth=14;x.beginPath();x.moveTo(s[0]+3,s[1]+4);x.lineTo(s[2]+3,s[3]+4);x.stroke()}for(const s of H.w){x.strokeStyle='#92400e';x.lineWidth=12;x.beginPath();x.moveTo(s[0],s[1]);x.lineTo(s[2],s[3]);x.stroke();x.strokeStyle='#d97706';x.lineWidth=4;x.beginPath();x.moveTo(s[0],s[1]);x.lineTo(s[2],s[3]);x.stroke()}
+ (H.mill||[]).forEach((m,i)=>{x.save();x.translate(m[0],m[1]);x.rotate(millA[i]);for(let k=0;k<4;k++){x.rotate(Math.PI/2);x.fillStyle=k%2?'#f8fafc':'#dc2626';x.fillRect(0,-6,m[2]/2,12)}x.fillStyle='#78350f';x.beginPath();x.arc(0,0,12,0,TAU);x.fill();x.restore()});
+ for(const [id,g] of Object.entries(ghosts)){if(g.done||g.left)continue;x.globalAlpha=.5;x.fillStyle='#fde047';x.beginPath();x.arc(g.x,g.y,BR,0,TAU);x.fill();x.globalAlpha=.8;x.font='700 11px system-ui';x.textAlign='center';x.fillStyle='#fff';x.fillText(g.name,g.x,g.y-12);x.globalAlpha=1}
+ if(!ball.in){if(aim&&!moving()){const d=Math.hypot(aim.dx,aim.dy),pw=Math.min(1,d/220);if(d>8){const ux=-aim.dx/d,uy=-aim.dy/d;x.strokeStyle=`hsl(${120-pw*120},90%,55%)`;x.lineWidth=5;x.setLineDash([8,8]);x.beginPath();x.moveTo(ball.x,ball.y);x.lineTo(ball.x+ux*(40+pw*160),ball.y+uy*(40+pw*160));x.stroke();x.setLineDash([]);x.fillStyle=x.strokeStyle;x.save();x.translate(ball.x+ux*(48+pw*160),ball.y+uy*(48+pw*160));x.rotate(Math.atan2(uy,ux));x.beginPath();x.moveTo(10,0);x.lineTo(-6,-8);x.lineTo(-6,8);x.fill();x.restore()}}
+  x.fillStyle='rgba(0,0,0,.3)';x.beginPath();x.arc(ball.x+2,ball.y+3,BR,0,TAU);x.fill();x.fillStyle=players[cur].col;x.beginPath();x.arc(ball.x,ball.y,BR,0,TAU);x.fill();x.strokeStyle='rgba(0,0,0,.3)';x.lineWidth=1.5;x.stroke();x.fillStyle='rgba(255,255,255,.9)';x.beginPath();x.arc(ball.x-2.5,ball.y-2.5,2.5,0,TAU);x.fill()}
+ K.partsStep(dt);K.partsDraw(x);
+ x.fillStyle='rgba(0,0,0,.45)';x.fillRect(0,FH,FW,60);x.font='800 18px system-ui';x.textAlign='left';x.fillStyle='#fff';x.fillText(`⛳ Bahn ${hi+1}/9 · ${H.n} · Par ${H.par}`,14,FH+26);x.font='700 15px system-ui';x.fillStyle='#fde047';x.fillText(`${players[cur].name}: Schlag ${players[cur].st[hi]}`,14,FH+48);
+ x.textAlign='right';x.fillStyle='#cbd5e1';const tot=players[cur].st.reduce((a,b)=>a+b,0),par=HOLES.slice(0,hi+(players[cur].done[hi]?1:0)).reduce((a,h)=>a+h.par,0);x.fillText(`Gesamt ${tot}`,FW-14,FH+26);
+ if(msg){msg.l-=dt;x.globalAlpha=Math.min(1,msg.l*2);x.textAlign='center';x.font='900 30px system-ui';x.lineWidth=6;x.strokeStyle='rgba(0,0,0,.6)';x.strokeText(msg.s,FW/2,80);x.fillStyle='#fff';x.fillText(msg.s,FW/2,80);x.globalAlpha=1;if(msg.l<=0)msg=null}}
+K.loop((dt,T)=>{if(state==='play'&&H){phys(Math.min(dt,.033));sendG(false)}draw(dt,T)});
+const back=document.createElement('button');back.className='k-btn-float';back.style.cssText='right:10px;top:max(10px,env(safe-area-inset-top));display:none';back.textContent='✕ Menü';back.onclick=toMenu;document.body.appendChild(back);
+function menu(){const b=K.store.get('mg_best',0);K.menu({title:'MINIGOLF',emoji:'⛳',sub:'9 verrückte Bahnen mit Windmühlen, Wasser, Sand, Bumpern und Portalen. Tippe, ziehe zurück und lass los!',
+ body:`<div class="k-box"><div class="k-set"><span>👥 Spieler am Gerät</span>${K.chips('mgN',[[2,'2'],[3,'3'],[4,'4']],nLocal,v=>nLocal=v)}</div>${b?`<p class="k-mut" style="text-align:center">🏆 Bestes Ergebnis allein: ${b} Schläge</p>`:''}</div>`,
+ solo:[{t:'▶ Allein spielen',f:()=>startLocal('solo')},{t:'👥 Mehrere an einem Gerät',f:()=>startLocal('local')}],online:{game:'minigolf',max:6,min:2,onStart:hostStart,botsNote:'Alle spielen gleichzeitig – die anderen Bälle siehst du als Geister.'},
+ help:'Je weiter du zurückziehst, desto fester der Schlag. Wasser kostet einen Strafschlag. Nach 8 Schlägen wird der Ball aufgehoben.'})}
+const st=document.createElement('style');st.textContent=`.mgc{position:fixed;inset:0;z-index:9;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55)}.mgc>div{background:#0f2a1a;border:3px solid #4ade80;border-radius:18px;padding:14px;max-width:96vw;text-align:center}.mgc h2{margin:0 0 8px}`;document.head.appendChild(st);
+menu();window.MG={get ball(){return ball},get hi(){return hi},loadHole,get players(){return players}};
+
+</script>
+</body>
+</html>
