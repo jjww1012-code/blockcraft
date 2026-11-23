@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/nozoom.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Frucht-Fusion</title>
+<link rel="stylesheet" href="../shared/kit.css">
+<style>:root{--a:#f97316;--b:#22c55e}</style>
+</head>
+<body>
+<script src="../shared/peerjs.min.js"></script>
+<script src="../shared/net.js"></script>
+<script src="../shared/kit.js"></script>
+<script>
+'use strict';
+/* FRUCHT-FUSION – gleiche Früchte verschmelzen zur nächstgrößeren. */
+const FR=[['Kirsche',15,'#e11d48','#9f1239'],['Erdbeere',20,'#f43f5e','#be123c'],['Traube',26,'#a855f7','#7e22ce'],['Mandarine',31,'#fcd34d','#f59e0b'],['Orange',38,'#f97316','#c2410c'],['Apfel',46,'#ef4444','#b91c1c'],['Birne',54,'#d9f99d','#84cc16'],['Pfirsich',63,'#fdba74','#fb7185'],['Ananas',73,'#fde047','#ca8a04'],['Melone',85,'#bef264','#65a30d'],['Wassermelone',100,'#22c55e','#15803d']];
+const BW=440,BH=600,BX=20,BY=140,W=BX*2+BW,H=BY+BH+30,LINE=BY+70,G=1500;
+let fr=[],cur=0,nxt=0,aim=BW/2,canDrop=true,score=0,best=K.store.get('ff_best',0),state='menu',overT=0,pop=[],shake=0,combo=0,comboT=0,idc=0;
+const C=K.canvas(W,H),x=C.x;
+const rndStart=()=>K.ri(0,4);
+function start(){fr=[];cur=rndStart();nxt=rndStart();score=0;overT=0;pop=[];canDrop=true;state='play';K.hideAll();back.style.display=''}
+function drop(){if(state!=='play'||!canDrop)return;const r=FR[cur][1];fr.push({id:idc++,k:cur,x:K.clamp(aim,r,BW-r),y:LINE-BY-70,vx:0,vy:0,r,age:0,sq:0});cur=nxt;nxt=rndStart();canDrop=false;K.sfx('whoosh');setTimeout(()=>canDrop=true,450)}
+function aimAt(e){const p=C.pt(e);aim=K.clamp(p.x-BX,FR[cur][1],BW-FR[cur][1])}
+C.cv.addEventListener('pointermove',e=>{if(state==='play')aimAt(e)});C.cv.addEventListener('pointerdown',e=>{if(state==='play')aimAt(e)});C.cv.addEventListener('pointerup',e=>{if(state==='play'){aimAt(e);drop()}});
+addEventListener('keydown',e=>{if(state!=='play')return;if(e.key==='ArrowLeft')aim=Math.max(FR[cur][1],aim-20);if(e.key==='ArrowRight')aim=Math.min(BW-FR[cur][1],aim+20);if(e.key===' '||e.key==='ArrowDown'){e.preventDefault();drop()}});
+function step(dt){if(state!=='play')return;comboT-=dt;if(comboT<=0)combo=0;const N=8,h=dt/N;
+ for(let s=0;s<N;s++){for(const f of fr){f.vy+=G*h;f.x+=f.vx*h;f.y+=f.vy*h;f.vx*=.999;
+   if(f.x<f.r){f.x=f.r;f.vx=Math.abs(f.vx)*.2}if(f.x>BW-f.r){f.x=BW-f.r;f.vx=-Math.abs(f.vx)*.2}if(f.y>BH-f.r){f.y=BH-f.r;if(f.vy>0)f.vy=-f.vy*.1;f.vx*=.96}}
+  for(let i=0;i<fr.length;i++){const a=fr[i];for(let j=i+1;j<fr.length;j++){const b=fr[j];const dx=b.x-a.x,dy=b.y-a.y,rr=a.r+b.r,d2=dx*dx+dy*dy;if(d2>=rr*rr||d2===0)continue;
+    if(a.k===b.k&&!a.m&&!b.m){a.m=b.m=1;merge(a,b);continue}const d=Math.sqrt(d2),nx=dx/d,ny=dy/d,ov=rr-d,ma=a.r*a.r,mb=b.r*b.r,t=ma+mb;
+    a.x-=nx*ov*mb/t;a.y-=ny*ov*mb/t;b.x+=nx*ov*ma/t;b.y+=ny*ov*ma/t;const rv=(b.vx-a.vx)*nx+(b.vy-a.vy)*ny;if(rv<0){const jn=-(1.15)*rv/(1/ma+1/mb);a.vx-=jn*nx/ma;a.vy-=jn*ny/ma;b.vx+=jn*nx/mb;b.vy+=jn*ny/mb;
+     const tx=-ny,ty=nx,rt=(b.vx-a.vx)*tx+(b.vy-a.vy)*ty,jt=-rt*.1/(1/ma+1/mb);a.vx-=jt*tx/ma;a.vy-=jt*ty/ma;b.vx+=jt*tx/mb;b.vy+=jt*ty/mb}}}
+  fr=fr.filter(f=>!f.m)}
+ let danger=false;for(const f of fr){f.age+=dt;f.sq=Math.max(0,f.sq-dt*3);if(f.age>1.2&&f.y-f.r<LINE-BY+BY-BY&&Math.abs(f.vy)<60)danger=true}
+ const top=fr.some(f=>f.age>1.2&&f.y-f.r<LINE-BY);if(top){overT+=dt;if(overT>2.2)gameOver()}else overT=Math.max(0,overT-dt*2)}
+function merge(a,b){const k=a.k+1,mx=(a.x+b.x)/2,my=(a.y+b.y)/2;combo++;comboT=1.2;
+ if(k>=FR.length){score+=200;pop.push({x:mx,y:my,s:'🍉🍉 MEGA! +200',l:1.6,c:'#ffd23f'});K.sfx('win');K.burst(mx+BX,my+BY,60,'#22c55e',380,1,7);shake=.5;return}
+ const pts=(k*(k+1))/2*2+(combo>1?combo*2:0);score+=pts;const r=FR[k][1];fr.push({id:idc++,k,x:mx,y:my,vx:(a.vx+b.vx)/4,vy:(a.vy+b.vy)/4-60,r,age:2,sq:1});
+ pop.push({x:mx,y:my-r,s:'+'+pts+(combo>1?' ×'+combo:''),l:1,c:'#fff'});K.burst(mx+BX,my+BY,10+k*3,FR[k][2],120+k*20,.6,4+k*.5);K.tone(300+k*90,.15,.12,'sine',0,600+k*120);if(k>=7){shake=.25;K.sfx('level')}
+ if(score>best){best=score;K.store.set('ff_best',best)}}
+function gameOver(){state='end';back.style.display='none';K.sfx('lose');if(score>best){best=score}K.store.set('ff_best',best);const big=Math.max(0,...fr.map(f=>f.k));
+ K.result('🍉 KISTE VOLL!',`<p style="font-size:24px">Punkte: <b>${score}</b></p><p>🏆 Rekord: ${best}<br>Größte Frucht: ${FR[big][0]}</p>`,[{t:'🔁 Nochmal',f:start},{t:'Menü',f:toMenu}])}
+function toMenu(){state='menu';back.style.display='none';menu()}
+function fruit(X,Y,k,r,t,sq){const F=FR[k];x.save();x.translate(X,Y);const s=1+Math.sin(sq*Math.PI)*.15;x.scale(s,1/s);
+ const g=x.createRadialGradient(-r*.35,-r*.35,r*.1,0,0,r);g.addColorStop(0,'#fff');g.addColorStop(.18,F[2]);g.addColorStop(1,F[3]);x.fillStyle=g;x.beginPath();x.arc(0,0,r,0,Math.PI*2);x.fill();x.strokeStyle='rgba(0,0,0,.25)';x.lineWidth=2;x.stroke();
+ if(k===10){x.strokeStyle='#14532d';x.lineWidth=r*.09;for(let i=-2;i<=2;i++){x.beginPath();x.ellipse(i*r*.3,0,r*.08,r*.95,0,0,Math.PI*2);x.stroke()}}
+ if(k===1||k===8){x.fillStyle='rgba(255,240,150,.8)';for(let i=0;i<8;i++){const a=i*2.4,d=r*.55*((i%3)/3+.4);x.beginPath();x.ellipse(Math.cos(a)*d,Math.sin(a)*d+r*.1,r*.05,r*.08,0,0,7);x.fill()}}
+ if(k===2){x.fillStyle='rgba(255,255,255,.25)';for(let i=0;i<5;i++){x.beginPath();x.arc(Math.cos(i*1.3)*r*.5,Math.sin(i*1.3)*r*.5,r*.25,0,7);x.fill()}}
+ if(k!==10&&k!==9){x.fillStyle='#16a34a';x.beginPath();x.ellipse(r*.25,-r*.95,r*.28,r*.12,-.5,0,7);x.fill();x.strokeStyle='#713f12';x.lineWidth=Math.max(2,r*.07);x.beginPath();x.moveTo(0,-r*.85);x.lineTo(r*.05,-r*1.12);x.stroke()}
+ const e=r*.13,blink=(Math.sin(t*1.3+k*7)>.985);x.fillStyle='#1f2937';if(blink){x.fillRect(-r*.3-e,-r*.08,e*2,e*.4);x.fillRect(r*.3-e,-r*.08,e*2,e*.4)}else{x.beginPath();x.arc(-r*.3,-r*.08,e,0,7);x.arc(r*.3,-r*.08,e,0,7);x.fill();x.fillStyle='#fff';x.beginPath();x.arc(-r*.27,-r*.12,e*.4,0,7);x.arc(r*.33,-r*.12,e*.4,0,7);x.fill()}
+ x.strokeStyle='#1f2937';x.lineWidth=Math.max(1.5,r*.06);x.beginPath();x.arc(0,r*.12,r*.16,.2,Math.PI-.2);x.stroke();x.fillStyle='rgba(255,120,150,.45)';x.beginPath();x.ellipse(-r*.5,r*.15,r*.13,r*.08,0,0,7);x.ellipse(r*.5,r*.15,r*.13,r*.08,0,0,7);x.fill();x.restore()}
+function draw(dt,t){C.begin('#fde68a');const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#fff7d6');g.addColorStop(1,'#fcd28a');x.fillStyle=g;x.fillRect(0,0,W,H);
+ if(state==='menu'){for(let i=0;i<11;i++)fruit(40+i*40,60+Math.sin(t*2+i)*10,i,Math.min(18,FR[i][1]*.4),t,0);return}
+ shake=Math.max(0,shake-dt);x.save();if(shake)x.translate((Math.random()-.5)*shake*20,(Math.random()-.5)*shake*20);
+ x.font='900 30px system-ui';x.textAlign='left';x.fillStyle='#7c2d12';x.fillText(score,BX,48);x.font='700 15px system-ui';x.fillText('🏆 '+best,BX,72);
+ x.textAlign='right';x.font='800 14px system-ui';x.fillText('NÄCHSTE',W-BX-50,30);x.fillStyle='rgba(124,45,18,.12)';x.beginPath();x.arc(W-BX-26,30,24,0,7);x.fill();fruit(W-BX-26,30,nxt,Math.min(20,FR[nxt][1]*.7),t,0);
+ x.save();x.translate(BX,BY);x.fillStyle='rgba(255,255,255,.45)';x.fillRect(0,0,BW,BH);
+ const dl=overT>0;x.strokeStyle=dl?`rgba(239,68,68,${.5+.5*Math.sin(t*20)})`:'rgba(124,45,18,.35)';x.setLineDash([10,8]);x.lineWidth=3;x.beginPath();x.moveTo(0,LINE-BY);x.lineTo(BW,LINE-BY);x.stroke();x.setLineDash([]);
+ if(canDrop){const r=FR[cur][1];x.strokeStyle='rgba(124,45,18,.2)';x.lineWidth=2;x.beginPath();x.moveTo(aim,LINE-BY-70+r);x.lineTo(aim,BH);x.stroke();fruit(aim,LINE-BY-70,cur,r,t,0)}
+ for(const f of fr)fruit(f.x,f.y,f.k,f.r,t,f.sq);x.restore();
+ x.fillStyle='#a16207';x.fillRect(BX-14,BY,14,BH+14);x.fillRect(BX+BW,BY,14,BH+14);x.fillRect(BX-14,BY+BH,BW+28,14);x.fillStyle='#ca8a04';x.fillRect(BX-14,BY,5,BH+14);x.fillRect(BX+BW,BY,5,BH+14);
+ K.partsStep(dt);K.partsDraw(x);
+ pop=pop.filter(p=>(p.l-=dt)>0);for(const p of pop){p.y-=40*dt;x.globalAlpha=Math.min(1,p.l*2);x.font='900 22px system-ui';x.textAlign='center';x.lineWidth=5;x.strokeStyle='#7c2d12';x.strokeText(p.s,p.x+BX,p.y+BY);x.fillStyle=p.c;x.fillText(p.s,p.x+BX,p.y+BY)}x.globalAlpha=1;
+ const cy=H-12;for(let i=0;i<FR.length;i++){const cx=BX+12+i*(BW-8)/FR.length+8;fruit(cx,cy-2,i,9,t,0)}
+ if(overT>0){x.fillStyle=`rgba(239,68,68,${overT/2.2*.35})`;x.fillRect(0,0,W,H)}x.restore()}
+K.loop((dt,t)=>{step(Math.min(dt,1/30));draw(dt,t)});
+const back=document.createElement('button');back.className='k-btn-float';back.style.cssText='right:10px;top:max(10px,env(safe-area-inset-top));display:none';back.textContent='✕ Menü';back.onclick=toMenu;document.body.appendChild(back);
+function menu(){K.menu({title:'FRUCHT-FUSION',emoji:'🍉',sub:'Lass Früchte in die Kiste fallen. Zwei gleiche verschmelzen zur nächstgrößeren – von der Kirsche bis zur Wassermelone! Aber nichts darf über die Linie ragen.',noName:true,
+ body:`<div class="k-box" style="text-align:center">🍒 → 🍓 → 🍇 → 🟡 → 🍊 → 🍎 → 🍐 → 🍑 → 🍍 → 🍈 → 🍉<br><span class="k-mut">🏆 Rekord: ${best}</span></div>`,solo:[{t:'▶ Spielen',f:start}],help:'Zielen: Finger oder Maus bewegen, loslassen zum Fallenlassen. Tastatur: ← → und Leertaste. Ketten-Fusionen geben Combo-Bonus!'})}
+menu();window.FF={get fr(){return fr},get score(){return score}};
+
+</script>
+</body>
+</html>

@@ -18,6 +18,93 @@
   "badge": ""
  },
  {
+  "id": "blockfall",
+  "title": "Blockfall Duell",
+  "emoji": "🧱",
+  "path": "blockfall/",
+  "desc": "Fallende Blöcke mit Hold, T-Spins und Combos. Lösche Linien und schick deinen Gegnern Müllzeilen – wer übrig bleibt, gewinnt!",
+  "players": "1–4 Spieler",
+  "tags": [
+   "Online",
+   "Bots",
+   "Puzzle"
+  ],
+  "colors": [
+   "#a855f7",
+   "#22d3ee"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "flatter",
+  "title": "Flatter-Vogel",
+  "emoji": "🐤",
+  "path": "flatter/",
+  "desc": "Tippen zum Flattern! Alle fliegen dieselbe Strecke – die anderen siehst du als Geister. Sammle Medaillen bis Platin.",
+  "players": "1–8 Spieler",
+  "tags": [
+   "Online",
+   "Geschick",
+   "Bots"
+  ],
+  "colors": [
+   "#ffd23f",
+   "#4dabf7"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "wuerfel",
+  "title": "Würfel-Sprint",
+  "emoji": "🟨",
+  "path": "wuerfel/",
+  "desc": "Rhythmus-Jump'n'Run mit eigenem Beat: Stacheln, Sprungpads, Orbs und Raumschiff-Abschnitte. 3 Level + Endlos-Modus.",
+  "players": "1 Spieler",
+  "tags": [
+   "Geschick",
+   "Musik"
+  ],
+  "colors": [
+   "#ffd23f",
+   "#7c3aed"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "turm",
+  "title": "Turm-Verteidigung",
+  "emoji": "🏰",
+  "path": "turm/",
+  "desc": "Bau Bogen, Kanonen, Frost-, Blitz- und Lasertürme und halte 30 Wellen samt Bossen auf. 3 Karten.",
+  "players": "1 Spieler",
+  "tags": [
+   "Strategie",
+   "Türme"
+  ],
+  "colors": [
+   "#4ade80",
+   "#f97316"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "frucht",
+  "title": "Frucht-Fusion",
+  "emoji": "🍉",
+  "path": "frucht/",
+  "desc": "Zwei gleiche Früchte verschmelzen zur nächstgrößeren – schaffst du die Wassermelone, bevor die Kiste überläuft?",
+  "players": "1 Spieler",
+  "tags": [
+   "Puzzle",
+   "Physik"
+  ],
+  "colors": [
+   "#f97316",
+   "#22c55e"
+  ],
+  "badge": "Neu"
+ },
+ {
   "id": "verraeter",
   "title": "Verräter im All",
   "emoji": "🚀",
@@ -33,7 +120,7 @@
    "#ff4757",
    "#1b2a4a"
   ],
-  "badge": "Neu"
+  "badge": ""
  },
  {
   "id": "montagsmaler",
@@ -51,7 +138,7 @@
    "#ff9f1a",
    "#7d5fff"
   ],
-  "badge": "Neu"
+  "badge": ""
  },
  {
   "id": "quiz",
@@ -69,7 +156,7 @@
    "#b15cff",
    "#4b1d8a"
   ],
-  "badge": "Neu"
+  "badge": ""
  },
  {
   "id": "poker",
