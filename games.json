@@ -18,6 +18,114 @@
     "badge": ""
   },
   {
+    "id": "poker",
+    "title": "Poker",
+    "emoji": "♠️",
+    "path": "poker/",
+    "desc": "Texas Hold'em mit Spielgeld: bluffen, erhöhen, alles setzen. Jeder startet mit 1000 Chips.",
+    "players": "1–8 Spieler",
+    "tags": [
+      "Online",
+      "Karten",
+      "Bots"
+    ],
+    "colors": [
+      "#1e8449",
+      "#145a32"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "stadtmogul",
+    "title": "Stadtmogul",
+    "emoji": "🏙️",
+    "path": "stadtmogul/",
+    "desc": "Straßen kaufen, Häuser und Hotels bauen, Miete kassieren – bis alle anderen pleite sind.",
+    "players": "1–6 Spieler",
+    "tags": [
+      "Online",
+      "Brettspiel",
+      "Bots"
+    ],
+    "colors": [
+      "#c0392b",
+      "#f39c12"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "maumau",
+    "title": "Mau-Mau",
+    "emoji": "🃏",
+    "path": "maumau/",
+    "desc": "Der Kartenklassiker: 7 = zwei ziehen, 8 = aussetzen, Bube = Farbe wünschen.",
+    "players": "1–6 Spieler",
+    "tags": [
+      "Online",
+      "Karten",
+      "Bots"
+    ],
+    "colors": [
+      "#27ae60",
+      "#f1c40f"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "ludo",
+    "title": "Ludo",
+    "emoji": "🎲",
+    "path": "ludo/",
+    "desc": "Würfeln, rauskommen, schlagen! Bring alle vier Figuren ins Ziel (Mensch-ärgere-dich-Regeln).",
+    "players": "1–4 Spieler",
+    "tags": [
+      "Online",
+      "Brettspiel",
+      "Bots"
+    ],
+    "colors": [
+      "#e74c3c",
+      "#3498db"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "stapelmeister",
+    "title": "Stapelmeister",
+    "emoji": "🔢",
+    "path": "stapelmeister/",
+    "desc": "Baut gemeinsam Stapel von 1 bis 12 und leert als Erster euren Vorrat. Joker inklusive!",
+    "players": "1–4 Spieler",
+    "tags": [
+      "Online",
+      "Karten",
+      "Bots"
+    ],
+    "colors": [
+      "#2e86de",
+      "#ff9f1a"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "dame",
+    "title": "Dame",
+    "emoji": "⛀",
+    "path": "dame/",
+    "desc": "Schlagpflicht, Mehrfachsprünge und fliegende Damen – gegen KI, zu zweit oder online.",
+    "players": "1–2 Spieler",
+    "tags": [
+      "Online",
+      "Strategie",
+      "KI"
+    ],
+    "colors": [
+      "#8e5a2b",
+      "#3a2414"
+    ],
+    "badge": "Neu"
+  },
+  {
     "id": "zellfresser",
     "title": "Zellfresser",
     "emoji": "🦠",

@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/nozoom.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Ludo</title>
+<link rel="stylesheet" href="../shared/kit.css">
+<style>:root{--a:#ff4757;--b:#2e86de}</style>
+</head>
+<body>
+<script src="../shared/peerjs.min.js"></script>
+<script src="../shared/net.js"></script>
+<script src="../shared/kit.js"></script>
+<script>
+'use strict';
+/* LUDO – „Mensch ärgere dich nicht“-Regeln: 6 zum Rauskommen, Schlagen schickt nach Hause. */
+const TR=[[0,4],[1,4],[2,4],[3,4],[4,4],[4,3],[4,2],[4,1],[4,0],[5,0],[6,0],[6,1],[6,2],[6,3],[6,4],[7,4],[8,4],[9,4],[10,4],[10,5],[10,6],[9,6],[8,6],[7,6],[6,6],[6,7],[6,8],[6,9],[6,10],[5,10],[4,10],[4,9],[4,8],[4,7],[4,6],[3,6],[2,6],[1,6],[0,6],[0,5]];
+const FIN=[[[1,5],[2,5],[3,5],[4,5]],[[5,1],[5,2],[5,3],[5,4]],[[9,5],[8,5],[7,5],[6,5]],[[5,9],[5,8],[5,7],[5,6]]];
+const HOME=[[[0,0],[1,0],[0,1],[1,1]],[[9,0],[10,0],[9,1],[10,1]],[[9,9],[10,9],[9,10],[10,10]],[[0,9],[1,9],[0,10],[1,10]]];
+const COL=['#ff4757','#2e86de','#2ed573','#ffd23f'],CN=['Rot','Blau','Grün','Gelb'];
+let nBots=3,root=null;
+const E=K.TG({game:'ludo',max:4,seats:(h,b)=>Math.max(2,Math.min(4,h+b)),
+ setup(ps){return{pl:ps.map((p,i)=>({id:p.id,name:p.name,c:i,pc:[-1,-1,-1,-1]})),turn:0,die:0,rolled:false,tries:0,log:'Wer würfelt zuerst eine 6?',winner:null,last:null}},
+ actors:G=>G.winner?[]:[G.pl[G.turn].id],over:G=>!!G.winner,
+ view(G,pid){const me=G.pl.findIndex(p=>p.id===pid);return{me,pl:G.pl.map(p=>({name:p.name,c:p.c,pc:p.pc})),turn:G.turn,die:G.die,rolled:G.rolled,log:G.log,winner:G.winner,moves:me===G.turn&&G.rolled?moves(G,G.pl[me]):[],last:G.last}},
+ act(G,pid,a){const i=G.pl.findIndex(p=>p.id===pid);if(i!==G.turn||G.winner)return false;const p=G.pl[i];
+  if(a.k==='roll'){if(G.rolled)return false;G.die=1+Math.floor(Math.random()*6);G.rolled=true;G.last=null;const mv=moves(G,p);
+   if(!mv.length){const allHome=p.pc.every(q=>q<0||q>=40&&stuck(p,q));if(allHome&&G.tries<2&&G.die!==6){G.tries++;G.rolled=false;G.log=p.name+' würfelt '+G.die+' – nochmal ('+(3-G.tries)+' Versuche)';return true}G.log=p.name+' würfelt '+G.die+' – kein Zug möglich';G.tries=0;E.later(900,()=>nextTurn(G,G.die===6));return true}
+   G.log=p.name+' würfelt '+G.die;return true}
+  if(a.k==='move'){if(!G.rolled)return false;const mv=moves(G,p);if(!mv.includes(a.p))return false;const from=p.pc[a.p],to=from<0?0:from+G.die;p.pc[a.p]=to;let msg=p.name+(from<0?' kommt raus!':' zieht '+G.die);
+   if(to<40){const abs=(to+p.c*10)%40;for(const o of G.pl){if(o===p)continue;o.pc.forEach((q,k)=>{if(q>=0&&q<40&&(q+o.c*10)%40===abs){o.pc[k]=-1;msg+=' und schlägt '+o.name+'! 💥';G.last={hit:true}}})}}else if(from<40)msg+=' – im Ziel! 🏁';
+   G.log=msg;if(p.pc.every(q=>q>=40)){G.winner=p.name;G.log=p.name+' hat alle Figuren im Ziel und gewinnt! 🏆';return true}
+   G.tries=0;nextTurn(G,G.die===6);return true}return false},
+ bot(G,pid){const p=G.pl.find(q=>q.id===pid);if(!G.rolled)return{k:'roll'};const mv=moves(G,p);if(!mv.length)return null;
+  let best=mv[0],bs=-1e9;for(const k of mv){const from=p.pc[k],to=from<0?0:from+G.die;let s=0;if(from<0)s+=50;if(to>=40)s+=40+to;if(to<40){const abs=(to+p.c*10)%40;for(const o of G.pl)if(o!==p)for(const q of o.pc)if(q>=0&&q<40&&(q+o.c*10)%40===abs)s+=100;
+    for(const o of G.pl)if(o!==p)for(const q of o.pc)if(q>=0&&q<40){const d=(abs-(q+o.c*10)%40+40)%40;if(d>0&&d<=6)s-=25}}s+=to*.5+Math.random()*5;if(s>bs){bs=s;best=k}}return{k:'move',p:best}},
+ botDelay:G=>G.rolled?650:550,render});
+function stuck(p,q){return true}
+function moves(G,p){const out=[];const d=G.die;p.pc.forEach((q,k)=>{if(q<0){if(d===6&&!p.pc.includes(0))out.push(k);return}const to=q+d;if(to>43)return;if(p.pc.some((o,j)=>j!==k&&o===to))return;if(to>=40){for(let s=Math.max(40,q+1);s<to;s++)if(p.pc.includes(s))return}out.push(k)});
+ if(d===6&&p.pc.some(q=>q<0)&&!p.pc.includes(0)){const outs=out.filter(k=>p.pc[k]<0);if(outs.length)return outs}return out}
+function nextTurn(G,again){G.rolled=false;if(!again){G.turn=(G.turn+1)%G.pl.length;G.tries=0}}
+function cellPos(p,k){const q=p.pc[k];if(q<0)return HOME[p.c][k];if(q>=40)return FIN[p.c][q-40];return TR[(q+p.c*10)%40]}
+let lastLog='',rolling=0;
+function render(v,send){if(!root){root=document.createElement('div');root.className='tg';document.body.appendChild(root)}root.style.display='flex';if(v.log!==lastLog){lastLog=v.log;if(/würfelt/.test(v.log))K.sfx('dice');else if(v.last&&v.last.hit)K.sfx('boom',.5);else K.sfx('pop')}
+ const myTurn=v.turn===v.me&&!v.winner,cells={};
+ TR.forEach(([c,r],i)=>cells[c+','+r]={cls:'tr'+(i%10===0?' st s'+(i/10):'')});FIN.forEach((f,ci)=>f.forEach(([c,r])=>cells[c+','+r]={cls:'fin f'+ci}));HOME.forEach((h,ci)=>h.forEach(([c,r])=>cells[c+','+r]={cls:'home h'+ci}));
+ const pieces=[];v.pl.forEach((p,pi)=>p.pc.forEach((q,k)=>{const [c,r]=cellPos(p,k);pieces.push({c,r,col:COL[p.c],mv:pi===v.me&&v.moves.includes(k),k})}));
+ let grid='';for(let r=0;r<11;r++)for(let c=0;c<11;c++){const ce=cells[c+','+r];grid+=`<div class="lc ${ce?ce.cls:'void'}" style="grid-column:${c+1};grid-row:${r+1}"></div>`}
+ const pcs=pieces.map(p=>`<div class="lp ${p.mv?'mv':''}" data-k="${p.mv?p.k:''}" style="grid-column:${p.c+1};grid-row:${p.r+1};--pc:${p.col}"></div>`).join('');
+ root.innerHTML=`<div class="top"><a href="#" id="lB">← Menü</a><b>🎲 LUDO</b><span>${E.room?'Raum '+E.room.code:''}</span></div>
+ <div class="opps">${v.pl.map((p,i)=>`<div class="opp ${v.turn===i?'turn':''}" style="border-left:6px solid ${COL[p.c]}">${K.esc(p.name)}${i===v.me?' (du)':''}<div style="font-size:12px">🏁 ${p.pc.filter(q=>q>=40).length}/4</div></div>`).join('')}</div>
+ <div class="lboard">${grid}${pcs}<div class="ldie ${rolling?'roll':''}" style="grid-column:6;grid-row:6">${v.die?['','⚀','⚁','⚂','⚃','⚄','⚅'][v.die]:'🎲'}</div></div>
+ <div class="msg">${K.esc(v.log)}</div><div class="msg" style="color:#ffd23f">${v.winner?'🏆 '+K.esc(v.winner)+' gewinnt!':myTurn?(v.rolled?(v.moves.length?'Tippe auf eine leuchtende Figur':''):'Du bist dran – würfeln!'):'⏳ '+K.esc(v.pl[v.turn].name)+' ist dran …'}</div>
+ <div class="bar">${myTurn&&!v.rolled?'<button class="pri k-big" id="lR">🎲 Würfeln</button>':''}${v.winner&&E.host?'<button class="pri" id="lA">🔁 Nochmal</button>':''}</div>`;
+ K.$('lB').onclick=e=>{e.preventDefault();E.stop();root.style.display='none';menu()};if(K.$('lA'))K.$('lA').onclick=()=>E.room?E.start(E.players):E.solo(nBots);
+ if(K.$('lR'))K.$('lR').onclick=()=>{K.sfx('dice');send({k:'roll'})};
+ root.querySelectorAll('.lp.mv').forEach(el=>el.onclick=()=>send({k:'move',p:+el.dataset.k}));
+ if(v.winner)K.sfx(v.winner===v.pl[v.me].name?'win':'lose')}
+const st=document.createElement('style');st.textContent=`.lboard{display:grid;grid-template-columns:repeat(11,1fr);grid-template-rows:repeat(11,1fr);width:min(92vw,62vh,560px);height:min(92vw,62vh,560px);flex:0 0 auto;background:#f5ecd7;border-radius:18px;padding:8px;gap:3px;box-shadow:0 12px 30px rgba(0,0,0,.5);position:relative}
+.lc{border-radius:50%}.lc.void{background:transparent}.lc.tr{background:#fff;border:2px solid #c9b98f}.lc.st.s0{background:#ff4757}.lc.st.s1{background:#2e86de}.lc.st.s2{background:#2ed573}.lc.st.s3{background:#ffd23f}
+.lc.fin.f0,.lc.home.h0{background:#ffb3ba;border:2px solid #ff4757}.lc.fin.f1,.lc.home.h1{background:#b3d4ff;border:2px solid #2e86de}.lc.fin.f2,.lc.home.h2{background:#b8f5cf;border:2px solid #2ed573}.lc.fin.f3,.lc.home.h3{background:#fff0a8;border:2px solid #e0b000}
+.lp{z-index:2;margin:12%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 12%,var(--pc) 40%);box-shadow:0 3px 0 rgba(0,0,0,.35),0 6px 8px rgba(0,0,0,.3);transition:all .25s}
+.lp.mv{cursor:pointer;animation:lpb .6s infinite alternate;box-shadow:0 0 0 3px #fff,0 0 16px #fff}@keyframes lpb{to{transform:translateY(-5px)}}
+.ldie{z-index:3;display:grid;place-items:center;font-size:min(9vw,6vh,52px);color:#222;background:#fff;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.4)}`;document.head.appendChild(st);
+function menu(){if(root)root.style.display='none';K.menu({title:'LUDO',emoji:'🎲',sub:'Der Brettspiel-Klassiker nach „Mensch ärgere dich nicht“-Regeln. Bring alle 4 Figuren ins Ziel!',
+ body:`<div class="k-box"><div class="k-set"><span>🤖 Gegner</span>${K.chips('lgB',[[1,'1'],[2,'2'],[3,'3']],nBots,v=>nBots=v)}</div></div>`,
+ solo:[{t:'▶ Spielen',f:()=>E.solo(nBots)}],online:{game:'ludo',max:4,onStart:r=>E.hostStart(r,Math.max(0,4-r.peers.length))},
+ help:'Mit einer 6 kommst du raus und darfst nochmal würfeln. Landest du auf einer gegnerischen Figur, muss sie zurück nach Hause.'})}
+menu();
+
+</script>
+</body>
+</html>

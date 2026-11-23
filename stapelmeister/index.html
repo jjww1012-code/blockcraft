@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/nozoom.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Stapelmeister</title>
+<link rel="stylesheet" href="../shared/kit.css">
+<style>:root{--a:#2e86de;--b:#ffd23f}</style>
+</head>
+<body>
+<script src="../shared/peerjs.min.js"></script>
+<script src="../shared/net.js"></script>
+<script src="../shared/kit.js"></script>
+<script>
+'use strict';
+/* STAPELMEISTER – Zahlenstapel 1 bis 12 bauen und als Erster den eigenen Vorrat leeren. ★ = Joker */
+let nBots=1,stockN=20,root=null,sel=null;
+const E=K.TG({game:'stapel',max:4,
+ setup(ps,o){const deck=[];for(let k=0;k<12;k++)for(let n=1;n<=12;n++)deck.push(n);for(let k=0;k<18;k++)deck.push(0);K.shuffle(deck);
+  const G={pl:ps.map(p=>({id:p.id,name:p.name,stock:deck.splice(0,stockN),hand:[],disc:[[],[],[],[]]})),deck,build:[[],[],[],[]],turn:0,log:'Los geht\'s!',winner:null,done:[]};fill(G,G.pl[0]);return G},
+ actors:G=>G.winner?[]:[G.pl[G.turn].id],over:G=>!!G.winner,
+ view(G,pid){const me=G.pl.findIndex(p=>p.id===pid);return{me,turn:G.turn,log:G.log,winner:G.winner?G.pl.find(p=>p.id===G.winner).name:null,deck:G.deck.length,build:G.build.map(b=>b.length?need(b)-1:0),
+  pl:G.pl.map((p,i)=>({name:p.name,stock:p.stock.length,top:p.stock.length?p.stock[p.stock.length-1]:null,disc:p.disc.map(d=>d.slice(-3)),hand:i===me?p.hand:null,hn:p.hand.length}))}},
+ act(G,pid,a){const i=G.pl.findIndex(p=>p.id===pid);if(i!==G.turn||G.winner)return false;const p=G.pl[i];
+  if(a.k==='play'){let card;const b=G.build[a.b];if(!b)return false;const nd=need(b);
+   if(a.src==='s'){card=p.stock[p.stock.length-1]}else if(a.src==='h'){card=p.hand[a.i]}else if(a.src==='d'){const d=p.disc[a.i];card=d&&d[d.length-1]}if(card==null)return false;if(card!==0&&card!==nd)return false;
+   if(a.src==='s')p.stock.pop();else if(a.src==='h')p.hand.splice(a.i,1);else p.disc[a.i].pop();b.push(card===0?{j:1,v:nd}:{v:card});
+   G.log=p.name+' legt '+(card?card:'★ (als '+nd+')')+' auf Stapel '+(a.b+1);
+   if(nd===12){G.deck.unshift(...b.map(c=>c.j?0:c.v));K.shuffle(G.deck);G.build[a.b]=[];G.log+=' – Stapel komplett! 🎉'}
+   if(!p.stock.length){G.winner=p.id;G.log=p.name+' hat den Vorrat geleert und gewinnt! 🏆';return true}
+   if(!p.hand.length)fill(G,p);return true}
+  if(a.k==='pass'&&!p.hand.length){G.turn=(G.turn+1)%G.pl.length;fill(G,G.pl[G.turn]);return true}
+  if(a.k==='disc'){const c=p.hand[a.i];if(c==null||!p.disc[a.d])return false;p.hand.splice(a.i,1);p.disc[a.d].push(c);G.log=p.name+' legt '+(c||'★')+' ab';G.turn=(G.turn+1)%G.pl.length;fill(G,G.pl[G.turn]);return true}return false},
+ bot(G,pid){const p=G.pl.find(q=>q.id===pid);const tops=G.build.map(need);
+  const can=c=>c===0?0:tops.indexOf(c);
+  const st=p.stock[p.stock.length-1];if(st!=null){const b=st===0?0:tops.indexOf(st);if(b>=0)return{k:'play',src:'s',b}}
+  // Karten spielen, die den Vorratsstapel näher bringen
+  if(st){for(let b=0;b<4;b++){const gap=st-tops[b];if(gap>0&&gap<=3){const nd=tops[b];let hi=p.hand.indexOf(nd);if(hi>=0)return{k:'play',src:'h',i:hi,b};for(let d=0;d<4;d++){const dd=p.disc[d];if(dd.length&&dd[dd.length-1]===nd)return{k:'play',src:'d',i:d,b}}if(gap<=2){hi=p.hand.indexOf(0);if(hi>=0&&p.hand.length>1)return{k:'play',src:'h',i:hi,b}}}}}
+  for(let d=0;d<4;d++){const dd=p.disc[d];if(dd.length){const c=dd[dd.length-1];if(c){const b=tops.indexOf(c);if(b>=0)return{k:'play',src:'d',i:d,b}}}}
+  for(let i=0;i<p.hand.length;i++){const c=p.hand[i];if(c){const b=tops.indexOf(c);if(b>=0)return{k:'play',src:'h',i,b}}}
+  if(!p.hand.length)return{k:'pass'};
+  // Abwerfen: höchste Nicht-Joker-Karte auf passenden Stapel
+  let hi=0;for(let i=1;i<p.hand.length;i++)if((p.hand[i]||13)>(p.hand[hi]||13))hi=i;if(p.hand[hi]===0)hi=p.hand.findIndex(c=>c!==0);if(hi<0)hi=0;const c=p.hand[hi];
+  let d=p.disc.findIndex(dd=>dd.length&&dd[dd.length-1]===c);if(d<0)d=p.disc.findIndex(dd=>dd.length&&dd[dd.length-1]>c);if(d<0)d=p.disc.findIndex(dd=>!dd.length);if(d<0)d=0;return{k:'disc',i:hi,d}},
+ botDelay:()=>700+Math.random()*400,render});
+function need(b){return b.length?b[b.length-1].v+1:1}
+function fill(G,p){while(p.hand.length<5){if(!G.deck.length)break;p.hand.push(G.deck.pop())}}
+const cv=(n,cls='',at='')=>`<div class="sc ${n===0?'joker':n==null?'empty':'c'+(n<=4?1:n<=8?2:3)} ${cls}" ${at}>${n===0?'★':n==null?'':n}</div>`;
+let lastLog='';
+function render(v,send){if(!root){root=document.createElement('div');root.className='tg';document.body.appendChild(root)}root.style.display='flex';if(v.log!==lastLog){lastLog=v.log;K.sfx('card')}
+ const me=v.pl[v.me],myTurn=v.turn===v.me&&!v.winner;if(!myTurn)sel=null;
+ root.innerHTML=`<div class="top"><a href="#" id="sB">← Menü</a><b>🔢 STAPELMEISTER</b><span>${E.room?'Raum '+E.room.code:''}</span></div>
+ <div class="opps">${v.pl.map((p,i)=>i===v.me?'':`<div class="opp ${v.turn===i?'turn':''}">${K.esc(p.name)} · ✋${p.hn}<div style="display:flex;gap:4px;justify-content:center;margin-top:4px">${cv(p.top,'sm')}<span style="align-self:center;font-size:13px">Vorrat ${p.stock}</span></div><div style="display:flex;gap:3px;justify-content:center;margin-top:4px">${p.disc.map(d=>cv(d.length?d[d.length-1]:null,'xs')).join('')}</div></div>`).join('')}</div>
+ <div class="k-mut" style="color:#cfe">Gemeinsame Stapel (1 → 12) · Ziehstapel ${v.deck}</div>
+ <div style="display:flex;gap:12px">${v.build.map((t,i)=>`<div style="text-align:center">${cv(t||null,'big '+(sel?'tgt':''),`data-b="${i}"`)}<div style="font-size:12px;color:#cfe">braucht ${t+1}</div></div>`).join('')}</div>
+ <div class="msg">${K.esc(v.log)}</div><div class="msg" style="color:#ffd23f">${v.winner?'🏆 '+K.esc(v.winner)+' gewinnt!':myTurn?(sel?'Jetzt auf einen Stapel oben tippen'+(sel.src==='h'?' – oder unten auf eine Ablage zum Abwerfen (Zug endet)':''):'Wähle eine Karte (Vorrat, Ablage oder Hand)'):'⏳ '+K.esc(v.pl[v.turn].name)+' ist dran …'}</div>
+ <div style="display:flex;gap:18px;align-items:flex-end;flex-wrap:wrap;justify-content:center">
+  <div style="text-align:center"><div style="font-size:12px">Dein Vorrat (${me.stock})</div>${cv(me.top,'big '+(sel&&sel.src==='s'?'sel':''),'data-src="s"')}</div>
+  <div style="text-align:center"><div style="font-size:12px">Deine Ablagen</div><div style="display:flex;gap:6px">${me.disc.map((d,i)=>`<div class="dstack" data-d="${i}">${d.length?d.map((c,j)=>cv(c,(j===d.length-1&&sel&&sel.src==='d'&&sel.i===i?'sel':'')+(j<d.length-1?' under':''),j===d.length-1?`data-src="d" data-i="${i}"`:'')).join(''):cv(null,'','data-dd="'+i+'"')}</div>`).join('')}</div></div></div>
+ <div class="hand">${(me.hand||[]).map((c,i)=>cv(c,'big '+(sel&&sel.src==='h'&&sel.i===i?'sel':''),`data-src="h" data-i="${i}"`)).join('')}</div>
+ ${v.winner&&E.host?'<button class="pri" id="sAgain">🔁 Neues Spiel</button>':''}`;
+ K.$('sB').onclick=e=>{e.preventDefault();E.stop();root.style.display='none';menu()};if(K.$('sAgain'))K.$('sAgain').onclick=()=>E.room?E.start(E.players):E.solo(nBots);
+ if(!myTurn)return;
+ root.querySelectorAll('[data-src]').forEach(el=>el.onclick=e=>{e.stopPropagation();const s={src:el.dataset.src,i:+el.dataset.i};if(sel&&sel.src==='h'&&s.src==='d'){send({k:'disc',i:sel.i,d:s.i});sel=null;return}sel=s;K.sfx('click');render(v,send)});
+ root.querySelectorAll('[data-dd]').forEach(el=>el.onclick=()=>{if(sel&&sel.src==='h'){send({k:'disc',i:sel.i,d:+el.dataset.dd});sel=null}});
+ root.querySelectorAll('.dstack').forEach(el=>el.addEventListener('click',()=>{if(sel&&sel.src==='h'){send({k:'disc',i:sel.i,d:+el.dataset.d});sel=null}}));
+ root.querySelectorAll('[data-b]').forEach(el=>el.onclick=()=>{if(!sel)return;const s=sel;sel=null;send({k:'play',src:s.src,i:s.i,b:+el.dataset.b})});
+ if(v.winner)K.sfx(v.winner===me.name?'win':'lose')}
+const st=document.createElement('style');st.textContent=`.sc{width:54px;height:76px;border-radius:9px;display:grid;place-items:center;font-size:30px;font-weight:900;color:#fff;box-shadow:0 4px 10px rgba(0,0,0,.35);cursor:pointer;border:3px solid rgba(255,255,255,.85);transition:transform .12s}
+.sc.c1{background:linear-gradient(160deg,#2e86de,#1b5fa8)}.sc.c2{background:linear-gradient(160deg,#2ed573,#1a9e52)}.sc.c3{background:linear-gradient(160deg,#ff4757,#c0283a)}.sc.joker{background:linear-gradient(160deg,#ffd23f,#ff9f1a);color:#5a2a00}
+.sc.empty{background:rgba(0,0,0,.2);border:3px dashed rgba(255,255,255,.35);box-shadow:none}.sc.big{width:62px;height:88px;font-size:34px}.sc.sm{width:40px;height:56px;font-size:22px}.sc.xs{width:28px;height:38px;font-size:15px;border-width:2px}
+.sc.sel{transform:translateY(-12px);box-shadow:0 0 0 4px #fff,0 0 20px #ffd23f}.sc.tgt{box-shadow:0 0 0 3px #ffd23f}.dstack{display:flex;flex-direction:column;align-items:center}.dstack .under{margin-bottom:-58px;transform:scale(.9);opacity:.85}`;document.head.appendChild(st);
+function menu(){if(root)root.style.display='none';K.menu({title:'STAPELMEISTER',emoji:'🔢',sub:'Baue gemeinsame Stapel von 1 bis 12 und leere als Erster deinen Vorrat. ★ ist ein Joker!',
+ body:`<div class="k-box"><div class="k-set"><span>🤖 Gegner</span>${K.chips('sbB',[[1,'1'],[2,'2'],[3,'3']],nBots,v=>nBots=v)}</div><div class="k-set"><span>📦 Vorrat</span>${K.chips('sbS',[[10,'Kurz (10)'],[20,'Normal (20)'],[30,'Lang (30)']],stockN,v=>stockN=v)}</div></div>`,
+ solo:[{t:'▶ Gegen Bots spielen',f:()=>E.solo(nBots)}],online:{game:'stapel',max:4,onStart:r=>E.hostStart(r,Math.max(0,Math.min(nBots,4-r.peers.length)))},
+ help:'Am Zugende musst du eine Handkarte auf eine deiner 4 Ablagen legen. Ist deine Hand leer, ziehst du sofort 5 neue Karten.'})}
+menu();
+
+</script>
+</body>
+</html>

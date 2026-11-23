@@ -80,3 +80,39 @@ K.dirKeys=()=>({x:(K.keys.d||K.keys.arrowright?1:0)-(K.keys.a||K.keys.arrowleft?
 /* Karten zeichnen (für Kartenspiele) */
 K.suitCol=s=>s==='♥'||s==='♦'?'#e03131':'#111';
 })();
+/* ---------- Rundenspiel-Motor (Gastgeber-autoritativ) ----------
+ def: {game,max,minPlayers,seats, setup(players,opts)->G, view(G,pid)->v, act(G,pid,a)->bool, bot(G,pid)->a|null, actors(G)->[pid], over(G)->bool, render(v,send), botDelay}
+*/
+(function(){const K=window.K;
+K.TG=function(def){const E={def,G:null,room:null,host:true,players:[],me:K.uid(),timers:[]};
+ E.send=a=>{if(E.host)E.apply(E.me,a);else if(E.room)E.room.send({t:'a',a})};
+ E.apply=(pid,a)=>{if(!E.G)return;let ok=false;try{ok=def.act(E.G,pid,a)}catch(err){console.error(err)}if(ok!==false)E.push()};
+ E.later=(ms,fn)=>{const t=setTimeout(()=>{E.timers=E.timers.filter(q=>q!==t);if(!E.G)return;fn();E.push()},ms);E.timers.push(t)};
+ E.push=()=>{const G=E.G;if(!G)return;for(const p of E.players){if(p.bot)continue;const v=def.view(G,p.id);if(p.id===E.me)def.render(v,E.send);else if(E.room)E.room.sendTo(p.id,{t:'v',v})}E.schedBots()};
+ let botT=null;E.schedBots=()=>{clearTimeout(botT);const G=E.G;if(!G||(def.over&&def.over(G)))return;const acts=(def.actors?def.actors(G):[]).filter(id=>{const p=E.players.find(q=>q.id===id);return p&&p.bot});if(!acts.length)return;
+  botT=setTimeout(()=>{if(E.G!==G)return;for(const id of acts){const a=def.bot(G,id);if(a!=null){E.apply(id,a);return}}},def.botDelay?def.botDelay(G):900+Math.random()*500)};
+ E.start=(players,opts)=>{E.timers.forEach(clearTimeout);E.timers=[];E.players=players;E.G=def.setup(players,opts||{},E);K.hideAll();E.push()};
+ E.solo=(nBots,opts)=>{E.host=true;E.room=null;const ps=[{id:E.me,name:K.name()}];for(let i=0;i<nBots;i++)ps.push({id:'bot'+i,name:K.BOTS[i],bot:true});E.start(ps,opts)};
+ E.hostStart=(r,nBots,opts)=>{E.host=true;E.room=r;const ps=r.peers.slice(0,def.max||8).map(p=>({id:p.id,name:p.name}));for(let i=0;ps.length<(def.seats?def.seats(r.peers.length,nBots):r.peers.length+nBots)&&i<12;i++)ps.push({id:'bot'+i,name:K.BOTS[i],bot:true});r.send({t:'start'});E.start(ps,opts)};
+ E.wire=r=>{E.room=r;E.host=r.isHost;r.on('msg',(m,from)=>{if(m.t==='v'&&!E.host){def.render(m.v,E.send)}else if(m.t==='a'&&E.host){E.apply(from,m.a)}else if(m.t==='start'&&!E.host){K.hideAll();def.onClientStart&&def.onClientStart()}});
+  r.on('leave',id=>{if(!E.host||!E.G)return;const p=E.players.find(q=>q.id===id);if(p&&!p.bot){p.bot=true;p.name+=' 🤖';K.toast(p.name+' ist jetzt ein Bot');def.onLeave&&def.onLeave(E.G,id);E.push()}})};
+ E.stop=()=>{E.timers.forEach(clearTimeout);E.timers=[];clearTimeout(botT);E.G=null;K.leaveRoom();E.room=null};
+ const _lobby=K.lobby;K.lobby=o=>{if(K.room&&!K.room._tg){K.room._tg=1;E.wire(K.room)}_lobby(o)};
+ return E};
+/* Karten-HTML */
+K.cardHTML=(c,cls='',attrs='')=>{if(!c)return`<div class="kc back ${cls}" ${attrs}></div>`;const red=c.s==='♥'||c.s==='♦';return`<div class="kc ${red?'red':''} ${cls}" ${attrs}><span class="kr">${c.r}<br>${c.s}</span><span class="km">${c.s}</span><span class="kr kb">${c.r}<br>${c.s}</span></div>`};
+const st=document.createElement('style');st.textContent=`.kc{position:relative;width:64px;height:92px;border-radius:9px;background:linear-gradient(160deg,#fff,#eef1f7);color:#111;box-shadow:0 4px 10px rgba(0,0,0,.35);flex:0 0 auto;font-weight:800;cursor:pointer;transition:transform .12s}
+.kc.red{color:#d81e2b}.kc .kr{position:absolute;left:6px;top:4px;font-size:14px;line-height:1.05;text-align:center}.kc .kb{left:auto;top:auto;right:6px;bottom:4px;transform:rotate(180deg)}.kc .km{position:absolute;inset:0;display:grid;place-items:center;font-size:34px}
+.kc.back{background:repeating-linear-gradient(45deg,#2b3a8a,#2b3a8a 6px,#3346a8 6px,#3346a8 12px);border:3px solid #fff}
+.kc.play{transform:translateY(-10px);box-shadow:0 0 0 3px var(--a),0 8px 18px rgba(0,0,0,.4)}.kc.dim{opacity:.45;filter:grayscale(.4)}.kc.sel{transform:translateY(-18px);box-shadow:0 0 0 4px #ffd23f}
+@media(max-width:600px){.kc{width:52px;height:76px}.kc .km{font-size:26px}.kc .kr{font-size:12px}}
+.tg{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;padding:max(10px,env(safe-area-inset-top)) 10px max(10px,env(safe-area-inset-bottom));gap:10px;overflow:auto;touch-action:pan-y;background:radial-gradient(1000px 700px at 50% 45%,#1f6b45,#0d3a24 70%,#082416)}
+.tg .opps{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:100%}
+.tg .opp{background:rgba(0,0,0,.28);border-radius:14px;padding:8px 12px;min-width:110px;text-align:center;border:2px solid transparent;font-weight:700}
+.tg .opp.turn{border-color:#ffd23f;box-shadow:0 0 18px rgba(255,210,63,.45)}
+.tg .hand{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:100%;padding:12px 4px}
+.tg .msg{font-weight:800;font-size:18px;text-align:center;min-height:26px;text-shadow:0 2px 3px rgba(0,0,0,.5)}
+.tg .bar{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+.tg .top{display:flex;justify-content:space-between;width:100%;align-items:center}
+.tg .top a,.tg .top button{background:rgba(0,0,0,.35);color:#fff;text-decoration:none;border-radius:10px;padding:7px 11px;font-size:14px}`;document.head.appendChild(st);
+})();

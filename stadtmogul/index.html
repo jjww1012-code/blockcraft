@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/nozoom.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Stadtmogul</title>
+<link rel="stylesheet" href="../shared/kit.css">
+<style>:root{--a:#ff4757;--b:#ffd23f}</style>
+</head>
+<body>
+<script src="../shared/peerjs.min.js"></script>
+<script src="../shared/net.js"></script>
+<script src="../shared/kit.js"></script>
+<script>
+'use strict';
+/* STADTMOGUL – Straßen kaufen, Häuser bauen, Miete kassieren. Wer pleite ist, fliegt raus. */
+const GC={br:'#8d5524',hb:'#7fd3ff',pi:'#ff6ec7',or:'#ff9f1a',rt:'#ff4757',ge:'#ffd23f',gr:'#2ed573',db:'#2e5cde'};
+const F=[{t:'go',n:'LOS'},{t:'st',n:'Pfützenweg',g:'br',p:60,r:2},{t:'cm',n:'Gemeinschaft'},{t:'st',n:'Kaugummigasse',g:'br',p:60,r:4},{t:'tax',n:'Einkommensteuer',a:200},{t:'rr',n:'Südbahnhof',p:200},{t:'st',n:'Lakritzallee',g:'hb',p:100,r:6},{t:'ch',n:'Ereignis'},{t:'st',n:'Brausepulverweg',g:'hb',p:100,r:6},{t:'st',n:'Zuckerwattestr.',g:'hb',p:120,r:8},
+ {t:'jail',n:'Gefängnis / Besuch'},{t:'st',n:'Skaterpark',g:'pi',p:140,r:10},{t:'ut',n:'Stromwerk',p:150},{t:'st',n:'Pixelplatz',g:'pi',p:140,r:10},{t:'st',n:'Gamerstraße',g:'pi',p:160,r:12},{t:'rr',n:'Westbahnhof',p:200},{t:'st',n:'Pizzaweg',g:'or',p:180,r:14},{t:'cm',n:'Gemeinschaft'},{t:'st',n:'Dönerdamm',g:'or',p:180,r:14},{t:'st',n:'Burgerboulevard',g:'or',p:200,r:16},
+ {t:'park',n:'Frei Parken'},{t:'st',n:'Raketenring',g:'rt',p:220,r:18},{t:'ch',n:'Ereignis'},{t:'st',n:'Mondstraße',g:'rt',p:220,r:18},{t:'st',n:'Sternenallee',g:'rt',p:240,r:20},{t:'rr',n:'Nordbahnhof',p:200},{t:'st',n:'Goldgräberweg',g:'ge',p:260,r:22},{t:'st',n:'Diamantgasse',g:'ge',p:260,r:22},{t:'ut',n:'Wasserwerk',p:150},{t:'st',n:'Schatzinsel',g:'ge',p:280,r:24},
+ {t:'gojail',n:'Ab ins Gefängnis'},{t:'st',n:'Drachenhöhe',g:'gr',p:300,r:26},{t:'st',n:'Zauberwald',g:'gr',p:300,r:26},{t:'cm',n:'Gemeinschaft'},{t:'st',n:'Einhornwiese',g:'gr',p:320,r:28},{t:'rr',n:'Ostbahnhof',p:200},{t:'ch',n:'Ereignis'},{t:'st',n:'Schlossallee 2.0',g:'db',p:350,r:35},{t:'tax',n:'Luxussteuer',a:100},{t:'st',n:'Königspalast',g:'db',p:400,r:50}];
+const HM=[1,5,15,45,62,78];// Mietfaktor je Häuserzahl (5=Hotel)
+const hc=f=>f.p<=120?50:f.p<=200?100:f.p<=280?150:200;
+const CARDS=[['Du findest 50 € im Sofa',50],['Geburtstag! Alle zahlen dir je 20 €','bd'],['Handy-Reparatur: zahle 80 €',-80],['Gewinnst den Schul-Wettbewerb: +100 €',100],['Rücke vor bis LOS','go'],['Gehe ins Gefängnis!','jail'],['Zahle 15 € Bußgeld fürs Zuspätkommen',-15],['Zinsen: +60 €',60],['Gehe 3 Felder zurück','b3'],['Rücke vor zum Nordbahnhof','rr25'],['Rücke vor zum Königspalast','to39'],['Renovierung: 25 € pro Haus','rep'],['Lotto-Gewinn: +150 €',150],['Kino-Abend: zahle 30 €',-30]];
+let nBots=3,rounds=30,root=null,showBuild=false,info=-1;
+const E=K.TG({game:'mogul',max:6,
+ setup(ps,o){return{pl:ps.map((p,i)=>({id:p.id,name:p.name,c:K.COLS[i],pos:0,m:1500,jail:0,out:false,dbl:0})),own:{},hs:{},turn:0,phase:'roll',dice:[0,0],log:'Willkommen in Stadtmogul! Jeder startet mit 1500 €.',winner:null,round:1,maxR:o.rounds||rounds,card:null}},
+ actors:G=>G.winner?[]:[G.pl[G.turn].id],over:G=>!!G.winner,
+ view(G,pid){const me=G.pl.findIndex(p=>p.id===pid);return{me,pl:G.pl,own:G.own,hs:G.hs,turn:G.turn,phase:G.phase,dice:G.dice,log:G.log,winner:G.winner,round:G.round,maxR:G.maxR,card:G.card,build:me===G.turn?buildable(G,G.pl[me]):[]}},
+ act(G,pid,a){const i=G.pl.findIndex(p=>p.id===pid);if(i!==G.turn||G.winner)return false;const p=G.pl[i];
+  if(a.k==='roll'&&G.phase==='roll'){roll(G,p);return true}
+  if(a.k==='buy'&&G.phase==='buy'){const f=F[p.pos];if(p.m<f.p)return false;p.m-=f.p;G.own[p.pos]=i;G.log=p.name+' kauft '+f.n+' für '+f.p+' € 🏠';afterLand(G,p);return true}
+  if(a.k==='skip'&&G.phase==='buy'){G.log=p.name+' kauft '+F[p.pos].n+' nicht';afterLand(G,p);return true}
+  if(a.k==='bail'&&G.phase==='roll'&&p.jail){if(p.m<50)return false;p.m-=50;p.jail=0;G.log=p.name+' zahlt 50 € Kaution';return true}
+  if(a.k==='build'&&(G.phase==='end'||G.phase==='roll')){const f=F[a.f];if(!buildable(G,p).includes(a.f))return false;p.m-=hc(f);G.hs[a.f]=(G.hs[a.f]||0)+1;G.log=p.name+' baut '+(G.hs[a.f]===5?'ein Hotel 🏨':'ein Haus 🏠')+' auf '+f.n;return true}
+  if(a.k==='end'&&G.phase==='end'){nextP(G);return true}return false},
+ bot(G,pid){const i=G.pl.findIndex(p=>p.id===pid),p=G.pl[i];if(G.phase==='roll'){if(p.jail&&p.m>400)return{k:'bail'};return{k:'roll'}}
+  if(G.phase==='buy'){const f=F[p.pos];const completes=f.g&&F.every((q,k)=>q.g!==f.g||k===p.pos||G.own[k]===i);return p.m-f.p>=(completes?20:120)?{k:'buy'}:{k:'skip'}}
+  if(G.phase==='end'){const b=buildable(G,p).filter(k=>p.m-hc(F[k])>250);if(b.length){b.sort((x,y)=>(G.hs[x]||0)-(G.hs[y]||0));return{k:'build',f:b[0]}}return{k:'end'}}return null},
+ botDelay:G=>G.phase==='roll'?900:700,render});
+function buildable(G,p){const i=G.pl.indexOf(p);const out=[];F.forEach((f,k)=>{if(f.t!=='st'||G.own[k]!==i||(G.hs[k]||0)>=5||p.m<hc(f))return;const grp=F.map((q,j)=>[q,j]).filter(([q])=>q.g===f.g);if(!grp.every(([,j])=>G.own[j]===i))return;const mn=Math.min(...grp.map(([,j])=>G.hs[j]||0));if((G.hs[k]||0)>mn)return;out.push(k)});return out}
+function roll(G,p){const d=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)];G.dice=d;const dbl=d[0]===d[1];G.card=null;
+ if(p.jail){if(dbl){p.jail=0;G.log=p.name+' würfelt einen Pasch und kommt frei!';move(G,p,d[0]+d[1]);p.dbl=0;G.again=false;return}p.jail++;if(p.jail>3){p.m-=50;p.jail=0;G.log=p.name+' zahlt 50 € und kommt frei';move(G,p,d[0]+d[1]);return}G.log=p.name+' sitzt im Gefängnis ('+(p.jail-1)+'/3)';G.phase='end';G.again=false;return}
+ if(dbl){p.dbl++;if(p.dbl>=3){toJail(G,p);G.log=p.name+' würfelt 3× Pasch – ab ins Gefängnis!';return}}else p.dbl=0;G.again=dbl;G.log=p.name+' würfelt '+d[0]+' + '+d[1]+(dbl?' (Pasch!)':'');move(G,p,d[0]+d[1])}
+function move(G,p,n){const old=p.pos;p.pos=(p.pos+n+40)%40;if(n>0&&p.pos<old){p.m+=200;G.log+=' · über LOS +200 €'}land(G,p)}
+function toJail(G,p){p.pos=10;p.jail=1;p.dbl=0;G.again=false;G.phase='end'}
+function rent(G,k,dice){const f=F[k],o=G.own[k];if(f.t==='st'){const h=G.hs[k]||0;if(h)return f.r*HM[h];const full=F.every((q,j)=>q.g!==f.g||G.own[j]===o);return full?f.r*2:f.r}if(f.t==='rr'){const n=[5,15,25,35].filter(j=>G.own[j]===o).length;return 25*Math.pow(2,n-1)}if(f.t==='ut'){const n=[12,28].filter(j=>G.own[j]===o).length;return(dice[0]+dice[1])*(n===2?10:4)}return 0}
+function land(G,p){const k=p.pos,f=F[k],i=G.pl.indexOf(p);G.phase='end';
+ if(['st','rr','ut'].includes(f.t)){const o=G.own[k];if(o==null){G.phase='buy';G.log+=' · '+f.n+' ist frei ('+f.p+' €)';return}if(o!==i&&!G.pl[o].out){const r=rent(G,k,G.dice);pay(G,p,r,G.pl[o]);G.log+=' · zahlt '+r+' € Miete an '+G.pl[o].name}}
+ else if(f.t==='tax'){pay(G,p,f.a,null);G.log+=' · '+f.n+': '+f.a+' €'}
+ else if(f.t==='gojail'){toJail(G,p);G.log+=' · ab ins Gefängnis! 🚔'}
+ else if(f.t==='ch'||f.t==='cm'){const c=K.pick(CARDS);G.card=c[0];G.log+=' · 🃏 '+c[0];const v=c[1];
+  if(typeof v==='number'){if(v>0)p.m+=v;else pay(G,p,-v,null)}else if(v==='bd'){for(const q of G.pl)if(q!==p&&!q.out)pay(G,q,20,p)}else if(v==='go'){p.pos=0;p.m+=200}else if(v==='jail'){toJail(G,p)}else if(v==='b3'){p.pos=(p.pos+37)%40;land(G,p);return}else if(v==='rr25'){if(p.pos>25)p.m+=200;p.pos=25;land(G,p);return}else if(v==='to39'){if(p.pos>39)p.m+=200;p.pos=39;land(G,p);return}else if(v==='rep'){let n=0;for(const k2 in G.hs)if(G.own[k2]===i)n+=G.hs[k2];pay(G,p,n*25,null)}}
+ afterLand(G,p,true)}
+function afterLand(G,p,already){if(G.phase==='buy'&&!already)G.phase='end';else if(!already)G.phase='end';if(G.phase!=='buy'){if(G.again&&!p.jail&&!p.out)G.phase='roll';else G.phase='end'}checkOver(G)}
+function pay(G,p,amt,to){if(amt<=0)return;const i=G.pl.indexOf(p);if(p.m<amt){// Häuser verkaufen
+  for(const k in G.hs){if(p.m>=amt)break;if(G.own[k]!==i)continue;while(G.hs[k]>0&&p.m<amt){G.hs[k]--;p.m+=hc(F[k])/2}if(!G.hs[k])delete G.hs[k]}}
+ if(p.m<amt){const got=Math.max(0,p.m);if(to)to.m+=got;p.m=0;p.out=true;for(const k in G.own)if(G.own[k]===i){delete G.own[k];delete G.hs[k]}G.log+=' · '+p.name+' ist PLEITE! 💸';return}
+ p.m-=amt;if(to)to.m+=amt}
+function worth(G,i){let w=G.pl[i].m;for(const k in G.own)if(G.own[k]===i)w+=F[k].p+(G.hs[k]||0)*hc(F[k]);return w}
+function checkOver(G){const al=G.pl.filter(p=>!p.out);if(al.length===1){G.winner=al[0].name;G.log='🏆 '+G.winner+' ist der Stadtmogul!'}}
+function nextP(G){const n=G.pl.length;G.pl[G.turn].dbl=0;let t=G.turn;do{t=(t+1)%n;if(t===0)G.round++}while(G.pl[t].out);G.turn=t;G.phase='roll';G.again=false;G.card=null;
+ if(G.round>G.maxR){let b=-1,bi=0;G.pl.forEach((p,i)=>{if(p.out)return;const w=worth(G,i);if(w>b){b=w;bi=i}});G.winner=G.pl[bi].name;G.log='⏱ Rundenlimit erreicht – '+G.winner+' ist am reichsten ('+b+' €)! 🏆'}}
+/* ---------- Darstellung ---------- */
+const posOf=k=>{if(k<=10)return[10-k,10];if(k<=20)return[0,20-k];if(k<=30)return[k-20,0];return[10,k-30]};
+let lastLog='',lastPos={};
+function render(v,send){if(!root){root=document.createElement('div');root.className='tg';root.style.background='radial-gradient(900px 600px at 50% 40%,#1e5a3a,#0b2a1a)';document.body.appendChild(root)}root.style.display='flex';
+ if(v.log!==lastLog){lastLog=v.log;K.sfx(/würfelt/.test(v.log)?'dice':/kauft|baut/.test(v.log)?'coin':/PLEITE|Gefängnis/.test(v.log)?'bad':'card')}
+ const me=v.pl[v.me],myTurn=v.turn===v.me&&!v.winner;
+ let cells='';F.forEach((f,k)=>{const [c,r]=posOf(k),o=v.own[k],h=v.hs[k]||0;const tok=v.pl.map((p,i)=>!p.out&&p.pos===k?`<i style="background:${p.c}" class="${i===v.turn?'cur':''}"></i>`:'').join('');
+  const corner=k%10===0;cells+=`<div class="mf ${corner?'corner':''} side${Math.floor(k/10)}" data-k="${k}" style="grid-column:${c+1};grid-row:${r+1}">${f.g?`<div class="mbar" style="background:${GC[f.g]}">${h===5?'🏨':h?'🏠'.repeat(h):''}</div>`:''}<div class="mname">${f.t==='rr'?'🚂 ':f.t==='ut'?(k===12?'⚡ ':'💧 '):f.t==='ch'?'❓ ':f.t==='cm'?'🎁 ':f.t==='tax'?'💸 ':''}${f.n}</div>${f.p?`<div class="mprice">${f.p}€</div>`:''}${o!=null?`<div class="mown" style="background:${v.pl[o].c}"></div>`:''}<div class="mtok">${tok}</div></div>`});
+ const dice=v.dice[0]?`<span class="mdie">${['','⚀','⚁','⚂','⚃','⚄','⚅'][v.dice[0]]}</span><span class="mdie">${['','⚀','⚁','⚂','⚃','⚄','⚅'][v.dice[1]]}</span>`:'🎲🎲';
+ const f=F[me.pos];let acts='';
+ if(v.winner)acts=E.host?'<button class="pri" id="mA">🔁 Neues Spiel</button>':'';
+ else if(myTurn){if(v.phase==='roll')acts=`<button class="pri" id="mR">🎲 Würfeln</button>${me.jail?'<button id="mBail">50 € Kaution</button>':''}`;if(v.phase==='buy')acts=`<button class="pri" id="mBuy" ${me.m<f.p?'disabled':''}>Kaufen ${f.p} €</button><button id="mSkip">Nicht kaufen</button>`;if(v.phase==='end')acts=`<button class="pri" id="mE">Zug beenden ➜</button>`;if(v.build.length&&v.phase!=='buy')acts+=`<button id="mBld" style="background:#e67e22">🏠 Bauen (${v.build.length})</button>`}
+ root.innerHTML=`<div class="top"><a href="#" id="mBk">← Menü</a><b>🏙 STADTMOGUL</b><span>Runde ${Math.min(v.round,v.maxR)}/${v.maxR}</span></div>
+ <div class="mwrap"><div class="mboard">${cells}<div class="mcenter"><div class="mlogo">STADTMOGUL</div><div style="font-size:34px">${dice}</div>${v.card?`<div class="mcard">🃏 ${K.esc(v.card)}</div>`:''}<div class="mlog">${K.esc(v.log)}</div><div class="bar">${acts}</div>
+ ${showBuild&&myTurn&&v.build.length?`<div class="mbuild">${v.build.map(k=>`<button data-b="${k}" style="border-left:6px solid ${GC[F[k].g]}">${F[k].n} · ${hc(F[k])} €</button>`).join('')}</div>`:''}</div></div>
+ <div class="mpl">${v.pl.map((p,i)=>`<div class="opp ${v.turn===i?'turn':''}" style="border-left:6px solid ${p.c};opacity:${p.out?.4:1}">${K.esc(p.name)}${i===v.me?' (du)':''}<div style="color:#7dff6a;font-size:18px">${p.out?'pleite':p.m+' €'}</div><div style="font-size:11px">${Object.keys(v.own).filter(k=>v.own[k]===i).length} Felder${p.jail?' · 🚔':''}</div></div>`).join('')}</div></div>
+ ${info>=0?infoBox(v,info):''}`;
+ K.$('mBk').onclick=e=>{e.preventDefault();E.stop();root.style.display='none';menu()};
+ const on=(id,a)=>{const el=K.$(id);if(el)el.onclick=()=>{showBuild=false;send(a)}};on('mR',{k:'roll'});on('mBail',{k:'bail'});on('mBuy',{k:'buy'});on('mSkip',{k:'skip'});on('mE',{k:'end'});
+ if(K.$('mBld'))K.$('mBld').onclick=()=>{showBuild=!showBuild;render(v,send)};root.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>send({k:'build',f:+b.dataset.b}));
+ if(K.$('mA'))K.$('mA').onclick=()=>E.room?E.start(E.players,{rounds}):E.solo(nBots,{rounds});
+ root.querySelectorAll('.mf').forEach(el=>el.onclick=()=>{info=+el.dataset.k;render(v,send)});if(K.$('mInfoX'))K.$('mInfoX').onclick=()=>{info=-1;render(v,send)};
+ if(v.winner)K.sfx(v.winner===me.name?'win':'lose')}
+function infoBox(v,k){const f=F[k],o=v.own[k];let t=`<b style="font-size:18px">${f.n}</b>`;if(f.g)t+=`<div style="height:8px;background:${GC[f.g]};border-radius:4px;margin:6px 0"></div><div>Preis ${f.p} € · Haus ${hc(f)} €</div><div class="k-mut">Miete: ${f.r} € · Straßenzug ${f.r*2} € · mit Häusern ${HM.slice(1,5).map(m=>f.r*m).join(' / ')} € · Hotel ${f.r*HM[5]} €</div>`;else if(f.t==='rr')t+='<div>Preis 200 € · Miete 25/50/100/200 € je nach Anzahl Bahnhöfe</div>';else if(f.t==='ut')t+='<div>Preis 150 € · Miete 4× (beide: 10×) Augenzahl</div>';else t+='<div class="k-mut">Sonderfeld</div>';if(o!=null)t+=`<div>Besitzer: <b style="color:${v.pl[o].c}">${K.esc(v.pl[o].name)}</b>${v.hs[k]?' · '+(v.hs[k]===5?'Hotel':v.hs[k]+' Häuser'):''}</div>`;return`<div class="minfo k-box">${t}<button id="mInfoX">Schließen</button></div>`}
+const st=document.createElement('style');st.textContent=`.mwrap{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.mboard{display:grid;grid-template-columns:1.4fr repeat(9,1fr) 1.4fr;grid-template-rows:1.4fr repeat(9,1fr) 1.4fr;width:min(96vw,78vh,760px);height:min(96vw,78vh,760px);background:#cfe8d0;border:6px solid #0b2a1a;border-radius:10px;gap:2px;padding:2px;flex:0 0 auto}
+.mf{background:#f6f9f2;position:relative;overflow:hidden;color:#122;font-size:clamp(6px,1.05vw,10px);line-height:1.1;text-align:center;display:flex;flex-direction:column;cursor:pointer}
+.mf.corner{background:#e4f2dc;font-weight:900;justify-content:center;font-size:clamp(7px,1.2vw,12px)}.mbar{height:24%;font-size:clamp(6px,1vw,10px);display:grid;place-items:center}.mname{padding:1px;font-weight:700;word-break:break-word;hyphens:auto;-webkit-hyphens:auto;flex:1;display:flex;align-items:center;justify-content:center}.mprice{font-size:clamp(6px,.9vw,9px);color:#555}
+.mown{position:absolute;right:2px;bottom:2px;width:8px;height:8px;border-radius:50%;border:1px solid #fff}.mtok{position:absolute;left:1px;bottom:1px;display:flex;flex-wrap:wrap;gap:1px;max-width:70%}.mtok i{width:clamp(8px,1.6vw,14px);height:clamp(8px,1.6vw,14px);border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.5)}.mtok i.cur{animation:dpb2 .6s infinite alternate}@keyframes dpb2{to{transform:scale(1.3)}}
+.mcenter{grid-column:2/11;grid-row:2/11;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px;color:#0b2a1a;text-align:center}
+.mlogo{font-weight:900;font-size:clamp(18px,4vw,40px);color:#c0392b;transform:rotate(-8deg);text-shadow:2px 2px 0 #fff}.mlog{font-weight:700;font-size:clamp(11px,1.6vw,15px);max-width:90%}.mcard{background:#fff8d6;border:2px solid #e0b000;border-radius:10px;padding:6px 10px;font-weight:700;font-size:13px}
+.mdie{display:inline-block;background:#fff;border-radius:8px;padding:0 4px;margin:0 3px;box-shadow:0 3px 6px rgba(0,0,0,.3)}.mbuild{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;max-height:120px;overflow:auto}.mbuild button{font-size:12px;padding:6px 8px;background:#fff;color:#122}
+.mpl{display:flex;flex-direction:column;gap:6px;min-width:150px}.minfo{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;width:min(340px,90vw)}`;document.head.appendChild(st);
+function menu(){if(root)root.style.display='none';K.menu({title:'STADTMOGUL',emoji:'🏙️',sub:'Kauf Straßen, bau Häuser und Hotels, kassiere Miete – und treib die anderen in die Pleite!',
+ body:`<div class="k-box"><div class="k-set"><span>🤖 Gegner</span>${K.chips('smB',[[1,'1'],[2,'2'],[3,'3'],[5,'5']],nBots,v=>nBots=v)}</div><div class="k-set"><span>⏱ Runden</span>${K.chips('smR',[[15,'15'],[30,'30'],[999,'Unbegrenzt']],rounds,v=>rounds=v)}</div></div>`,
+ solo:[{t:'▶ Spielen',f:()=>E.solo(nBots,{rounds})}],online:{game:'mogul',max:6,onStart:r=>E.hostStart(r,Math.max(0,Math.min(nBots,6-r.peers.length)),{rounds})},
+ help:'Bei einem Pasch würfelst du nochmal. Gehört dir ein ganzer Straßenzug (alle Felder einer Farbe), verdoppelt sich die Miete und du kannst Häuser bauen. Tippe auf ein Feld für Infos.'})}
+menu();
+
+</script>
+</body>
+</html>
