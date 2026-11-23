@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/nozoom.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Montagsmaler</title>
+<link rel="stylesheet" href="../shared/kit.css">
+<style>:root{--a:#ff9f1a;--b:#7d5fff}</style>
+</head>
+<body>
+<script src="../shared/peerjs.min.js"></script>
+<script src="../shared/net.js"></script>
+<script src="../shared/kit.js"></script>
+<script>
+'use strict';
+/* MONTAGSMALER – einer zeichnet, alle raten. Online ab 2 Spielern. */
+const WORDS='Hund Katze Pferd Elefant Giraffe Pinguin Schlange Spinne Biene Schmetterling Fisch Hai Krake Schildkröte Frosch Eule Dinosaurier Drache Einhorn Hase Maus Kuh Schwein Affe Löwe Krokodil Haus Schloss Burg Brücke Kirche Leuchtturm Zelt Iglu Ampel Auto Fahrrad Flugzeug Rakete Hubschrauber Schiff Zug Bus Traktor Ufo Roboter Computer Handy Fernseher Gitarre Klavier Trommel Kamera Uhr Brille Schirm Schlüssel Lampe Kerze Bett Stuhl Tisch Sofa Toilette Badewanne Zahnbürste Schere Bleistift Buch Rucksack Schuh Hut Krone Socke Hose Kleid Pizza Burger Pommes Eis Kuchen Torte Banane Apfel Erdbeere Ananas Kirsche Karotte Brezel Ei Käse Sonne Mond Stern Wolke Regenbogen Blitz Schneemann Baum Blume Kaktus Pilz Berg Vulkan Insel Strand Welle Feuer Herz Geist Zauberer Pirat Ritter Prinzessin Astronaut Polizist Clown Fußball Tor Basketball Skateboard Schaukel Rutsche Drachen Ballon Geschenk Weihnachtsbaum Kürbis Osterei Schatz Karte Anker Kompass Zahn Auge Nase Ohr Hand Fuß Skelett Mumie Vampir Hexe Besen Zauberstab Krake Wal Delfin Muschel Seestern Qualle Schnecke Raupe Ameise Igel Fuchs Wolf Bär Panda Koala Känguru Kamel Zebra Nashorn Flamingo Papagei Huhn Ente Tiger Leopard'.split(' ');
+const PAL=['#111111','#ffffff','#e74c3c','#ff9f1a','#ffd23f','#2ed573','#18dcff','#2e86de','#7d5fff','#ff7ad9','#8d5524','#7f8c8d'];
+let rounds=2,drawSecs=80,room=null,isHost=false,me=K.uid();
+let G=null;// nur Gastgeber
+let V={phase:'wait',drawer:'',hint:'',left:0,sc:{},names:{},guessed:[],round:1,maxR:2};
+let strokes=[],cur=null,color='#111111',size=6,tool='pen',myWord='',choices=null,solo=false;
+/* ---------- Oberfläche ---------- */
+const ui=document.createElement('div');ui.className='mm';ui.innerHTML=`<div class="mtop"><a href="#" id="mmB">← Menü</a><div id="mmInfo"></div><div id="mmTime"></div></div>
+ <div class="mmain"><div class="mleft"><div id="mmWord" class="mword"></div><div class="mcv"><canvas id="mmC" width="800" height="600"></canvas><div id="mmOver" class="mover"></div></div>
+ <div class="mtools" id="mmTools">${PAL.map(c=>`<button class="mcol" data-c="${c}" style="background:${c}"></button>`).join('')}<button class="msz" data-s="4">•</button><button class="msz" data-s="10">●</button><button class="msz" data-s="22">⬤</button><button id="mmEr">🧽</button><button id="mmUndo">↶</button><button id="mmClr">🗑</button></div></div>
+ <div class="mright"><div id="mmScores" class="mscores"></div><div id="mmChat" class="mchat"></div><form id="mmF" class="mform"><input id="mmIn" maxlength="40" placeholder="Rate hier …" autocomplete="off"><button class="pri">➤</button></form></div></div>`;
+document.body.appendChild(ui);ui.style.display='none';
+const cv=K.$('mmC'),cx=cv.getContext('2d');
+function redraw(){cx.fillStyle='#fff';cx.fillRect(0,0,800,600);for(const s of strokes)drawStroke(s)}
+function drawStroke(s){cx.strokeStyle=s.c;cx.lineWidth=s.w;cx.lineCap='round';cx.lineJoin='round';cx.beginPath();const p=s.p;cx.moveTo(p[0],p[1]);if(p.length===2)cx.lineTo(p[0]+.1,p[1]);for(let i=2;i<p.length;i+=2)cx.lineTo(p[i],p[i+1]);cx.stroke()}
+const canDraw=()=>solo||(V.phase==='draw'&&V.drawer===me);
+const pt=e=>{const r=cv.getBoundingClientRect();return[Math.round((e.clientX-r.left)/r.width*800),Math.round((e.clientY-r.top)/r.height*600)]};
+let sent=0;
+cv.addEventListener('pointerdown',e=>{if(!canDraw())return;cv.setPointerCapture(e.pointerId);cur={c:tool==='er'?'#ffffff':color,w:tool==='er'?28:size,p:pt(e)};strokes.push(cur);sent=0;drawStroke(cur)});
+cv.addEventListener('pointermove',e=>{if(!cur)return;const [a,b]=pt(e);const p=cur.p;if(Math.hypot(a-p[p.length-2],b-p[p.length-1])<3)return;p.push(a,b);cx.strokeStyle=cur.c;cx.lineWidth=cur.w;cx.lineCap='round';cx.beginPath();cx.moveTo(p[p.length-4],p[p.length-3]);cx.lineTo(a,b);cx.stroke();if(p.length-sent>16)flushStroke(false)});
+const endS=()=>{if(cur){flushStroke(true);cur=null}};cv.addEventListener('pointerup',endS);cv.addEventListener('pointercancel',endS);
+function flushStroke(done){if(!room||solo)return;const msg={t:'ln',id:strokes.length-1,c:cur.c,w:cur.w,p:cur.p.slice(Math.max(0,sent-2)),s:sent===0?1:0};sent=cur.p.length;room.send(msg);if(isHost)G.strokes=strokes.slice()}
+ui.querySelectorAll('.mcol').forEach(b=>b.onclick=()=>{color=b.dataset.c;tool='pen';markTools()});ui.querySelectorAll('.msz').forEach(b=>b.onclick=()=>{size=+b.dataset.s;tool='pen';markTools()});
+K.$('mmEr').onclick=()=>{tool='er';markTools()};K.$('mmUndo').onclick=()=>{if(!canDraw())return;strokes.pop();redraw();if(room&&!solo)room.send({t:'undo'});syncHost()};K.$('mmClr').onclick=()=>{if(!canDraw())return;strokes=[];redraw();if(room&&!solo)room.send({t:'clr'});syncHost()};
+function syncHost(){if(isHost&&G)G.strokes=strokes.slice()}
+function markTools(){ui.querySelectorAll('.mcol').forEach(b=>b.classList.toggle('on',tool==='pen'&&b.dataset.c===color));ui.querySelectorAll('.msz').forEach(b=>b.classList.toggle('on',+b.dataset.s===size));K.$('mmEr').classList.toggle('on',tool==='er')}markTools();
+K.$('mmF').onsubmit=e=>{e.preventDefault();const t=K.$('mmIn').value.trim();K.$('mmIn').value='';if(!t)return;if(solo){chat({n:'Du',x:t});return}if(isHost)guess(me,t);else room.send({t:'g',x:t})};
+K.$('mmB').onclick=e=>{e.preventDefault();clearInterval(timer);K.leaveRoom();room=null;ui.style.display='none';solo=false;menu()};
+function chat(m){const d=document.createElement('div');d.className='cm'+(m.ok?' ok':m.close?' close':m.sys?' sys':'');d.innerHTML=m.sys?K.esc(m.t):`<b>${K.esc(m.n)}:</b> ${K.esc(m.x)}`;const c=K.$('mmChat');c.appendChild(d);c.scrollTop=1e9;if(m.ok)K.sfx('good')}
+function paint(){const dr=V.drawer===me;K.$('mmInfo').innerHTML=solo?'🎨 Freies Malen':V.phase==='draw'||V.phase==='choose'?`Runde ${V.round}/${V.maxR} · ✏️ ${K.esc(V.names[V.drawer]||'')} ${dr?'(du)':''} malt`:V.phase==='end'?'🏁 Spiel vorbei':'';
+ K.$('mmWord').innerHTML=solo?`Male: <b>${K.esc(myWord)}</b> <button id="mmNext" style="font-size:13px;padding:5px 10px">Neues Wort</button>`:V.phase==='draw'?(dr?`Male: <b>${K.esc(myWord)}</b>`:`<span class="hint">${K.esc(V.hint)}</span>`):V.phase==='reveal'?`Das Wort war: <b>${K.esc(V.word||'')}</b>`:'';
+ if(K.$('mmNext'))K.$('mmNext').onclick=()=>{myWord=K.pick(WORDS);strokes=[];redraw();paint()};
+ K.$('mmTools').style.visibility=canDraw()?'visible':'hidden';K.$('mmF').style.display=solo||dr&&V.phase==='draw'?'none':'flex';
+ const ids=Object.keys(V.sc).sort((a,b)=>V.sc[b]-V.sc[a]);K.$('mmScores').innerHTML=solo?'':ids.map(id=>`<div class="${V.guessed.includes(id)?'gd':''} ${id===V.drawer?'dr':''}"><span>${id===V.drawer?'✏️':V.guessed.includes(id)?'✅':'🤔'} ${K.esc(V.names[id])}${id===me?' (du)':''}</span><b>${V.sc[id]}</b></div>`).join('');
+ const ov=K.$('mmOver');if(V.phase==='choose'&&dr&&choices){ov.style.display='flex';ov.innerHTML=`<div><h2>Wähle ein Wort zum Malen</h2><div class="bar">${choices.map((w,i)=>`<button class="pri" data-w="${i}">${K.esc(w)}</button>`).join('')}</div></div>`;ov.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{const w=choices[+b.dataset.w];choices=null;if(isHost)pick(w);else room.send({t:'pick',w:+b.dataset.w})})}
+ else if(V.phase==='choose'){ov.style.display='flex';ov.innerHTML=`<div><h2>✏️ ${K.esc(V.names[V.drawer]||'')} sucht ein Wort aus …</h2></div>`}
+ else if(V.phase==='reveal'){ov.style.display='flex';ov.innerHTML=`<div><h2>Das Wort war: ${K.esc(V.word||'')}</h2></div>`}
+ else if(V.phase==='end'){const top=ids[0];ov.style.display='flex';ov.innerHTML=`<div><h2>🏆 ${K.esc(V.names[top]||'')} gewinnt!</h2>${ids.map((id,i)=>`<div>${['🥇','🥈','🥉'][i]||i+1+'.'} ${K.esc(V.names[id])} – ${V.sc[id]}</div>`).join('')}${isHost?'<br><button class="pri" id="mmAgain">🔁 Nochmal</button>':''}</div>`;if(K.$('mmAgain'))K.$('mmAgain').onclick=()=>hostStart(room)}
+ else if(V.phase==='wait'){ov.style.display='flex';ov.innerHTML='<div><h2>Gleich geht\'s los …</h2></div>'}else ov.style.display='none'}
+let timer=null;function startTimer(){clearInterval(timer);timer=setInterval(()=>{if(V.left>0)V.left-=.25;K.$('mmTime').textContent=V.phase==='draw'?'⏱ '+Math.ceil(V.left):'';if(V.left<=10&&V.left>0&&V.phase==='draw'&&Math.abs(V.left-Math.round(V.left))<.01)K.sfx('tick');if(isHost&&G)hostTick()},250)}
+/* ---------- Gastgeber-Logik ---------- */
+function hostStart(r){room=r;isHost=true;solo=false;const ps=r.peers.map(p=>({id:p.id,name:p.name}));G={order:K.shuffle(ps.map(p=>p.id)),names:Object.fromEntries(ps.map(p=>[p.id,p.name])),sc:Object.fromEntries(ps.map(p=>[p.id,0])),turn:-1,round:1,maxR:rounds,phase:'wait',strokes:[],used:new Set()};r.send({t:'go'});openUI();nextTurn()}
+function nextTurn(){G.turn++;if(G.turn>=G.order.length){G.turn=0;G.round++}const ids=G.order.filter(id=>room.peers.some(p=>p.id===id));G.order=ids;if(G.round>G.maxR||ids.length<2){G.phase='end';pub();K.sfx('win');return}
+ G.drawer=G.order[G.turn%G.order.length];G.phase='choose';G.word='';G.guessed=[];G.strokes=[];G.left=15;const ch=K.shuffle(WORDS.filter(w=>!G.used.has(w))).slice(0,3);G.ch=ch;
+ if(G.drawer===me){choices=ch}else room.sendTo(G.drawer,{t:'ch',w:ch});G.chooseT=15;broadcast({t:'clr'});strokes=[];redraw();pub()}
+function pick(w){if(G.phase!=='choose')return;G.word=w;G.used.add(w);G.phase='draw';G.left=drawSecs;G.t0=Date.now();G.reveal=[];if(G.drawer===me)myWord=w;else room.sendTo(G.drawer,{t:'word',w});pub();broadcast({t:'sys',x:'✏️ '+G.names[G.drawer]+' malt jetzt!'})}
+function norm(s){return s.toLowerCase().replace(/ä/g,'ae').replace(/ö/g,'oe').replace(/ü/g,'ue').replace(/ß/g,'ss').replace(/[^a-z]/g,'')}
+function lev(a,b){const d=[...Array(b.length+1).keys()];for(let i=1;i<=a.length;i++){let p=d[0];d[0]=i;for(let j=1;j<=b.length;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t}}return d[b.length]}
+function guess(id,t){if(!G)return;const n=G.names[id]||'?';t=String(t).slice(0,40);if(G.phase==='draw'&&id!==G.drawer&&!G.guessed.includes(id)){if(norm(t)===norm(G.word)){G.guessed.push(id);const pts=Math.round(100+300*G.left/drawSecs);G.sc[id]+=pts;G.sc[G.drawer]+=60;broadcast({t:'chat',n,x:'hat das Wort erraten! (+'+pts+')',ok:1});if(G.guessed.length>=G.order.length-1)G.left=Math.min(G.left,1.5);pub();return}if(lev(norm(t),norm(G.word))===1){if(id===me)chat({n:'🔥',x:'„'+t+'“ ist ganz nah dran!',close:1});else room.sendTo(id,{t:'chat',n:'🔥',x:'„'+t+'“ ist ganz nah dran!',close:1})}}
+ if(G.phase==='draw'&&(id===G.drawer||G.guessed.includes(id)))return;broadcast({t:'chat',n,x:t})}
+function broadcast(m){room.send(m);onMsg(m,me,true)}
+function hostTick(){if(G.phase==='choose'){G.chooseT-=.25;if(G.chooseT<=0)pick(G.ch[0])}else if(G.phase==='draw'){G.left-=.25;const el=drawSecs-G.left;const want=Math.floor(el/(drawSecs/(Math.max(1,G.word.length-2))))-1;if(want>G.reveal.length&&G.reveal.length<G.word.length-2&&G.left>8){const idx=K.shuffle([...G.word].map((c,i)=>i).filter(i=>!G.reveal.includes(i)&&G.word[i]!==' '))[0];if(idx!=null){G.reveal.push(idx);pub()}}if(G.left<=0){G.phase='reveal';pub();broadcast({t:'sys',x:'Das Wort war: '+G.word});setTimeout(()=>{if(G&&G.phase==='reveal')nextTurn()},3500)}}if(G.phase!=='end'&&Math.round(G.left*4)%8===0)pub()}
+function pub(){const hint=G.word?[...G.word].map((c,i)=>c===' '?'  ':G.reveal&&G.reveal.includes(i)?c:'_').join(' '):'';const m={t:'st',v:{phase:G.phase,drawer:G.drawer,hint,left:G.left,sc:G.sc,names:G.names,guessed:G.guessed,round:Math.min(G.round,G.maxR),maxR:G.maxR,word:G.phase==='reveal'||G.phase==='end'?G.word:''}};room.send(m);onMsg(m,me,true)}
+/* ---------- Nachrichten ---------- */
+function onMsg(m,from,local){
+ if(m.t==='go'){openUI();return}
+ if(m.t==='st'){const prev=V.phase;V=m.v;if(prev!==V.phase&&V.phase==='draw')K.sfx('blip');if(V.phase==='reveal'&&prev!=='reveal')K.sfx(V.guessed.includes(me)||V.drawer===me?'good':'bad');paint();return}
+ if(m.t==='ch'){choices=m.w;paint();return}if(m.t==='word'){myWord=m.w;paint();return}
+ if(m.t==='chat'){chat(m);return}if(m.t==='sys'){chat({sys:1,t:m.x});return}
+ if(m.t==='ln'&&from!==me){if(m.s||!strokes[m.id])strokes[m.id]={c:m.c,w:m.w,p:[]};const s=strokes[m.id];const p=s.p,add=m.s?m.p:m.p.slice(2);s.p=p.concat(m.s?add:add);redraw();syncHost();return}
+ if(m.t==='clr'&&from!==me){strokes=[];redraw();syncHost();return}if(m.t==='undo'&&from!==me){strokes.pop();redraw();syncHost();return}
+ if(!isHost)return;
+ if(m.t==='g')guess(from,m.x);if(m.t==='pick'&&from===G.drawer&&G.ch)pick(G.ch[m.w|0]||G.ch[0]);if(m.t==='sync')room.sendTo(from,{t:'full',s:strokes})}
+function wire(r){r.on('msg',(m,from)=>{if(m.t==='full'){strokes=m.s;redraw();return}onMsg(m,from,false)});r.on('leave',id=>{if(isHost&&G){chat({sys:1,t:(G.names[id]||'Jemand')+' ist gegangen'});if(id===G.drawer&&G.phase!=='end'){G.left=0;G.chooseT=0}}})}
+function openUI(){K.hideAll();ui.style.display='flex';K.$('mmChat').innerHTML='';strokes=[];redraw();paint();startTimer();if(!isHost&&room)room.send({t:'sync'})}
+const _lobby=K.lobby;K.lobby=o=>{if(K.room&&!K.room._w){K.room._w=1;room=K.room;isHost=K.room.isHost;wire(K.room)}_lobby(o)};
+const st=document.createElement('style');st.textContent=`.mm{position:fixed;inset:0;display:flex;flex-direction:column;padding:max(8px,env(safe-area-inset-top)) 8px max(8px,env(safe-area-inset-bottom));gap:8px;background:linear-gradient(135deg,#ff9f1a,#ff4757 50%,#7d5fff);touch-action:none}
+.mtop{display:flex;justify-content:space-between;align-items:center;font-weight:800}.mtop a{color:#fff;background:rgba(0,0,0,.3);padding:6px 10px;border-radius:10px;text-decoration:none}#mmTime:empty{visibility:hidden}#mmTime{font-size:22px;background:rgba(0,0,0,.3);padding:4px 12px;border-radius:10px;min-width:70px;text-align:center}
+.mmain{flex:1;display:flex;gap:8px;min-height:0}.mleft{flex:1;display:flex;flex-direction:column;gap:6px;min-width:0;align-items:center}.mword{font-size:22px;font-weight:800;background:rgba(0,0,0,.3);padding:6px 14px;border-radius:12px;min-height:40px}.mword .hint{letter-spacing:4px;font-family:monospace;font-size:26px}
+.mcv{position:relative;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;width:100%}.mcv canvas{max-width:100%;max-height:100%;aspect-ratio:4/3;background:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(0,0,0,.4);touch-action:none}
+.mover{position:absolute;inset:0;display:none;align-items:center;justify-content:center;text-align:center;background:rgba(10,12,24,.75);border-radius:14px;color:#fff;font-weight:700}.mover .bar{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.mtools{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}.mtools button{width:36px;height:36px;padding:0;border-radius:50%;border:3px solid rgba(255,255,255,.4);background:rgba(0,0,0,.35);color:#fff;font-size:16px}.mtools button.on{border-color:#fff;transform:scale(1.15)}
+.mright{width:min(300px,34vw);display:flex;flex-direction:column;gap:6px;min-height:0}.mscores{background:rgba(0,0,0,.3);border-radius:12px;padding:6px}.mscores div{display:flex;justify-content:space-between;padding:4px 6px;border-radius:8px}.mscores .gd{background:rgba(46,213,115,.3)}.mscores .dr{background:rgba(255,210,63,.3)}
+.mchat{flex:1;overflow:auto;background:rgba(0,0,0,.3);border-radius:12px;padding:8px;font-size:14px;touch-action:pan-y}.cm{padding:3px 0}.cm.ok{color:#7dff9a;font-weight:800}.cm.close{color:#ffd23f}.cm.sys{color:#cfe;font-style:italic}
+.mform{display:flex;gap:6px}.mform input{flex:1}
+@media(max-width:700px){.mmain{flex-direction:column}.mright{width:100%;max-height:34vh}}`;document.head.appendChild(st);
+function soloStart(){solo=true;room=null;isHost=false;myWord=K.pick(WORDS);V={phase:'solo',drawer:me,sc:{},names:{},guessed:[]};K.hideAll();ui.style.display='flex';strokes=[];redraw();paint()}
+function menu(){K.menu({title:'MONTAGSMALER',emoji:'🎨',sub:'Einer malt, alle anderen raten im Chat. Je schneller du rätst, desto mehr Punkte!',
+ body:`<div class="k-box"><div class="k-set"><span>🔁 Runden</span>${K.chips('mR',[[1,'1'],[2,'2'],[3,'3']],rounds,v=>rounds=v)}</div><div class="k-set"><span>⏱ Malzeit</span>${K.chips('mT',[[60,'60 s'],[80,'80 s'],[120,'120 s']],drawSecs,v=>drawSecs=v)}</div></div>`,
+ solo:[{t:'🎨 Allein üben (Wörter zum Malen)',f:soloStart}],online:{game:'montagsmaler',max:10,min:2,onStart:hostStart,botsNote:'Ab 2 Spielern. Jeder malt pro Runde einmal.'},
+ help:'Tipp: Mit der Zeit werden Buchstaben aufgedeckt. „Ganz nah dran“ bekommst du, wenn nur ein Buchstabe falsch ist.'})}
+menu();
+
+</script>
+</body>
+</html>

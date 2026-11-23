@@ -1,412 +1,466 @@
 [
-  {
-    "id": "blockcraft",
-    "title": "BlockCraft",
-    "emoji": "⛏️",
-    "path": "blockcraft/",
-    "desc": "Bauen, Überleben und Erkunden in einer riesigen Blockwelt – mit Haustieren, Autos, Flugzeugen, Wetter und der gemeinsamen Hauptwelt.",
-    "players": "1–20 Spieler",
-    "tags": [
-      "Online",
-      "Bauen",
-      "Survival"
-    ],
-    "colors": [
-      "#3aa655",
-      "#1f6f8b"
-    ],
-    "badge": ""
-  },
-  {
-    "id": "poker",
-    "title": "Poker",
-    "emoji": "♠️",
-    "path": "poker/",
-    "desc": "Texas Hold'em mit Spielgeld: bluffen, erhöhen, alles setzen. Jeder startet mit 1000 Chips.",
-    "players": "1–8 Spieler",
-    "tags": [
-      "Online",
-      "Karten",
-      "Bots"
-    ],
-    "colors": [
-      "#1e8449",
-      "#145a32"
-    ],
-    "badge": "Neu"
-  },
-  {
-    "id": "stadtmogul",
-    "title": "Stadtmogul",
-    "emoji": "🏙️",
-    "path": "stadtmogul/",
-    "desc": "Straßen kaufen, Häuser und Hotels bauen, Miete kassieren – bis alle anderen pleite sind.",
-    "players": "1–6 Spieler",
-    "tags": [
-      "Online",
-      "Brettspiel",
-      "Bots"
-    ],
-    "colors": [
-      "#c0392b",
-      "#f39c12"
-    ],
-    "badge": "Neu"
-  },
-  {
-    "id": "maumau",
-    "title": "Mau-Mau",
-    "emoji": "🃏",
-    "path": "maumau/",
-    "desc": "Der Kartenklassiker: 7 = zwei ziehen, 8 = aussetzen, Bube = Farbe wünschen.",
-    "players": "1–6 Spieler",
-    "tags": [
-      "Online",
-      "Karten",
-      "Bots"
-    ],
-    "colors": [
-      "#27ae60",
-      "#f1c40f"
-    ],
-    "badge": "Neu"
-  },
-  {
-    "id": "ludo",
-    "title": "Ludo",
-    "emoji": "🎲",
-    "path": "ludo/",
-    "desc": "Würfeln, rauskommen, schlagen! Bring alle vier Figuren ins Ziel (Mensch-ärgere-dich-Regeln).",
-    "players": "1–4 Spieler",
-    "tags": [
-      "Online",
-      "Brettspiel",
-      "Bots"
-    ],
-    "colors": [
-      "#e74c3c",
-      "#3498db"
-    ],
-    "badge": "Neu"
-  },
-  {
-    "id": "stapelmeister",
-    "title": "Stapelmeister",
-    "emoji": "🔢",
-    "path": "stapelmeister/",
-    "desc": "Baut gemeinsam Stapel von 1 bis 12 und leert als Erster euren Vorrat. Joker inklusive!",
-    "players": "1–4 Spieler",
-    "tags": [
-      "Online",
-      "Karten",
-      "Bots"
-    ],
-    "colors": [
-      "#2e86de",
-      "#ff9f1a"
-    ],
-    "badge": "Neu"
-  },
-  {
-    "id": "dame",
-    "title": "Dame",
-    "emoji": "⛀",
-    "path": "dame/",
-    "desc": "Schlagpflicht, Mehrfachsprünge und fliegende Damen – gegen KI, zu zweit oder online.",
-    "players": "1–2 Spieler",
-    "tags": [
-      "Online",
-      "Strategie",
-      "KI"
-    ],
-    "colors": [
-      "#8e5a2b",
-      "#3a2414"
-    ],
-    "badge": "Neu"
-  },
-  {
-    "id": "zellfresser",
-    "title": "Zellfresser",
-    "emoji": "🦠",
-    "path": "zellfresser/",
-    "desc": "Friss Punkte und kleinere Zellen, teile dich, um Gegner zu schnappen, und meide die Viren.",
-    "players": "1–10 Spieler",
-    "tags": [
-      "Online",
-      ".io",
-      "Bots"
-    ],
-    "colors": [
-      "#0bd17a",
-      "#05a6ff"
-    ],
-    "badge": "Neu"
-  },
-  {
-    "id": "revier",
-    "title": "Revier",
-    "emoji": "🟩",
-    "path": "revier/",
-    "desc": "Verlasse dein Gebiet, kreise Land ein und schneide Gegnern die Spur ab.",
-    "players": "1–10 Spieler",
-    "tags": [
-      "Online",
-      ".io",
-      "Bots"
-    ],
-    "colors": [
-      "#2ed573",
-      "#ffb300"
-    ],
-    "badge": "Neu"
-  },
-  {
-    "id": "panzer",
-    "title": "Panzer-Arena",
-    "emoji": "🛡️",
-    "path": "panzer/",
-    "desc": "Twin-Stick-Panzer mit Abprallern, Holzkisten und Power-ups. Erster mit 10 Abschüssen gewinnt.",
-    "players": "1–8 Spieler",
-    "tags": [
-      "Online",
-      "Action",
-      "Bots"
-    ],
-    "colors": [
-      "#ff9f1a",
-      "#c0392b"
-    ],
-    "badge": "Neu"
-  },
-  {
-    "id": "bomben",
-    "title": "Bomben-Arena",
-    "emoji": "💣",
-    "path": "bomben/",
-    "desc": "Bomben legen, Kisten sprengen, Kettenreaktionen auslösen. Wer drei Runden überlebt, gewinnt.",
-    "players": "1–6 Spieler",
-    "tags": [
-      "Online",
-      "Klassiker",
-      "Bots"
-    ],
-    "colors": [
-      "#ffb300",
-      "#e84118"
-    ],
-    "badge": "Neu"
-  },
-  {
-    "id": "airhockey",
-    "title": "Air-Hockey",
-    "emoji": "🏒",
-    "path": "airhockey/",
-    "desc": "Schneller Puck, harte Schläge – gegen die KI, zu zweit an einem iPad oder online.",
-    "players": "1–2 Spieler",
-    "tags": [
-      "Online",
-      "2 Spieler"
-    ],
-    "colors": [
-      "#0abde3",
-      "#ee5253"
-    ],
-    "badge": "Neu"
-  },
-  {
-    "id": "sturm-royale",
-    "title": "Sturm Royale",
-    "emoji": "🪂",
-    "path": "sturm-royale/",
-    "desc": "Battle Royale auf einer Insel: abspringen, Waffen looten, Wände und Rampen bauen und vor dem Sturm fliehen. Online mit Freunden, Bots füllen auf.",
-    "players": "1–16 + Bots",
-    "tags": [
-      "Online",
-      "3D",
-      "Bots"
-    ],
-    "colors": [
-      "#7d3cff",
-      "#ffb300"
-    ],
-    "badge": ""
-  },
-  {
-    "id": "snake-io",
-    "title": "Snake.io",
-    "emoji": "🐍",
-    "path": "snake-io/",
-    "desc": "Friss Leuchtpunkte, werde riesig und lass andere in dich krachen. Skins, Power-ups, Rangliste – online mit Freunden und Bots.",
-    "players": "1–10 Spieler",
-    "tags": [
-      "Online",
-      "Schnell",
-      "Bots"
-    ],
-    "colors": [
-      "#0bd17a",
-      "#05a6ff"
-    ],
-    "badge": ""
-  },
-  {
-    "id": "pizza-profi",
-    "title": "Pizza Profi",
-    "emoji": "🍕",
-    "path": "pizza-profi/",
-    "desc": "Back Pizzas, bediene Kunden, kassier ab und bau dein Restaurant aus – mit Mitarbeitern, Tischen und Drive-in.",
-    "players": "1 Spieler",
-    "tags": [
-      "Idle",
-      "Aufbau"
-    ],
-    "colors": [
-      "#e8471c",
-      "#ffb347"
-    ],
-    "badge": ""
-  },
-  {
-    "id": "goldminer",
-    "title": "Goldminer",
-    "emoji": "⛏️",
-    "path": "goldminer/",
-    "desc": "Schwing den Haken, zieh Gold und Diamanten hoch, spreng Steine weg und erreiche das Ziel. Mit Laden und Online-Duell.",
-    "players": "1–2 Spieler",
-    "tags": [
-      "Klassiker",
-      "Online-Duell"
-    ],
-    "colors": [
-      "#c98a1a",
-      "#5a2f10"
-    ],
-    "badge": ""
-  },
-  {
-    "id": "schach",
-    "title": "Schach",
-    "emoji": "♟️",
-    "path": "schach/",
-    "desc": "Echtes Schach mit allen Regeln, edlen Figuren, Elo hinter dem Namen und Spielanalyse wie bei den Profis – online, zu zweit oder gegen Stockfish.",
-    "players": "1–2 Spieler",
-    "tags": [
-      "Online",
-      "Elo",
-      "Analyse"
-    ],
-    "colors": [
-      "#3b2a1a",
-      "#c9a227"
-    ],
-    "badge": ""
-  },
-  {
-    "id": "turbo-rennen",
-    "title": "Turbo Rennen 3D",
-    "emoji": "🏎️",
-    "path": "turbo-rennen/",
-    "desc": "3D-Rennen auf Sonnenküste, Neon City und Alpenpass. Bots an/aus, Runden, Tageszeit, Regen, Boost-Felder und Nitro – online mit bis zu 8 Freunden.",
-    "players": "1–8 Spieler",
-    "tags": [
-      "Online",
-      "3D",
-      "Rennen"
-    ],
-    "colors": [
-      "#ff3d2e",
-      "#ffb300"
-    ],
-    "badge": ""
-  },
-  {
-    "id": "nachtjagd",
-    "title": "Nachtjagd 3D",
-    "emoji": "🚓",
-    "path": "nachtjagd/",
-    "desc": "Eine Stadt bei Nacht: Autos klauen, Cops abhängen, Läden, Waffen und Karren. Jetzt online mit Freunden in derselben Stadt und einstellbarer Polizei.",
-    "players": "1–8 Spieler",
-    "tags": [
-      "Online",
-      "3D",
-      "Action"
-    ],
-    "colors": [
-      "#1b2a6b",
-      "#ff2e4d"
-    ],
-    "badge": ""
-  },
-  {
-    "id": "iron-gym",
-    "title": "Iron Gym 3D",
-    "emoji": "💪",
-    "path": "iron-gym/",
-    "desc": "Trainiere vom Strichmännchen zum Muskel-Universum: Combos, Haustiere, Rebirths, Boss-Armdrücken und Duelle gegen Freunde im selben Gym.",
-    "players": "1–8 Spieler",
-    "tags": [
-      "Online",
-      "Simulator",
-      "Duelle"
-    ],
-    "colors": [
-      "#ff8a00",
-      "#9b5de5"
-    ],
-    "badge": ""
-  },
-  {
-    "id": "uno",
-    "title": "Uno",
-    "emoji": "🃏",
-    "path": "uno/",
-    "desc": "Das Kartenspiel mit +2, +4, Aussetzen und UNO-Ruf. Online mit Freunden, Bots füllen auf. Hausregeln wie Stapeln einstellbar.",
-    "players": "1–6 Spieler",
-    "tags": [
-      "Online",
-      "Karten",
-      "Bots"
-    ],
-    "colors": [
-      "#e8262d",
-      "#1f8f3a"
-    ],
-    "badge": ""
-  },
-  {
-    "id": "schiffe-versenken",
-    "title": "Schiffe versenken",
-    "emoji": "🚢",
-    "path": "schiffe-versenken/",
-    "desc": "Flotte verstecken, Koordinaten raten, Schiffe versenken. Online gegeneinander oder gegen den schlauen Computer.",
-    "players": "1–2 Spieler",
-    "tags": [
-      "Online",
-      "Taktik"
-    ],
-    "colors": [
-      "#0b4f7c",
-      "#38b6ff"
-    ],
-    "badge": ""
-  },
-  {
-    "id": "vier-gewinnt",
-    "title": "Vier gewinnt",
-    "emoji": "🔴",
-    "path": "vier-gewinnt/",
-    "desc": "Der Klassiker: Bring vier Steine in eine Reihe. Online mit Raum-Code, zu zweit an einem iPad oder gegen den Computer.",
-    "players": "1–2 Spieler",
-    "tags": [
-      "Online",
-      "Denken",
-      "Schnell"
-    ],
-    "colors": [
-      "#2f5bd8",
-      "#ff4d5e"
-    ],
-    "badge": ""
-  }
+ {
+  "id": "blockcraft",
+  "title": "BlockCraft",
+  "emoji": "⛏️",
+  "path": "blockcraft/",
+  "desc": "Bauen, Überleben und Erkunden in einer riesigen Blockwelt – mit Haustieren, Autos, Flugzeugen, Wetter und der gemeinsamen Hauptwelt.",
+  "players": "1–20 Spieler",
+  "tags": [
+   "Online",
+   "Bauen",
+   "Survival"
+  ],
+  "colors": [
+   "#3aa655",
+   "#1f6f8b"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "verraeter",
+  "title": "Verräter im All",
+  "emoji": "🚀",
+  "path": "verraeter/",
+  "desc": "Ein Raumschiff, eine Crew – und Verräter unter euch! Aufgaben erledigen, Leichen melden, im Treffen diskutieren und abstimmen.",
+  "players": "1–10 Spieler",
+  "tags": [
+   "Online",
+   "Bots",
+   "Taktik"
+  ],
+  "colors": [
+   "#ff4757",
+   "#1b2a4a"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "montagsmaler",
+  "title": "Montagsmaler",
+  "emoji": "🎨",
+  "path": "montagsmaler/",
+  "desc": "Einer malt, alle raten im Chat. Je schneller du das Wort errätst, desto mehr Punkte!",
+  "players": "2–10 Spieler",
+  "tags": [
+   "Online",
+   "Malen",
+   "Party"
+  ],
+  "colors": [
+   "#ff9f1a",
+   "#7d5fff"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "quiz",
+  "title": "Quiz-Battle",
+  "emoji": "🧠",
+  "path": "quiz/",
+  "desc": "Über 140 Fragen aus Tieren, Geografie, Mathe, Wissenschaft, Sport und Games. Schnell antworten gibt mehr Punkte!",
+  "players": "1–10 Spieler",
+  "tags": [
+   "Online",
+   "Wissen",
+   "Bots"
+  ],
+  "colors": [
+   "#b15cff",
+   "#4b1d8a"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "poker",
+  "title": "Poker",
+  "emoji": "♠️",
+  "path": "poker/",
+  "desc": "Texas Hold'em mit Spielgeld: bluffen, erhöhen, alles setzen. Jeder startet mit 1000 Chips.",
+  "players": "1–8 Spieler",
+  "tags": [
+   "Online",
+   "Karten",
+   "Bots"
+  ],
+  "colors": [
+   "#1e8449",
+   "#145a32"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "stadtmogul",
+  "title": "Stadtmogul",
+  "emoji": "🏙️",
+  "path": "stadtmogul/",
+  "desc": "Straßen kaufen, Häuser und Hotels bauen, Miete kassieren – bis alle anderen pleite sind.",
+  "players": "1–6 Spieler",
+  "tags": [
+   "Online",
+   "Brettspiel",
+   "Bots"
+  ],
+  "colors": [
+   "#c0392b",
+   "#f39c12"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "maumau",
+  "title": "Mau-Mau",
+  "emoji": "🃏",
+  "path": "maumau/",
+  "desc": "Der Kartenklassiker: 7 = zwei ziehen, 8 = aussetzen, Bube = Farbe wünschen.",
+  "players": "1–6 Spieler",
+  "tags": [
+   "Online",
+   "Karten",
+   "Bots"
+  ],
+  "colors": [
+   "#27ae60",
+   "#f1c40f"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "ludo",
+  "title": "Ludo",
+  "emoji": "🎲",
+  "path": "ludo/",
+  "desc": "Würfeln, rauskommen, schlagen! Bring alle vier Figuren ins Ziel (Mensch-ärgere-dich-Regeln).",
+  "players": "1–4 Spieler",
+  "tags": [
+   "Online",
+   "Brettspiel",
+   "Bots"
+  ],
+  "colors": [
+   "#e74c3c",
+   "#3498db"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "stapelmeister",
+  "title": "Stapelmeister",
+  "emoji": "🔢",
+  "path": "stapelmeister/",
+  "desc": "Baut gemeinsam Stapel von 1 bis 12 und leert als Erster euren Vorrat. Joker inklusive!",
+  "players": "1–4 Spieler",
+  "tags": [
+   "Online",
+   "Karten",
+   "Bots"
+  ],
+  "colors": [
+   "#2e86de",
+   "#ff9f1a"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "dame",
+  "title": "Dame",
+  "emoji": "⛀",
+  "path": "dame/",
+  "desc": "Schlagpflicht, Mehrfachsprünge und fliegende Damen – gegen KI, zu zweit oder online.",
+  "players": "1–2 Spieler",
+  "tags": [
+   "Online",
+   "Strategie",
+   "KI"
+  ],
+  "colors": [
+   "#8e5a2b",
+   "#3a2414"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "zellfresser",
+  "title": "Zellfresser",
+  "emoji": "🦠",
+  "path": "zellfresser/",
+  "desc": "Friss Punkte und kleinere Zellen, teile dich, um Gegner zu schnappen, und meide die Viren.",
+  "players": "1–10 Spieler",
+  "tags": [
+   "Online",
+   ".io",
+   "Bots"
+  ],
+  "colors": [
+   "#0bd17a",
+   "#05a6ff"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "revier",
+  "title": "Revier",
+  "emoji": "🟩",
+  "path": "revier/",
+  "desc": "Verlasse dein Gebiet, kreise Land ein und schneide Gegnern die Spur ab.",
+  "players": "1–10 Spieler",
+  "tags": [
+   "Online",
+   ".io",
+   "Bots"
+  ],
+  "colors": [
+   "#2ed573",
+   "#ffb300"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "panzer",
+  "title": "Panzer-Arena",
+  "emoji": "🛡️",
+  "path": "panzer/",
+  "desc": "Twin-Stick-Panzer mit Abprallern, Holzkisten und Power-ups. Erster mit 10 Abschüssen gewinnt.",
+  "players": "1–8 Spieler",
+  "tags": [
+   "Online",
+   "Action",
+   "Bots"
+  ],
+  "colors": [
+   "#ff9f1a",
+   "#c0392b"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "bomben",
+  "title": "Bomben-Arena",
+  "emoji": "💣",
+  "path": "bomben/",
+  "desc": "Bomben legen, Kisten sprengen, Kettenreaktionen auslösen. Wer drei Runden überlebt, gewinnt.",
+  "players": "1–6 Spieler",
+  "tags": [
+   "Online",
+   "Klassiker",
+   "Bots"
+  ],
+  "colors": [
+   "#ffb300",
+   "#e84118"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "airhockey",
+  "title": "Air-Hockey",
+  "emoji": "🏒",
+  "path": "airhockey/",
+  "desc": "Schneller Puck, harte Schläge – gegen die KI, zu zweit an einem iPad oder online.",
+  "players": "1–2 Spieler",
+  "tags": [
+   "Online",
+   "2 Spieler"
+  ],
+  "colors": [
+   "#0abde3",
+   "#ee5253"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "sturm-royale",
+  "title": "Sturm Royale",
+  "emoji": "🪂",
+  "path": "sturm-royale/",
+  "desc": "Battle Royale auf einer Insel: abspringen, Waffen looten, Wände und Rampen bauen und vor dem Sturm fliehen. Online mit Freunden, Bots füllen auf.",
+  "players": "1–16 + Bots",
+  "tags": [
+   "Online",
+   "3D",
+   "Bots"
+  ],
+  "colors": [
+   "#7d3cff",
+   "#ffb300"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "snake-io",
+  "title": "Snake.io",
+  "emoji": "🐍",
+  "path": "snake-io/",
+  "desc": "Friss Leuchtpunkte, werde riesig und lass andere in dich krachen. Skins, Power-ups, Rangliste – online mit Freunden und Bots.",
+  "players": "1–10 Spieler",
+  "tags": [
+   "Online",
+   "Schnell",
+   "Bots"
+  ],
+  "colors": [
+   "#0bd17a",
+   "#05a6ff"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "pizza-profi",
+  "title": "Pizza Profi",
+  "emoji": "🍕",
+  "path": "pizza-profi/",
+  "desc": "Back Pizzas, bediene Kunden, kassier ab und bau dein Restaurant aus – mit Mitarbeitern, Tischen und Drive-in.",
+  "players": "1 Spieler",
+  "tags": [
+   "Idle",
+   "Aufbau"
+  ],
+  "colors": [
+   "#e8471c",
+   "#ffb347"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "goldminer",
+  "title": "Goldminer",
+  "emoji": "⛏️",
+  "path": "goldminer/",
+  "desc": "Schwing den Haken, zieh Gold und Diamanten hoch, spreng Steine weg und erreiche das Ziel. Mit Laden und Online-Duell.",
+  "players": "1–2 Spieler",
+  "tags": [
+   "Klassiker",
+   "Online-Duell"
+  ],
+  "colors": [
+   "#c98a1a",
+   "#5a2f10"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "schach",
+  "title": "Schach",
+  "emoji": "♟️",
+  "path": "schach/",
+  "desc": "Echtes Schach mit allen Regeln, edlen Figuren, Elo hinter dem Namen und Spielanalyse wie bei den Profis – online, zu zweit oder gegen Stockfish.",
+  "players": "1–2 Spieler",
+  "tags": [
+   "Online",
+   "Elo",
+   "Analyse"
+  ],
+  "colors": [
+   "#3b2a1a",
+   "#c9a227"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "turbo-rennen",
+  "title": "Turbo Rennen 3D",
+  "emoji": "🏎️",
+  "path": "turbo-rennen/",
+  "desc": "3D-Rennen auf Sonnenküste, Neon City und Alpenpass. Bots an/aus, Runden, Tageszeit, Regen, Boost-Felder und Nitro – online mit bis zu 8 Freunden.",
+  "players": "1–8 Spieler",
+  "tags": [
+   "Online",
+   "3D",
+   "Rennen"
+  ],
+  "colors": [
+   "#ff3d2e",
+   "#ffb300"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "nachtjagd",
+  "title": "Nachtjagd 3D",
+  "emoji": "🚓",
+  "path": "nachtjagd/",
+  "desc": "Eine Stadt bei Nacht: Autos klauen, Cops abhängen, Läden, Waffen und Karren. Jetzt online mit Freunden in derselben Stadt und einstellbarer Polizei.",
+  "players": "1–8 Spieler",
+  "tags": [
+   "Online",
+   "3D",
+   "Action"
+  ],
+  "colors": [
+   "#1b2a6b",
+   "#ff2e4d"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "iron-gym",
+  "title": "Iron Gym 3D",
+  "emoji": "💪",
+  "path": "iron-gym/",
+  "desc": "Trainiere vom Strichmännchen zum Muskel-Universum: Combos, Haustiere, Rebirths, Boss-Armdrücken und Duelle gegen Freunde im selben Gym.",
+  "players": "1–8 Spieler",
+  "tags": [
+   "Online",
+   "Simulator",
+   "Duelle"
+  ],
+  "colors": [
+   "#ff8a00",
+   "#9b5de5"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "uno",
+  "title": "Uno",
+  "emoji": "🃏",
+  "path": "uno/",
+  "desc": "Das Kartenspiel mit +2, +4, Aussetzen und UNO-Ruf. Online mit Freunden, Bots füllen auf. Hausregeln wie Stapeln einstellbar.",
+  "players": "1–6 Spieler",
+  "tags": [
+   "Online",
+   "Karten",
+   "Bots"
+  ],
+  "colors": [
+   "#e8262d",
+   "#1f8f3a"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "schiffe-versenken",
+  "title": "Schiffe versenken",
+  "emoji": "🚢",
+  "path": "schiffe-versenken/",
+  "desc": "Flotte verstecken, Koordinaten raten, Schiffe versenken. Online gegeneinander oder gegen den schlauen Computer.",
+  "players": "1–2 Spieler",
+  "tags": [
+   "Online",
+   "Taktik"
+  ],
+  "colors": [
+   "#0b4f7c",
+   "#38b6ff"
+  ],
+  "badge": ""
+ },
+ {
+  "id": "vier-gewinnt",
+  "title": "Vier gewinnt",
+  "emoji": "🔴",
+  "path": "vier-gewinnt/",
+  "desc": "Der Klassiker: Bring vier Steine in eine Reihe. Online mit Raum-Code, zu zweit an einem iPad oder gegen den Computer.",
+  "players": "1–2 Spieler",
+  "tags": [
+   "Online",
+   "Denken",
+   "Schnell"
+  ],
+  "colors": [
+   "#2f5bd8",
+   "#ff4d5e"
+  ],
+  "badge": ""
+ }
 ]
