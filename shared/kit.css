@@ -1,0 +1,33 @@
+/* Gemeinsamer Look für die 2D-Spiele der Spielehalle */
+:root{--a:#3dff9a;--b:#05d9ff;--bg:#0b0e1a;--card:rgba(18,22,40,.9);--line:#2a3354;--txt:#f2f5ff;--mut:#9aa4c4}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;overflow:hidden;background:var(--bg);color:var(--txt);font-family:-apple-system,"Segoe UI",Roboto,sans-serif;user-select:none;-webkit-user-select:none;touch-action:none}
+canvas.game{position:fixed;inset:0;width:100%;height:100%;display:block}
+button{font:inherit;font-weight:800;font-size:15px;border:0;border-radius:12px;padding:11px 14px;cursor:pointer;background:var(--line);color:var(--txt);transition:transform .08s,filter .15s}
+button:active{transform:scale(.96)}button:disabled{opacity:.4;cursor:default}
+button.pri{background:linear-gradient(135deg,var(--a),var(--b));color:#06121a;box-shadow:0 5px 0 rgba(0,0,0,.35),0 0 24px color-mix(in srgb,var(--a) 45%,transparent)}
+button.on{background:var(--a);color:#06121a}
+button.ghost{background:transparent;border:2px solid var(--line)}
+input,select{font:inherit;font-size:16px;padding:11px 12px;border-radius:11px;border:2px solid var(--line);background:#070a14;color:var(--txt);outline:none;width:100%;-webkit-user-select:text;user-select:text}
+.k-scr{position:fixed;inset:0;z-index:20;display:none;justify-content:center;align-items:flex-start;overflow:auto;padding:max(16px,env(safe-area-inset-top)) 14px 34px;background:radial-gradient(900px 520px at 50% -8%,color-mix(in srgb,var(--a) 30%,transparent),transparent 70%),rgba(6,8,16,.9);backdrop-filter:blur(5px);touch-action:pan-y}
+.k-scr.show{display:flex}
+.k-panel{width:100%;max-width:560px;display:flex;flex-direction:column;gap:12px}
+.k-title{margin:6px 0 0;text-align:center;font-size:clamp(38px,10vw,64px);line-height:1.02;font-weight:900;letter-spacing:.5px;background:linear-gradient(90deg,var(--a),var(--b));-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 4px 0 rgba(0,0,0,.4))}
+.k-emoji{text-align:center;font-size:64px;line-height:1;filter:drop-shadow(0 6px 10px rgba(0,0,0,.5));animation:kb 2.4s ease-in-out infinite}
+@keyframes kb{50%{transform:translateY(-6px) rotate(-4deg)}}
+.k-sub{text-align:center;color:var(--mut);font-size:15px;line-height:1.45;margin-top:-4px}
+.k-box{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.k-box h3{margin:0;font-size:13px;color:var(--mut);text-transform:uppercase;letter-spacing:.08em}
+.k-row{display:flex;gap:8px;align-items:center}.k-row>*{flex:1}
+.k-chips{display:flex;gap:6px;flex-wrap:wrap}.k-chips button{flex:1;min-width:64px;padding:9px 8px;font-size:14px}
+.k-set{display:grid;grid-template-columns:112px 1fr;gap:8px;align-items:center;font-size:15px}
+.k-mut{color:var(--mut);font-size:14px;line-height:1.45}
+.k-err{color:#ff7b8b;font-size:14px;min-height:18px}
+.k-code{font-size:44px;font-weight:900;letter-spacing:10px;text-align:center;color:var(--a)}
+.k-back{color:var(--mut);text-decoration:none;background:var(--card);padding:8px 12px;border-radius:10px;align-self:flex-start;font-size:15px}
+.k-plist div{background:#070a14;border-radius:10px;padding:8px 12px;margin-top:6px;display:flex;justify-content:space-between}
+.k-big{font-size:20px;padding:16px}
+.k-toast{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 14px);transform:translateX(-50%);z-index:40;background:rgba(10,12,24,.92);border:1px solid var(--line);padding:10px 16px;border-radius:12px;font-weight:700;pointer-events:none;opacity:0;transition:opacity .25s;max-width:90vw;text-align:center}
+.k-hud{position:fixed;z-index:10;pointer-events:none;font-weight:800;text-shadow:0 2px 4px rgba(0,0,0,.6)}
+.k-btn-float{position:fixed;z-index:12;pointer-events:auto;background:rgba(10,12,24,.6);border:1px solid var(--line);border-radius:12px;padding:8px 12px;font-size:15px}
+.k-table{width:100%;border-collapse:collapse}.k-table td{padding:7px 6px;border-bottom:1px solid var(--line)}.k-table td:last-child{text-align:right;font-variant-numeric:tabular-nums}

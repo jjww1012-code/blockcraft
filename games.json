@@ -15,7 +15,96 @@
       "#3aa655",
       "#1f6f8b"
     ],
-    "badge": "Update 2.1"
+    "badge": ""
+  },
+  {
+    "id": "zellfresser",
+    "title": "Zellfresser",
+    "emoji": "🦠",
+    "path": "zellfresser/",
+    "desc": "Friss Punkte und kleinere Zellen, teile dich, um Gegner zu schnappen, und meide die Viren.",
+    "players": "1–10 Spieler",
+    "tags": [
+      "Online",
+      ".io",
+      "Bots"
+    ],
+    "colors": [
+      "#0bd17a",
+      "#05a6ff"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "revier",
+    "title": "Revier",
+    "emoji": "🟩",
+    "path": "revier/",
+    "desc": "Verlasse dein Gebiet, kreise Land ein und schneide Gegnern die Spur ab.",
+    "players": "1–10 Spieler",
+    "tags": [
+      "Online",
+      ".io",
+      "Bots"
+    ],
+    "colors": [
+      "#2ed573",
+      "#ffb300"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "panzer",
+    "title": "Panzer-Arena",
+    "emoji": "🛡️",
+    "path": "panzer/",
+    "desc": "Twin-Stick-Panzer mit Abprallern, Holzkisten und Power-ups. Erster mit 10 Abschüssen gewinnt.",
+    "players": "1–8 Spieler",
+    "tags": [
+      "Online",
+      "Action",
+      "Bots"
+    ],
+    "colors": [
+      "#ff9f1a",
+      "#c0392b"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "bomben",
+    "title": "Bomben-Arena",
+    "emoji": "💣",
+    "path": "bomben/",
+    "desc": "Bomben legen, Kisten sprengen, Kettenreaktionen auslösen. Wer drei Runden überlebt, gewinnt.",
+    "players": "1–6 Spieler",
+    "tags": [
+      "Online",
+      "Klassiker",
+      "Bots"
+    ],
+    "colors": [
+      "#ffb300",
+      "#e84118"
+    ],
+    "badge": "Neu"
+  },
+  {
+    "id": "airhockey",
+    "title": "Air-Hockey",
+    "emoji": "🏒",
+    "path": "airhockey/",
+    "desc": "Schneller Puck, harte Schläge – gegen die KI, zu zweit an einem iPad oder online.",
+    "players": "1–2 Spieler",
+    "tags": [
+      "Online",
+      "2 Spieler"
+    ],
+    "colors": [
+      "#0abde3",
+      "#ee5253"
+    ],
+    "badge": "Neu"
   },
   {
     "id": "sturm-royale",
@@ -33,7 +122,7 @@
       "#7d3cff",
       "#ffb300"
     ],
-    "badge": "Neu"
+    "badge": ""
   },
   {
     "id": "snake-io",
@@ -51,7 +140,7 @@
       "#0bd17a",
       "#05a6ff"
     ],
-    "badge": "Neu"
+    "badge": ""
   },
   {
     "id": "pizza-profi",
@@ -68,7 +157,7 @@
       "#e8471c",
       "#ffb347"
     ],
-    "badge": "Neu"
+    "badge": ""
   },
   {
     "id": "goldminer",
@@ -85,7 +174,7 @@
       "#c98a1a",
       "#5a2f10"
     ],
-    "badge": "Neu"
+    "badge": ""
   },
   {
     "id": "schach",
