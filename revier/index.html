@@ -15,96 +15,137 @@
 <script src="../shared/kit.js"></script>
 <script>
 'use strict';
-/* REVIER – Gebiet einkreisen (Paper-Stil). Gastgeber simuliert das Raster. */
-const G=90,CS=20,SPD=6.5,TAU=Math.PI*2;
+/* REVIER 2.0 – Gebiet erobern mit freier Lenkung in einer runden Arena. Gastgeber simuliert. */
+const N=320,CS=6,WSZ=N*CS,CX=WSZ/2,CY=WSZ/2,ARENA=WSZ/2-CS*3,SPD=150,TURN=5.2,TAU=Math.PI*2;
 const COL=['#ff4757','#2e86de','#ffd23f','#2ed573','#ff7ad9','#ff9f1a','#7d5fff','#18dcff','#00b894','#e17055','#fd79a8','#a29bfe'];
-const C=K.canvas(1,1,{fill:true}),x=C.x;
-let S=null,room=null,isHost=true,myId=K.uid(),view=null,state='menu',best=K.store.get('rv_best',0),mySkin=K.store.get('rv_skin',0);
-const DX=[1,0,-1,0],DY=[0,1,0,-1];
-function newWorld(){S={own:new Uint8Array(G*G),trail:new Uint8Array(G*G),pl:[],slots:new Map(),chg:[],ev:[]}}
-const idx=(cx,cy)=>cy*G+cx;
-function addPlayer(id,name,skin,bot){const slot=S.pl.length+1;const p={slot,id,name,skin:skin%COL.length,bot,alive:false,kills:0,best:0,dir:0,want:0,cx:0,cy:0,prog:0,tr:[],think:0,plan:[]};S.pl.push(p);S.slots.set(id,p);spawn(p);return p}
-function setOwn(i,v){if(S.own[i]!==v){S.own[i]=v;S.chg.push(i,v)}}
-function spawn(p){for(let tries=0;tries<200;tries++){const cx=4+Math.floor(Math.random()*(G-8)),cy=4+Math.floor(Math.random()*(G-8));let ok=true;for(let y=-3;y<=3&&ok;y++)for(let xx=-3;xx<=3;xx++)if(S.own[idx(cx+xx,cy+y)]){ok=false;break}if(!ok&&tries<150)continue;
- for(let y=-2;y<=2;y++)for(let xx=-2;xx<=2;xx++)setOwn(idx(cx+xx,cy+y),p.slot);p.cx=cx;p.cy=cy;p.prog=0;p.dir=p.want=Math.floor(Math.random()*4);p.tr=[];p.alive=true;p.plan=[];p.wait=p.bot?0:4;return}}
-function kill(p,by){if(!p.alive)return;p.alive=false;for(const i of p.tr)S.trail[i]=0;p.tr=[];for(let i=0;i<G*G;i++)if(S.own[i]===p.slot)setOwn(i,0);S.ev.push(['die',p.cx,p.cy,p.slot,by?by.slot:0]);if(by)by.kills++;
- if(p.bot)setTimeout(()=>{if(S)spawn(p)},3000);if(p.id===myId)died(by?by.name:null);else if(room&&!p.bot)room.send({t:'dead',id:p.id,by:by?by.name:null})}
-function fill(p){// Spur wird Gebiet, eingeschlossene Fläche füllen
- for(const i of p.tr){S.trail[i]=0;setOwn(i,p.slot)}p.tr=[];
- const seen=new Uint8Array(G*G),st=[];for(let i=0;i<G;i++){st.push(i,idx(i,G-1),idx(0,i),idx(G-1,i))}
- while(st.length){const i=st.pop();if(seen[i]||S.own[i]===p.slot)continue;seen[i]=1;const cx=i%G,cy=(i/G)|0;if(cx>0)st.push(i-1);if(cx<G-1)st.push(i+1);if(cy>0)st.push(i-G);if(cy<G-1)st.push(i+G)}
- let n=0;for(let i=0;i<G*G;i++)if(!seen[i]&&S.own[i]!==p.slot){setOwn(i,p.slot);n++}
- for(const q of S.pl)if(q!==p&&q.alive&&!seen[idx(q.cx,q.cy)]&&S.own[idx(q.cx,q.cy)]===p.slot&&q.tr.length===0)kill(q,p);
- S.ev.push(['fill',p.cx,p.cy,p.slot])}
-function stepPlayer(p,dt){if(!p.alive)return;if(p.wait>0){p.wait-=dt;return}if(p.bot)botThink(p);p.prog+=SPD*dt;
- while(p.prog>=1){p.prog-=1;if((p.want+2)%4!==p.dir||p.tr.length===0)p.dir=p.want;
-  const nx=p.cx+DX[p.dir],ny=p.cy+DY[p.dir];if(nx<0||ny<0||nx>=G||ny>=G){kill(p,null);return}
-  p.cx=nx;p.cy=ny;const i=idx(nx,ny);
-  if(S.trail[i]){const o=S.pl[S.trail[i]-1];if(o===p){kill(p,null);return}kill(o,p)}
-  for(const q of S.pl)if(q!==p&&q.alive&&q.cx===nx&&q.cy===ny){const a=countOwn(p),b=countOwn(q);if(a>=b)kill(q,p);else{kill(p,q);return}}
-  if(S.own[i]===p.slot){if(p.tr.length)fill(p)}else{S.trail[i]=p.slot;p.tr.push(i)}}}
-function countOwn(p){let n=0;for(let i=0;i<G*G;i++)if(S.own[i]===p.slot)n++;return n}
-function botThink(p){if(p.prog<.5||p.wt===p.cx+','+p.cy)return;p.wt=p.cx+','+p.cy;const home=S.own[idx(p.cx,p.cy)]===p.slot;
- const safe=d=>{const nx=p.cx+DX[d],ny=p.cy+DY[d];if(nx<1||ny<1||nx>=G-1||ny>=G-1)return false;if(S.trail[idx(nx,ny)]===p.slot)return false;return(d+2)%4!==p.dir||!p.tr.length};
- // Gefahr: Gegner nah an meiner Spur -> heimwärts
- if(home){if(!p.plan.length&&Math.random()<.25){const d=Math.floor(Math.random()*4),a=4+Math.floor(Math.random()*7),b=3+Math.floor(Math.random()*6),turn=Math.random()<.5?1:3;p.plan=[...Array(a).fill(d),...Array(b).fill((d+turn)%4),...Array(a+2).fill((d+2)%4)]}}
- let d=p.plan.length?p.plan.shift():p.want;
- if(!home&&p.tr.length>28){let bd=1e9,bt=null;for(let k=0;k<4;k++){if(!safe(k))continue;const nx=p.cx+DX[k],ny=p.cy+DY[k];let near=1e9;for(let r=1;r<20&&near===1e9;r++)for(let yy=-r;yy<=r;yy+=r)for(let xx=-r;xx<=r;xx++){const X=nx+xx,Y=ny+yy;if(X>=0&&Y>=0&&X<G&&Y<G&&S.own[idx(X,Y)]===p.slot){near=r;break}}if(near<bd){bd=near;bt=k}}if(bt!=null){d=bt;p.plan=[]}}
- if(!safe(d)){const opts=[0,1,2,3].filter(safe);if(opts.length)d=opts[Math.floor(Math.random()*opts.length)];p.plan=[]}p.want=d}
-function sim(dt){for(const p of S.pl)stepPlayer(p,dt);for(const p of S.pl){p.best=Math.max(p.best,countOwnFast(p))}}
-const cnt=new Map();function countOwnFast(p){return cnt.get(p.slot)||0}
-function recount(){cnt.clear();for(let i=0;i<G*G;i++){const v=S.own[i];if(v)cnt.set(v,(cnt.get(v)||0)+1)}}
-/* ---------- Netz ---------- */
-function snap(full){recount();const o={t:'st',pl:S.pl.map(p=>[p.slot,p.id,p.name,p.skin,p.alive?1:0,p.cx,p.cy,+p.prog.toFixed(2),p.dir,cnt.get(p.slot)||0,p.kills,p.tr]),ev:S.ev.splice(0)};
- if(full)o.own=Array.from(S.own);else o.ch=S.chg.splice(0);if(full)S.chg=[];return o}
-let cOwn=new Uint8Array(G*G);
-function applySnap(m){if(m.own)cOwn=Uint8Array.from(m.own);if(m.ch)for(let i=0;i<m.ch.length;i+=2)cOwn[m.ch[i]]=m.ch[i+1];
- const prev=view;view={pl:m.pl.map(q=>({slot:q[0],id:q[1],name:q[2],skin:q[3],alive:q[4],cx:q[5],cy:q[6],prog:q[7],dir:q[8],n:q[9],kills:q[10],tr:q[11]})),t:performance.now()};
- for(const e of m.ev||[]){if(e[0]==='die'){K.burst(e[1]*CS+CS/2,e[2]*CS+CS/2,30,COL[(view.pl.find(p=>p.slot===e[3])||{skin:0}).skin],300);const me=view.pl.find(p=>p.id===myId);if(me&&e[4]===me.slot){K.sfx('coin');K.toast('💀 Erwischt!')}}if(e[0]==='fill'){const me=view.pl.find(p=>p.id===myId);if(me&&e[3]===me.slot)K.sfx('good')}}}
-function wire(){room.on('msg',(m,from)=>{if(m.t==='start'){room=K.room;isHost=false;go()}else if(m.t==='st'&&!isHost)applySnap(m);else if(m.t==='in'&&isHost){const p=S.slots.get(from);if(p&&m.d>=0&&m.d<4){p.want=m.d;p.wait=0}}else if(m.t==='respawn'&&isHost){const p=S.slots.get(from);if(p&&!p.alive)spawn(p)}else if(m.t==='dead'&&m.id===myId&&!isHost)died(m.by)})}
+const RGB=COL.map(h=>{const n=parseInt(h.slice(1),16);return[n>>16,n>>8&255,n&255]});
+const C=K.canvas(1,1,{fill:true}),x=C.x;const stick=K.stick({r:50});
+let S=null,room=null,isHost=true,myId=K.uid(),state='menu',best=K.store.get('rv_best2',0),mySkin=K.store.get('rv_skin',0);
+const inArena=new Uint8Array(N*N);for(let j=0;j<N;j++)for(let i=0;i<N;i++){const dx=(i+.5)*CS-CX,dy=(j+.5)*CS-CY;inArena[j*N+i]=dx*dx+dy*dy<ARENA*ARENA?1:0}
+/* ================= Simulation ================= */
+function newWorld(){S={own:new Uint8Array(N*N),trail:new Uint8Array(N*N),pl:[],by:new Map(),chg:[],ev:[],t:0}}
+function setOwn(i,v){if(S.own[i]!==v){S.own[i]=v;S.chg.push(i,v);if(view)paintCell(i,v)}}
+function addPlayer(id,name,skin,bot){const p={slot:S.pl.length+1,id,name,skin:skin%COL.length,bot,alive:false,kills:0,x:0,y:0,a:0,ta:0,tr:[],sent:0,cell:-1,cnt:0,best:0,born:0,plan:[],think:0,wait:0,ag:bot?.3+Math.random()*.7:0};S.pl.push(p);S.by.set(id,p);spawn(p);return p}
+function spawn(p){let cx,cy;for(let k=0;k<300;k++){const a=Math.random()*TAU,r=Math.sqrt(Math.random())*(ARENA-80);cx=CX+Math.cos(a)*r;cy=CY+Math.sin(a)*r;let ok=true;const ci=cx/CS|0,cj=cy/CS|0;
+  for(let j=-12;j<=12&&ok;j++)for(let i=-12;i<=12;i++){const q=(cj+j)*N+ci+i;if(q<0||q>=N*N||S.own[q]||S.trail[q]){ok=false;break}}if(ok||k>250)break}
+ const ci=cx/CS|0,cj=cy/CS|0;for(let j=-8;j<=8;j++)for(let i=-8;i<=8;i++){if(i*i+j*j>60)continue;const q=(cj+j)*N+ci+i;if(q>=0&&q<N*N&&inArena[q])setOwn(q,p.slot)}
+ p.x=(ci+.5)*CS;p.y=(cj+.5)*CS;p.a=p.ta=Math.atan2(CY-p.y,CX-p.x)+(Math.random()-.5);p.tr=[];p.sent=0;p.cell=cj*N+ci;p.alive=true;p.wait=p.bot?0:1.2;p.plan=[];p.born=S.t;p.best=0;recount()}
+function kill(p,by){if(!p.alive)return;p.alive=false;for(const i of p.tr)if(S.trail[i]===p.slot)S.trail[i]=0;p.tr=[];p.sent=0;for(let i=0;i<N*N;i++)if(S.own[i]===p.slot)setOwn(i,0);
+ S.ev.push(['die',Math.round(p.x),Math.round(p.y),p.skin,by?by.slot:0]);if(by&&by!==p)by.kills++;
+ if(p.bot)setTimeout(()=>{if(S&&S.pl.includes(p))spawn(p)},2500);else{const info={t:'dead',id:p.id,by:by&&by!==p?by.name:'',pct:p.best,kills:p.kills,time:Math.round(S.t-p.born)};if(p.id===myId)died(info);else if(room)room.send(info)}recount()}
+const stack=new Int32Array(N*N),seen=new Uint8Array(N*N);
+function capture(p){const s=p.slot;for(const i of p.tr){S.trail[i]=0;setOwn(i,s)}p.tr=[];p.sent=0;
+ seen.fill(0);let sp=0;for(let i=0;i<N*N;i++)if(!inArena[i]){seen[i]=1;stack[sp++]=i}
+ // Flutfüllung von außen über alles, was nicht mir gehört
+ while(sp){const i=stack[--sp],cx=i%N;const nb=[cx>0?i-1:-1,cx<N-1?i+1:-1,i-N,i+N];for(const q of nb){if(q<0||q>=N*N||seen[q]||S.own[q]===s)continue;seen[q]=1;stack[sp++]=q}}
+ let n=0;const victims=new Set();for(let i=0;i<N*N;i++){if(!seen[i]&&S.own[i]!==s){if(S.trail[i]&&S.trail[i]!==s)victims.add(S.trail[i]);setOwn(i,s);n++}}
+ for(const v of victims){const q=S.pl[v-1];if(q)kill(q,p)}
+ S.ev.push(['cap',Math.round(p.x),Math.round(p.y),p.skin,n]);recount()}
+function enterCell(p,c){const ox=p.cell%N,oy=p.cell/N|0,nx=c%N,ny=c/N|0;
+ if(ox!==nx&&oy!==ny){// diagonal: Zwischenfeld, damit die Spur dicht ist
+  const mid=oy*N+nx;if(!stepCell(p,mid))return}
+ stepCell(p,c)}
+function stepCell(p,c){p.cell=c;if(!inArena[c]){kill(p,null);return false}
+ const t=S.trail[c];if(t){const o=S.pl[t-1];if(o===p){kill(p,null);return false}if(o&&o.alive)kill(o,p)}
+ if(S.own[c]===p.slot){if(p.tr.length)capture(p)}else{S.trail[c]=p.slot;p.tr.push(c)}return true}
+function stepPlayer(p,dt){if(!p.alive)return;if(p.wait>0){p.wait-=dt;return}if(p.bot)botThink(p,dt);
+ let d=Math.atan2(Math.sin(p.ta-p.a),Math.cos(p.ta-p.a));const mt=TURN*dt;p.a+=K.clamp(d,-mt,mt);
+ const sp=SPD*(S.own[p.cell]===p.slot?1:1.0);p.x+=Math.cos(p.a)*sp*dt;p.y+=Math.sin(p.a)*sp*dt;
+ const ci=K.clamp(p.x/CS|0,0,N-1),cj=K.clamp(p.y/CS|0,0,N-1),c=cj*N+ci;if(c!==p.cell)enterCell(p,c)}
+function headOn(){for(let i=0;i<S.pl.length;i++){const a=S.pl[i];if(!a.alive||a.wait>0)continue;for(let j=i+1;j<S.pl.length;j++){const b=S.pl[j];if(!b.alive||b.wait>0)continue;if(Math.hypot(a.x-b.x,a.y-b.y)<CS*2.2){
+  const ai=S.own[a.cell]===a.slot,bi=S.own[b.cell]===b.slot;if(ai&&!bi)kill(b,a);else if(bi&&!ai)kill(a,b);else if(!ai&&!bi){if(a.tr.length>b.tr.length)kill(a,b);else kill(b,a)}}}}}
+const cnt=new Map();function recount(){cnt.clear();for(let i=0;i<N*N;i++){const v=S.own[i];if(v)cnt.set(v,(cnt.get(v)||0)+1)}for(const p of S.pl){p.cnt=cnt.get(p.slot)||0;p.best=Math.max(p.best,p.cnt/TOTAL*100)}}
+let TOTAL=0;for(let i=0;i<N*N;i++)TOTAL+=inArena[i];
+/* ---------- Bots ---------- */
+function nearestOwn(p,maxR){const ci=p.x/CS|0,cj=p.y/CS|0;for(let r=1;r<maxR;r++){let best=null,bd=1e9;for(let j=-r;j<=r;j++)for(let i=-r;i<=r;i++){if(Math.abs(i)!==r&&Math.abs(j)!==r)continue;const q=(cj+j)*N+ci+i;if(q<0||q>=N*N)continue;if(S.own[q]===p.slot){const d=i*i+j*j;if(d<bd){bd=d;best=[(ci+i+.5)*CS,(cj+j+.5)*CS]}}}if(best)return best}return null}
+function dangerAhead(p,a,dist){for(let s=CS;s<dist;s+=CS*.7){const X=p.x+Math.cos(a)*s,Y=p.y+Math.sin(a)*s,ci=X/CS|0,cj=Y/CS|0;if(ci<0||cj<0||ci>=N||cj>=N)return true;const q=cj*N+ci;if(!inArena[q]||S.trail[q]===p.slot)return true}return false}
+function botThink(p,dt){p.think-=dt;const home=S.own[p.cell]===p.slot;
+ // Gefahr: Gegner nahe meiner Spur?
+ let threat=false;if(p.tr.length){for(const q of S.pl){if(q===p||!q.alive)continue;for(let k=0;k<p.tr.length;k+=4){const c=p.tr[k],tx=(c%N+.5)*CS,ty=((c/N|0)+.5)*CS;if(Math.hypot(q.x-tx,q.y-ty)<70+p.tr.length*.3){threat=true;break}}if(threat)break}}
+ const goHome=()=>{const h=nearestOwn(p,60);if(h){p.ta=Math.atan2(h[1]-p.y,h[0]-p.x);p.plan=[]}};
+ if(!home&&(threat||p.tr.length>40+p.ag*90)){goHome()}
+ else if(p.plan.length){const w=p.plan[0];if(Math.hypot(w[0]-p.x,w[1]-p.y)<CS*2)p.plan.shift();else p.ta=Math.atan2(w[1]-p.y,w[0]-p.x);if(!p.plan.length&&!home)goHome()}
+ else if(home&&p.think<=0){p.think=.4+Math.random()*.6;// neue Schleife planen
+  const a=p.a+(Math.random()-.5)*1.6,L1=40+Math.random()*(60+p.ag*120),L2=30+Math.random()*(50+p.ag*90),turn=Math.random()<.5?1:-1;
+  const w1=[p.x+Math.cos(a)*L1,p.y+Math.sin(a)*L1],a2=a+turn*Math.PI/2,w2=[w1[0]+Math.cos(a2)*L2,w1[1]+Math.sin(a2)*L2];p.plan=[w1,w2]}
+ else if(!home&&!p.plan.length)goHome();
+ // Hindernisse (eigene Spur, Rand)
+ if(dangerAhead(p,p.ta,26)){for(const off of[.6,-.6,1.2,-1.2,1.8,-1.8,2.5,-2.5]){if(!dangerAhead(p,p.ta+off,26)){p.ta+=off;break}}p.plan=[]}
+ // Jagd: fremde Spur in der Nähe kreuzen
+ if(p.ag>.6&&Math.random()<dt*2){for(const q of S.pl){if(q===p||!q.alive||!q.tr.length)continue;const c=q.tr[q.tr.length>>1],tx=(c%N+.5)*CS,ty=((c/N|0)+.5)*CS;if(Math.hypot(tx-p.x,ty-p.y)<120&&!dangerAhead(p,Math.atan2(ty-p.y,tx-p.x),Math.hypot(tx-p.x,ty-p.y))){p.ta=Math.atan2(ty-p.y,tx-p.x);p.plan=[];break}}}}
+function sim(dt){S.t+=dt;for(const p of S.pl)stepPlayer(p,dt);headOn();if((S.t*10|0)%5===0)recount()}
+/* ================= Netz ================= */
+function rle(a){const o=[];let v=a[0],n=1;for(let i=1;i<a.length;i++){if(a[i]===v)n++;else{o.push(v,n);v=a[i];n=1}}o.push(v,n);return o}
+function snap(full){const o={t:'st',pl:S.pl.map(p=>{const tr=p.tr.slice(p.sent);const st=p.sent;p.sent=p.tr.length;return[p.slot,p.id,p.name,p.skin,p.alive?1:0,Math.round(p.x*10)/10,Math.round(p.y*10)/10,+p.a.toFixed(2),p.cnt,p.kills,full?0:st,full?p.tr.slice():tr,p.tr.length]}),ev:S.ev.splice(0)};
+ if(full){o.own=rle(S.own);S.chg=[]}else o.ch=S.chg.splice(0);return o}
+let shC=null,view=null,cOwn=new Uint8Array(N*N),cTr=new Map(),img=null,imgC=null,dirty=true;
+function paintCell(i,v){if(!img)return;const k=i*4;if(v){const c=RGB[(view&&view.skinOf[v])??((v-1)%COL.length)];img.data[k]=c[0];img.data[k+1]=c[1];img.data[k+2]=c[2];img.data[k+3]=255}else img.data[k+3]=0;dirty=true}
+function applySnap(m){if(!img){imgC=document.createElement('canvas');imgC.width=imgC.height=N;img=imgC.getContext('2d').createImageData(N,N)}
+ const prevPl=view?view.pl:[];view={pl:m.pl.map(q=>({slot:q[0],id:q[1],name:q[2],skin:q[3],alive:q[4],x:q[5],y:q[6],a:q[7],n:q[8],kills:q[9]})),skinOf:{}};for(const p of view.pl)view.skinOf[p.slot]=p.skin;
+ for(const q of m.pl){let t=cTr.get(q[0])||[];if(q[10]===0&&q[11].length===q[12])t=q[11].slice();else{if(t.length<q[10])t=t.slice();t=t.slice(0,q[10]).concat(q[11])}t.length=Math.min(t.length,q[12]);cTr.set(q[0],t)}
+ for(const p of view.pl){const o=prevPl.find(q=>q.slot===p.slot);p.rx=o&&o.alive&&Math.hypot(o.rx-p.x,o.ry-p.y)<60?o.rx:p.x;p.ry=o&&o.alive&&Math.hypot(o.rx-p.x,o.ry-p.y)<60?o.ry:p.y}
+ if(m.own){let i=0;for(let k=0;k<m.own.length;k+=2){for(let n=0;n<m.own[k+1];n++){cOwn[i]=m.own[k];paintCell(i,m.own[k]);i++}}}
+ if(m.ch)for(let i=0;i<m.ch.length;i+=2){cOwn[m.ch[i]]=m.ch[i+1];paintCell(m.ch[i],m.ch[i+1])}
+ for(const e of m.ev||[]){if(e[0]==='die'){K.burst(e[1],e[2],40,COL[e[3]],360,.9,8);const me=view.pl.find(p=>p.id===myId);if(me&&e[4]===me.slot){K.sfx('coin');K.toast('💀 Erwischt!')}}
+  if(e[0]==='cap'){const me=view.pl.find(p=>p.id===myId);if(me&&COL[e[3]]&&Math.hypot(e[1]-cam.x,e[2]-cam.y)<600){if(me.skin===e[3])K.sfx('good');K.burst(e[1],e[2],Math.min(40,8+e[4]/20|0),COL[e[3]],220,.6,6)}}}}
+function wire(){room.on('msg',(m,from)=>{if(m.t==='start'){room=K.room;isHost=false;cTr.clear();img=null;go()}else if(m.t==='st'&&!isHost)applySnap(m);else if(m.t==='in'&&isHost){const p=S&&S.by.get(from);if(p&&isFinite(+m.a)){p.ta=+m.a;if(p.wait>.3)p.wait=.3}}else if(m.t==='respawn'&&isHost){const p=S&&S.by.get(from);if(p&&!p.alive)spawn(p)}else if(m.t==='dead'&&m.id===myId&&!isHost)died(m)})}
 const _lobby=K.lobby;K.lobby=o=>{if(K.room&&!K.room._w){K.room._w=1;room=K.room;isHost=K.room.isHost;wire()}_lobby(o)};
-/* ---------- Ablauf ---------- */
+/* ================= Ablauf ================= */
 let maxPct=0;
-function died(by){state='dead';K.sfx('lose');const pct=maxPct;if(pct>best){best=pct;K.store.set('rv_best',best)}setTimeout(()=>K.result('ERWISCHT!',`<p style="font-size:18px">${by?'Von <b>'+K.esc(by)+'</b> geschnitten.':'Unfall!'}<br>Größtes Gebiet: <b>${pct.toFixed(1)} %</b><br>Rekord: <b>${best.toFixed(1)} %</b></p>`,[{t:'↻ Nochmal',f:respawn},{t:'Menü',f:toMenu}]),600)}
-function respawn(){K.hideAll();state='play';maxPct=0;if(isHost)spawn(S.slots.get(myId));else room.send({t:'respawn'})}
-function startSolo(){room=null;isHost=true;newWorld();addPlayer(myId,K.name(),mySkin,false);for(let i=0;i<9;i++)addPlayer('b'+i,K.BOTS[i],mySkin+1+i,true);go()}
-function hostStart(r){room=r;isHost=true;newWorld();r.peers.forEach((p,i)=>addPlayer(p.id,p.name,p.skin??i,false));for(let i=0;i<Math.max(3,10-r.peers.length);i++)addPlayer('b'+i,K.BOTS[i],i+5,true);r.send({t:'start'});setTimeout(()=>r.send(snap(true)),300);go()}
-function go(){state='play';maxPct=0;K.hideAll();if(isHost)applySnap(snap(true));K.toast('Verlasse dein Gebiet und kehre zurück, um Land einzukreisen!')}
+function died(info){if(state!=='play')return;state='dead';K.sfx('lose');const pct=Math.max(maxPct,info.pct||0);if(pct>best){best=pct;K.store.set('rv_best2',best)}
+ setTimeout(()=>K.result('ERWISCHT!',`<p style="font-size:17px">${info.by?'Von <b>'+K.esc(info.by)+'</b> erwischt.':'Unfall! Eigene Spur oder Rand berührt.'}</p><table class="k-table"><tr><td>Größtes Gebiet</td><td><b>${pct.toFixed(2)} %</b></td></tr><tr><td>Erwischt</td><td>${info.kills||0}</td></tr><tr><td>Überlebt</td><td>${info.time||0} s</td></tr><tr><td>Rekord</td><td>${best.toFixed(2)} %</td></tr></table>`,[{t:'↻ Nochmal',f:respawn},{t:'Menü',f:toMenu}]),700)}
+function respawn(){K.hideAll();state='play';maxPct=0;if(isHost)spawn(S.by.get(myId));else room.send({t:'respawn'})}
+function startSolo(){room=null;isHost=true;newWorld();cTr.clear();img=null;addPlayer(myId,K.name(),mySkin,false);for(let i=0;i<9;i++)addPlayer('b'+i,K.BOTS[i],mySkin+1+i,true);go()}
+function hostStart(r){room=r;isHost=true;newWorld();cTr.clear();img=null;r.peers.forEach((p,i)=>addPlayer(p.id,p.name,p.skin??i,false));for(let i=0;i<Math.max(3,10-r.peers.length);i++)addPlayer('b'+i,K.BOTS[i],i+5,true);r.send({t:'start'});setTimeout(()=>r.send(snap(true)),300);go()}
+function go(){state='play';maxPct=0;K.hideAll();if(isHost){img=null;view=null;applySnap(snap(true))}K.toast(K.touch?'Ziehen zum Lenken – verlasse dein Gebiet und kehre zurück!':'Maus oder Pfeiltasten lenken – verlasse dein Gebiet und kehre zurück!',3500)}
 function toMenu(){K.leaveRoom();room=null;S=null;view=null;state='menu';menu()}
-/* ---------- Eingabe: Wischen / Tasten ---------- */
-let sw=null,lastDir=-1;function setDir(d){if(d===lastDir&&!isHost)return;lastDir=d;if(isHost){const p=S&&S.slots.get(myId);if(p){p.want=d;p.wait=0}}else if(room)room.send({t:'in',d})}
-addEventListener('keydown',e=>{if(state!=='play')return;const m={arrowright:0,d:0,arrowdown:1,s:1,arrowleft:2,a:2,arrowup:3,w:3}[e.key.toLowerCase()];if(m!=null){setDir(m);e.preventDefault()}});
-addEventListener('pointerdown',e=>{if(K.cur)return;sw={x:e.clientX,y:e.clientY}});
-addEventListener('pointermove',e=>{if(!sw||K.cur)return;const dx=e.clientX-sw.x,dy=e.clientY-sw.y;if(Math.hypot(dx,dy)>22){setDir(Math.abs(dx)>Math.abs(dy)?(dx>0?0:2):(dy>0?1:3));sw={x:e.clientX,y:e.clientY}}});
-addEventListener('pointerup',()=>sw=null);
-/* ---------- Zeichnen ---------- */
-const cam={x:G*CS/2,y:G*CS/2};const shade=(h,a)=>{const n=parseInt(h.slice(1),16);let r=(n>>16)+a,g=(n>>8&255)+a,b=(n&255)+a;r=K.clamp(r,0,255);g=K.clamp(g,0,255);b=K.clamp(b,0,255);return`rgb(${r},${g},${b})`};
-function draw(dt){const W=innerWidth,H=innerHeight;x.setTransform(C.D,0,0,C.D,0,0);x.fillStyle='#1a1f36';x.fillRect(0,0,W,H);if(!view)return;
- const k=Math.min(1,(performance.now()-view.t)/66),slotCol=s=>{const p=view.pl.find(q=>q.slot===s);return p?COL[p.skin]:'#888'};
- const me=view.pl.find(p=>p.id===myId);const pos=p=>{const pr=K.clamp(p.prog+k*SPD*.066,0,1);return{x:(p.cx+DX[p.dir]*pr*0)*CS+CS/2,y:(p.cy)*CS+CS/2,rx:(p.cx+DX[p.dir]*Math.min(pr,.99))*CS+CS/2,ry:(p.cy+DY[p.dir]*Math.min(pr,.99))*CS+CS/2}};
- if(me&&me.alive){const q=pos(me);cam.x+=(q.rx-cam.x)*.15;cam.y+=(q.ry-cam.y)*.15;const pct=me.n/(G*G)*100;maxPct=Math.max(maxPct,pct)}
- const z=Math.min(W,H)/720*1.05;x.translate(W/2,H/2);x.scale(z,z);x.translate(-cam.x,-cam.y);
- x.fillStyle='#f3f5fb';x.fillRect(0,0,G*CS,G*CS);x.fillStyle='#e6e9f3';for(let cy=0;cy<G;cy++)for(let cx=(cy%2);cx<G;cx+=2)x.fillRect(cx*CS,cy*CS,CS,CS);
- const l=Math.max(0,Math.floor((cam.x-W/2/z)/CS)-1),r=Math.min(G,Math.ceil((cam.x+W/2/z)/CS)+1),t=Math.max(0,Math.floor((cam.y-H/2/z)/CS)-1),b=Math.min(G,Math.ceil((cam.y+H/2/z)/CS)+1);
- for(let cy=t;cy<b;cy++)for(let cx=l;cx<r;cx++){const o=cOwn[cy*G+cx];if(!o)continue;const c=slotCol(o);x.fillStyle=shade(c,-50);x.fillRect(cx*CS,cy*CS+4,CS,CS);x.fillStyle=c;x.fillRect(cx*CS,cy*CS,CS,CS)}
- for(const p of view.pl){if(!p.alive)continue;const c=COL[p.skin];x.fillStyle=c+'88';for(const i of p.tr){x.fillRect((i%G)*CS+3,((i/G)|0)*CS+3,CS-6,CS-6)}}
- for(const p of view.pl){if(!p.alive)continue;const q=pos(p),c=COL[p.skin];x.fillStyle=shade(c,-60);K.rr(x,q.rx-CS*.7,q.ry-CS*.7+5,CS*1.4,CS*1.4,7);x.fill();x.fillStyle=shade(c,25);K.rr(x,q.rx-CS*.7,q.ry-CS*.7,CS*1.4,CS*1.4,7);x.fill();
-  x.fillStyle='#fff';x.beginPath();x.arc(q.rx-5+DX[p.dir]*3,q.ry-3+DY[p.dir]*3,4,0,7);x.arc(q.rx+5+DX[p.dir]*3,q.ry-3+DY[p.dir]*3,4,0,7);x.fill();x.fillStyle='#111';x.beginPath();x.arc(q.rx-5+DX[p.dir]*4,q.ry-3+DY[p.dir]*4,2,0,7);x.arc(q.rx+5+DX[p.dir]*4,q.ry-3+DY[p.dir]*4,2,0,7);x.fill();
-  x.font='800 13px system-ui';x.textAlign='center';x.lineWidth=4;x.strokeStyle='rgba(0,0,0,.5)';x.strokeText(p.name,q.rx,q.ry-22);x.fillStyle='#fff';x.fillText(p.name,q.rx,q.ry-22)}
- x.strokeStyle='#2a3354';x.lineWidth=6;x.strokeRect(0,0,G*CS,G*CS);
+/* ================= Eingabe ================= */
+let mouse={x:0,y:0,use:false},keyA=null,lastSent=0,sendT=0;addEventListener('pointermove',e=>{if(e.pointerType==='mouse'){mouse.x=e.clientX;mouse.y=e.clientY;mouse.use=true}});
+function input(dt){if(state!=='play'||!view)return;const me=view.pl.find(p=>p.id===myId);if(!me)return;let a=null;
+ if(stick.on&&(stick.x||stick.y))a=Math.atan2(stick.y,stick.x);else{const k=K.dirKeys();if(k.x||k.y){a=Math.atan2(k.y,k.x);mouse.use=false}else if(mouse.use){const sx=(me.rx-cam.x)*cam.z+innerWidth/2,sy=(me.ry-cam.y)*cam.z+innerHeight/2;if(Math.hypot(mouse.x-sx,mouse.y-sy)>8)a=Math.atan2(mouse.y-sy,mouse.x-sx)}}
+ if(a==null)return;if(isHost){const p=S.by.get(myId);if(p){p.ta=a;if(p.wait>.3)p.wait=.3}}else{sendT-=dt;if(sendT<=0&&Math.abs(a-lastSent)>.01){sendT=.05;lastSent=a;room.send({t:'in',a:+a.toFixed(3)})}}}
+/* ================= Zeichnen ================= */
+const cam={x:CX,y:CY,z:1};const shade=(h,a)=>{const n=parseInt(h.slice(1),16);const f=v=>K.clamp(v+a,0,255)|0;return`rgb(${f(n>>16)},${f(n>>8&255)},${f(n&255)})`};
+function draw(dt,t){const W=innerWidth,H=innerHeight;x.setTransform(C.D,0,0,C.D,0,0);x.fillStyle='#232a44';x.fillRect(0,0,W,H);if(!view)return;
+ const me=view.pl.find(p=>p.id===myId);
+ // Spieler-Positionen glätten (Vorhersage in Blickrichtung)
+ for(const p of view.pl){if(!p.alive)continue;const k=Math.min(1,dt*14);p.rx+=(p.x-p.rx)*k;p.ry+=(p.y-p.ry)*k}
+ if(me&&me.alive){cam.x+=(me.rx-cam.x)*Math.min(1,dt*8);cam.y+=(me.ry-cam.y)*Math.min(1,dt*8);maxPct=Math.max(maxPct,me.n/TOTAL*100)}
+ const zt=Math.min(W,H)/540;cam.z+=(zt-cam.z)*.1;
+ x.translate(W/2,H/2);x.scale(cam.z,cam.z);x.translate(-cam.x,-cam.y);
+ // Arena
+ x.fillStyle='#1a2036';x.beginPath();x.arc(CX,CY+8,ARENA+10,0,TAU);x.fill();x.fillStyle='#eef1f8';x.beginPath();x.arc(CX,CY,ARENA,0,TAU);x.fill();
+ x.save();x.beginPath();x.arc(CX,CY,ARENA,0,TAU);x.clip();x.strokeStyle='rgba(120,135,180,.12)';x.lineWidth=1.5;x.beginPath();const l=cam.x-W/2/cam.z,r=cam.x+W/2/cam.z,tp=cam.y-H/2/cam.z,b=cam.y+H/2/cam.z;
+ for(let g=Math.floor(l/36)*36;g<r;g+=36){x.moveTo(g,tp);x.lineTo(g,b)}for(let g=Math.floor(tp/36)*36;g<b;g+=36){x.moveTo(l,g);x.lineTo(r,g)}x.stroke();x.restore();
+ // Gebiet (3D: dunkle Seite + Oberseite)
+ if(dirty){imgC.getContext('2d').putImageData(img,0,0);if(!shC){shC=document.createElement('canvas');shC.width=shC.height=N}const q=shC.getContext('2d');q.globalCompositeOperation='source-over';q.clearRect(0,0,N,N);q.drawImage(imgC,0,0);q.globalCompositeOperation='source-atop';q.fillStyle='rgba(0,0,0,.42)';q.fillRect(0,0,N,N);dirty=false}x.imageSmoothingEnabled=false;
+ x.drawImage(shC,0,4,WSZ,WSZ);x.drawImage(imgC,0,0,WSZ,WSZ);x.imageSmoothingEnabled=true;
+ // Spuren
+ x.lineCap='round';x.lineJoin='round';
+ for(const p of view.pl){if(!p.alive)continue;const tr=cTr.get(p.slot);if(!tr||!tr.length)continue;const c=COL[p.skin];x.strokeStyle=c;x.globalAlpha=.55;x.lineWidth=CS*1.15;x.beginPath();let px0=null,py0=null;for(let k=0;k<tr.length;k++){const i=tr[k];const X=(i%N+.5)*CS,Y=((i/N|0)+.5)*CS;if(!k)x.moveTo(X,Y);else x.quadraticCurveTo(px0,py0,(px0+X)/2,(py0+Y)/2);px0=X;py0=Y}x.quadraticCurveTo(px0,py0,p.rx,p.ry);x.stroke();x.globalAlpha=1}
+ // Köpfe
+ const hs=CS*2.8;for(const p of view.pl){if(!p.alive)continue;const c=COL[p.skin];x.save();x.translate(p.rx,p.ry);x.fillStyle='rgba(0,0,0,.25)';K.rr(x,-hs/2+2,-hs/2+5,hs,hs,4);x.fill();
+  x.fillStyle=shade(c,-60);K.rr(x,-hs/2,-hs/2+4,hs,hs,4);x.fill();x.fillStyle=shade(c,20);K.rr(x,-hs/2,-hs/2,hs,hs,4);x.fill();x.strokeStyle='rgba(255,255,255,.5)';x.lineWidth=1.2;x.stroke();
+  const ex=Math.cos(p.a)*2.6,ey=Math.sin(p.a)*2.6,px=-Math.sin(p.a)*3.2,py=Math.cos(p.a)*3.2;x.fillStyle='#fff';x.beginPath();x.arc(ex+px,ey+py-1,2.6,0,TAU);x.arc(ex-px,ey-py-1,2.6,0,TAU);x.fill();x.fillStyle='#111';x.beginPath();x.arc(ex*1.3+px,ey*1.3+py-1,1.3,0,TAU);x.arc(ex*1.3-px,ey*1.3-py-1,1.3,0,TAU);x.fill();x.restore();
+  x.font='800 11px system-ui';x.textAlign='center';x.lineWidth=3;x.strokeStyle='rgba(0,0,0,.45)';x.strokeText(p.name,p.rx,p.ry-hs);x.fillStyle='#fff';x.fillText(p.name,p.rx,p.ry-hs)}
  K.partsStep(dt);K.partsDraw(x);
- x.setTransform(C.D,0,0,C.D,0,0);const lb=[...view.pl].filter(p=>p.alive).sort((a,b)=>b.n-a.n).slice(0,8);
- x.fillStyle='rgba(0,0,0,.45)';K.rr(x,W-196,10,186,32+lb.length*21,12);x.fill();x.font='800 15px system-ui';x.textAlign='left';x.fillStyle='#ffd23f';x.fillText('🏆 Gebiet'+(room?' · '+room.code:''),W-184,32);
- lb.forEach((p,i)=>{const pct=p.n/(G*G)*100;x.fillStyle=COL[p.skin];x.fillRect(W-184,44+i*21,pct*1.5+4,16);x.fillStyle='#fff';x.font='700 12px system-ui';x.fillText((i+1)+'. '+p.name.slice(0,10),W-180,57+i*21);x.textAlign='right';x.fillText(pct.toFixed(1)+'%',W-18,57+i*21);x.textAlign='left'});
- if(me&&me.alive){x.fillStyle='rgba(0,0,0,.55)';K.rr(x,8,H-78,230,70,12);x.fill();x.fillStyle='#fff';x.font='900 24px system-ui';x.fillText((me.n/(G*G)*100).toFixed(2)+' %',16,H-22);x.font='600 13px system-ui';x.fillText('💀 '+me.kills+'   Rekord '+best.toFixed(1)+' %',16,H-50)}}
-let snapT=0;K.loop(dt=>{if(isHost&&S&&state!=='menu'){sim(dt);snapT-=dt;if(snapT<=0){snapT=.066;const s=snap(false);if(room)room.send(s);applySnap(s)}}draw(dt)});
-function menu(){K.menu({title:'REVIER',emoji:'🟩',sub:'Kreise Land ein, schneide Gegnern die Spur ab und erobere die Karte!',
- body:`<div class="k-box"><h3>Farbe</h3><div class="k-chips" id="skins">${COL.map((c,i)=>`<button data-v="${i}" style="background:${c};min-width:36px;height:36px;border:3px solid ${i==mySkin?'#fff':'transparent'}"></button>`).join('')}</div><div class="k-mut">Rekord: <b>${best.toFixed(1)} %</b></div></div>`,
- solo:[{t:'▶ Spielen (mit Bots)',f:startSolo}],online:{game:'revier',max:10,info:()=>({skin:mySkin}),onStart:hostStart},help:'Steuern: Wischen oder Pfeiltasten/WASD. Wer deine Spur berührt, erwischt dich – und du stirbst, wenn du deine eigene Spur kreuzt.'});
+ // HUD
+ x.setTransform(C.D,0,0,C.D,0,0);const lb=view.pl.filter(p=>p.alive).sort((a,b)=>b.n-a.n);const top=lb.slice(0,8);
+ x.fillStyle='rgba(10,12,28,.6)';K.rr(x,W-206,10,196,38+top.length*22,14);x.fill();x.font='900 15px system-ui';x.textAlign='left';x.fillStyle='#ffd23f';x.fillText('🏆 Gebiet'+(room?' · '+room.code:''),W-192,32);
+ top.forEach((p,i)=>{const pct=p.n/TOTAL*100;x.fillStyle=COL[p.skin];K.rr(x,W-192,42+i*22,Math.max(6,Math.min(170,pct*4)),18,5);x.fill();x.fillStyle='#fff';x.font=(p.id===myId?'900':'700')+' 12px system-ui';x.textAlign='left';x.fillText((i+1)+'. '+p.name.slice(0,11),W-188,55+i*22);x.textAlign='right';x.fillText(pct.toFixed(1)+'%',W-18,55+i*22)});
+ if(me&&me.alive){const pct=me.n/TOTAL*100;x.textAlign='left';x.fillStyle='rgba(10,12,28,.6)';K.rr(x,10,H-84,236,72,14);x.fill();x.fillStyle=COL[me.skin];x.font='900 28px system-ui';x.fillText(pct.toFixed(2)+' %',22,H-42);x.fillStyle='#c9d3ef';x.font='600 13px system-ui';x.fillText('💀 '+me.kills+'  ·  Platz '+(lb.indexOf(me)+1)+'  ·  Rekord '+best.toFixed(1)+' %',22,H-20)}
+ // Minikarte
+ const mr=58,mx=12+mr,my=12+mr;x.fillStyle='rgba(10,12,28,.65)';x.beginPath();x.arc(mx,my,mr+4,0,TAU);x.fill();x.save();x.beginPath();x.arc(mx,my,mr,0,TAU);x.clip();x.fillStyle='#dfe4f0';x.fillRect(mx-mr,my-mr,mr*2,mr*2);x.drawImage(imgC,mx-mr*WSZ/2/ARENA,my-mr*WSZ/2/ARENA,mr*WSZ/ARENA,mr*WSZ/ARENA);x.restore();
+ if(me&&me.alive){x.fillStyle='#111';x.beginPath();x.arc(mx+(me.rx-CX)/ARENA*mr,my+(me.ry-CY)/ARENA*mr,3.5,0,TAU);x.fill();x.strokeStyle='#fff';x.lineWidth=1.5;x.stroke()}
+ stick.draw(x)}
+let snapT=0;K.loop((dt,t)=>{input(dt);if(isHost&&S&&state!=='menu'){sim(Math.min(dt,.034));snapT-=dt;if(snapT<=0){snapT=.06;const s=snap(false);if(room)room.send(s);applySnap(s)}}draw(dt,t)});
+const mbtn=document.createElement('button');mbtn.className='k-btn-float';mbtn.style.cssText='left:12px;top:142px;display:none';mbtn.textContent='☰';mbtn.onclick=()=>{if(confirm('Zurück ins Menü?'))toMenu()};document.body.appendChild(mbtn);setInterval(()=>mbtn.style.display=state==='play'?'':'none',300);
+function menu(){K.menu({title:'REVIER',emoji:'🟩',sub:'Lenke frei, kreise Land ein, schneide Gegnern die Spur ab und erobere die Arena!',
+ body:`<div class="k-box"><h3>Farbe</h3><div class="k-chips" id="skins">${COL.map((c,i)=>`<button data-v="${i}" style="background:${c};min-width:36px;height:36px;border:3px solid ${i==mySkin?'#fff':'transparent'}"></button>`).join('')}</div><div class="k-mut">Rekord: <b>${best.toFixed(2)} %</b></div></div>`,
+ solo:[{t:'▶ Spielen (mit Bots)',f:startSolo}],online:{game:'revier2',max:10,info:()=>({skin:mySkin}),onStart:hostStart},help:'Steuern: irgendwo auf den Bildschirm tippen und ziehen (Joystick), Maus oder Pfeiltasten. Außerhalb deines Gebiets ziehst du eine Spur – kehrst du heim, wird alles Eingekreiste deins. Wer deine Spur berührt, erwischt dich! Auch die eigene Spur und der Rand sind tödlich.'});
  K.$('skins').onclick=e=>{const b=e.target.closest('button');if(!b)return;mySkin=+b.dataset.v;K.store.set('rv_skin',mySkin);menu()}}
 menu();
 window.RV={get S(){return S},get view(){return view}};
-
 </script>
 </body>
 </html>
