@@ -15,87 +15,153 @@
 <script src="../shared/kit.js"></script>
 <script>
 'use strict';
-/* POKER – Texas Hold'em mit Spielgeld. */
+/* POKER 2.0 – Texas Hold'em mit Spielgeld. Saubere Setzrunden, Nebentöpfe, Bots mit Gewinnchancen-Rechnung. */
 const SU=['♠','♥','♦','♣'],RK=['2','3','4','5','6','7','8','9','10','B','D','K','A'];
-let nBots=4,root=null,raiseTo=0;
 const HN=['Höchste Karte','Paar','Zwei Paare','Drilling','Straße','Flush','Full House','Vierling','Straight Flush'];
-function eval5(cs){const v=cs.map(c=>c.v).sort((a,b)=>b-a),fl=cs.every(c=>c.s===cs[0].s);let u=[...new Set(v)];let st=0;if(u.length===5){if(v[0]-v[4]===4)st=v[0];else if(v[0]===12&&v[1]===3)st=3}
- const cnt={};v.forEach(q=>cnt[q]=(cnt[q]||0)+1);const g=Object.entries(cnt).map(([k,n])=>[n,+k]).sort((a,b)=>b[0]-a[0]||b[1]-a[1]);const ks=g.map(q=>q[1]);
- if(st&&fl)return[8,st];if(g[0][0]===4)return[7,...ks];if(g[0][0]===3&&g[1][0]===2)return[6,...ks];if(fl)return[5,...v];if(st)return[4,st];if(g[0][0]===3)return[3,...ks];if(g[0][0]===2&&g[1][0]===2)return[2,...ks];if(g[0][0]===2)return[1,...ks];return[0,...v]}
+let nBots=K.store.get('pk_bots',4),startChips=K.store.get('pk_chips',1000),root=null,raiseTo=0,lastLog='',lastBoard=0,lastHand=-1,lastWinner=null;
+/* ---------- Bewertung (5–7 Karten) ---------- */
+function strHigh(mask){if((mask&0x100F)===0x100F)var wheel=3;for(let h=12;h>=4;h--){if(((mask>>(h-4))&31)===31)return h}return wheel??-1}
+function evalN(cs){const cnt=new Array(13).fill(0),sc=[0,0,0,0],bySuit=[[],[],[],[]];let mask=0;for(const c of cs){cnt[c.v]++;mask|=1<<c.v;const si=SU.indexOf(c.s);sc[si]++;bySuit[si].push(c.v)}
+ const fs=sc.findIndex(n=>n>=5);if(fs>=0){let fm=0;for(const v of bySuit[fs])fm|=1<<v;const sf=strHigh(fm);if(sf>=0)return[8,sf]}
+ const g=[];for(let v=12;v>=0;v--)if(cnt[v])g.push([cnt[v],v]);g.sort((a,b)=>b[0]-a[0]||b[1]-a[1]);
+ const kick=(ex,n)=>{const o=[];for(let v=12;v>=0&&o.length<n;v--)if(cnt[v]&&!ex.includes(v))o.push(v);return o};
+ if(g[0][0]===4)return[7,g[0][1],...kick([g[0][1]],1)];
+ if(g[0][0]===3&&g[1]&&g[1][0]>=2)return[6,g[0][1],g[1][1]];
+ if(fs>=0)return[5,...bySuit[fs].sort((a,b)=>b-a).slice(0,5)];
+ const st=strHigh(mask);if(st>=0)return[4,st];
+ if(g[0][0]===3)return[3,g[0][1],...kick([g[0][1]],2)];
+ if(g[0][0]===2&&g[1]&&g[1][0]===2)return[2,g[0][1],g[1][1],...kick([g[0][1],g[1][1]],1)];
+ if(g[0][0]===2)return[1,g[0][1],...kick([g[0][1]],3)];return[0,...kick([],5)]}
 const cmp=(a,b)=>{for(let i=0;i<Math.max(a.length,b.length);i++){const d=(a[i]||0)-(b[i]||0);if(d)return d}return 0};
-function best(cs){if(cs.length<5){const v=cs.map(c=>c.v).sort((a,b)=>b-a);return v.length>1&&v[0]===v[1]?[1,v[0]]:[0,...v]}let b=null;const n=cs.length,idx=[0,1,2,3,4];const rec=(st,ch)=>{if(ch.length===5){const e=eval5(ch.map(i=>cs[i]));if(!b||cmp(e,b)>0)b=e;return}for(let i=st;i<n;i++){ch.push(i);rec(i+1,ch);ch.pop()}};rec(0,[]);return b}
+function best5(cs){// Indizes der besten 5 Karten (für die Hervorhebung)
+ let b=null,bi=null;const n=cs.length;for(let a=0;a<n;a++)for(let c=a+1;c<n;c++)for(let d=c+1;d<n;d++)for(let e=d+1;e<n;e++)for(let f=e+1;f<n;f++){const ix=[a,c,d,e,f];const v=evalN(ix.map(i=>cs[i]));if(!b||cmp(v,b)>0){b=v;bi=ix}}return bi||[]}
+/* ---------- Gewinnchance (Monte-Carlo) ---------- */
+function equity(hole,board,nOpp,N=220){if(nOpp<1)return 1;const used=new Set([...hole,...board].map(c=>c.s+c.r));const deck=[];for(const s of SU)RK.forEach((r,v)=>{if(!used.has(s+r))deck.push({s,r,v})});let win=0;
+ for(let t=0;t<N;t++){for(let i=deck.length-1;i>deck.length-1-(nOpp*2+5-board.length)&&i>0;i--){const j=Math.floor(Math.random()*(i+1));[deck[i],deck[j]]=[deck[j],deck[i]]}let k=deck.length-1;const bd=board.slice();while(bd.length<5)bd.push(deck[k--]);const me=evalN([...hole,...bd]);let best=1,ties=1;
+  for(let o=0;o<nOpp;o++){const e=evalN([deck[k--],deck[k--],...bd]);const c=cmp(e,me);if(c>0){best=0;break}if(c===0)ties++}if(best)win+=1/ties}return win/N}
+/* ---------- Spielmotor ---------- */
+const PERS=[{n:'vorsichtig',loose:-.06,agg:.6,bluff:.03},{n:'normal',loose:0,agg:1,bluff:.06},{n:'wild',loose:.08,agg:1.5,bluff:.14},{n:'clever',loose:-.02,agg:1.2,bluff:.09}];
 const E=K.TG({game:'poker',max:8,
- setup(ps){const G={pl:ps.map(p=>({id:p.id,name:p.name,chips:1000,cards:[],bet:0,tot:0,fold:false,allin:false,acted:false,out:false,last:''})),dealer:-1,sb:10,hand:0,log:'Willkommen am Tisch!',winner:null,show:false};newHand(G);return G},
+ setup(ps,o){const G={pl:ps.map((p,i)=>({id:p.id,name:p.name,chips:o.chips||1000,cards:[],bet:0,tot:0,fold:false,allin:false,acted:false,out:false,last:'',bot:!!p.bot,pers:i%PERS.length})),dealer:-1,sb:Math.max(5,Math.round((o.chips||1000)/100)),hand:0,log:'Willkommen am Tisch!',winner:null,show:false,board:[],phase:'bet',start:o.chips||1000};newHand(G);return G},
  actors:G=>G.winner||G.phase!=='bet'?[]:[G.pl[G.turn].id],over:G=>!!G.winner,
- view(G,pid){const me=G.pl.findIndex(p=>p.id===pid);const P=G.pl[me];return{me,pl:G.pl.map((p,i)=>({name:p.name,chips:p.chips,bet:p.bet,fold:p.fold,allin:p.allin,out:p.out,last:p.last,cards:i===me||(G.show&&!p.fold&&!p.out)?p.cards:p.cards.length?[null,null]:[],win:p.win||0,hn:p.hn||''})),board:G.board,pot:G.pl.reduce((s,p)=>s+p.tot,0),turn:G.turn,dealer:G.dealer,phase:G.phase,log:G.log,toCall:P?Math.max(0,G.bet-P.bet):0,minRaise:G.bet+G.minR,bet:G.bet,winner:G.winner,sb:G.sb,mine:P&&P.cards.length===2&&!P.fold?HN[best([...P.cards,...G.board])[0]]:''}},
+ view(G,pid){const me=G.pl.findIndex(p=>p.id===pid);const P=G.pl[me];let mine='';if(P&&P.cards.length===2&&!P.fold)mine=HN[evalN([...P.cards,...G.board])[0]];
+  return{me,hand:G.hand,pl:G.pl.map((p,i)=>({name:p.name,chips:p.chips,bet:p.bet,fold:p.fold,allin:p.allin,out:p.out,last:p.last,cards:i===me||(G.show&&!p.fold&&!p.out)?p.cards:p.cards.length&&!p.fold?[null,null]:[],win:p.win||0,hn:p.hn||'',hl:G.show?p.hl||[]:[]})),board:G.board,bhl:G.bhl||[],pot:G.pl.reduce((s,p)=>s+p.tot,0),turn:G.turn,dealer:G.dealer,phase:G.phase,log:G.log,toCall:P?Math.max(0,G.bet-P.bet):0,minRaise:G.bet+G.minR,bet:G.bet,winner:G.winner,sb:G.sb,mine,street:G.street}},
  act(G,pid,a){if(G.phase!=='bet')return false;const i=G.pl.findIndex(p=>p.id===pid);if(i!==G.turn)return false;const p=G.pl[i],toCall=G.bet-p.bet;
-  if(a.k==='fold'){p.fold=true;p.last='Passt';G.log=p.name+' steigt aus'}
-  else if(a.k==='call'){const amt=Math.min(toCall,p.chips);put(p,amt);p.last=toCall?'Geht mit '+amt:'Schiebt';G.log=p.name+(toCall?' geht mit ('+amt+')':' schiebt')}
-  else if(a.k==='raise'){let to=Math.round(+a.to||0);const max=p.bet+p.chips;if(to>=max)to=max;else if(to<G.bet+G.minR)return false;const amt=to-p.bet;const inc=to-G.bet;put(p,amt);if(inc>=G.minR)G.minR=inc;if(to>G.bet){G.bet=to;G.pl.forEach(q=>{if(q!==p)q.acted=false})}p.last=p.allin?'ALL-IN '+to:'Erhöht auf '+to;G.log=p.name+(p.allin?' geht ALL-IN!':' erhöht auf '+to)}
-  else return false;p.acted=true;advance(G);return true},
- bot(G,pid){const p=G.pl.find(q=>q.id===pid),toCall=G.bet-p.bet;const s=strength(G,p),r=Math.random(),pot=G.pl.reduce((t,q)=>t+q.tot,0);
-  const odds=toCall/(pot+toCall||1);
-  if(s>.82&&r<.7)return{k:'raise',to:Math.min(p.bet+p.chips,G.bet+Math.max(G.minR,Math.round(pot*(.6+r*.6))))};
-  if(s>.62&&r<.35)return{k:'raise',to:G.bet+G.minR};
-  if(toCall===0)return r<.08&&s<.3?{k:'raise',to:G.bet+G.minR}:{k:'call'};
-  if(s>odds+.18||(s>.45&&toCall<=G.sb*4))return{k:'call'};if(r<.05)return{k:'call'};return{k:'fold'}},
- botDelay:G=>800+Math.random()*700,render});
-function strength(G,p){const [a,b]=p.cards;if(!G.board.length){let s=(a.v+b.v)/24*.55;if(a.v===b.v)s+=.35+a.v/40;if(a.s===b.s)s+=.06;if(Math.abs(a.v-b.v)===1)s+=.04;return Math.min(1,s)}const e=best([...p.cards,...G.board]);const boardE=G.board.length>=5?best(G.board):eval5board(G.board);let s=[.2,.48,.66,.76,.84,.88,.94,.98,1][e[0]];if(boardE&&e[0]===boardE[0])s-=.2;if(e[0]===1&&e[1]>=9)s+=.08;return Math.max(.05,s)}
-function eval5board(b){if(b.length<5)return null;return best(b)}
-function put(p,amt){amt=Math.min(amt,p.chips);p.chips-=amt;p.bet+=amt;p.tot+=amt;if(p.chips===0)p.allin=true}
-function newHand(G){const alive=G.pl.filter(p=>p.chips>0);if(alive.length<=1){G.winner=alive[0]?alive[0].name:'?';G.phase='end';G.log=G.winner+' hat alle Chips gewonnen! 🏆';return}
- G.hand++;if(G.hand%6===0)G.sb*=2;const deck=[];for(const s of SU)RK.forEach((r,v)=>deck.push({s,r,v}));K.shuffle(deck);G.deck=deck;G.board=[];G.show=false;G.phase='bet';
- for(const p of G.pl){p.cards=[];p.bet=0;p.tot=0;p.fold=p.chips<=0;p.out=p.chips<=0;p.allin=false;p.acted=false;p.last='';p.win=0;p.hn=''}
- const n=G.pl.length,nx=i=>{do{i=(i+1)%n}while(G.pl[i].out);return i};G.dealer=nx(G.dealer);for(const p of G.pl)if(!p.out)p.cards=[deck.pop(),deck.pop()];
- const sbI=alive.length===2?G.dealer:nx(G.dealer),bbI=nx(sbI);put(G.pl[sbI],G.sb);put(G.pl[bbI],G.sb*2);G.pl[sbI].last='Small Blind';G.pl[bbI].last='Big Blind';G.bet=G.sb*2;G.minR=G.sb*2;G.turn=nx(bbI);G.street=0;G.log='Neue Hand – Blinds '+G.sb+'/'+G.sb*2;skipDone(G)}
-function active(G){return G.pl.filter(p=>!p.fold&&!p.out)}
-function skipDone(G){const n=G.pl.length;for(let k=0;k<n;k++){const p=G.pl[G.turn];if(!p.fold&&!p.out&&!p.allin)return;G.turn=(G.turn+1)%n}}
-function advance(G){const act=active(G);if(act.length===1){award(G,[act[0]]);return}
- const canAct=act.filter(p=>!p.allin);const done=canAct.every(p=>p.acted&&p.bet===G.bet)||canAct.length===0||(canAct.length===1&&canAct[0].bet>=G.bet&&canAct[0].acted!==false&&act.every(p=>p.allin||p.bet===G.bet));
- if(!done){const n=G.pl.length;do{G.turn=(G.turn+1)%n}while(G.pl[G.turn].fold||G.pl[G.turn].out||G.pl[G.turn].allin);return}
- for(const p of G.pl){p.bet=0;p.acted=false}G.bet=0;G.minR=G.sb*2;G.street++;
+  if(a.k==='fold'){if(toCall<=0){a={k:'call'}}else{p.fold=true;p.last='Passt';G.log=p.name+' passt'}}
+  if(a.k==='call'){const amt=Math.min(toCall,p.chips);put(p,amt);p.last=toCall?(p.allin?'ALL-IN':'Geht mit'):'Checkt';G.log=p.name+(toCall?(p.allin?' geht ALL-IN ('+amt+')':' geht mit ('+amt+')'):' checkt')}
+  else if(a.k==='raise'){let to=Math.round(+a.to||0);const max=p.bet+p.chips;if(to>=max)to=max;else if(to<G.bet+G.minR)to=Math.min(max,G.bet+G.minR);if(to<=G.bet){return E.def.act(G,pid,{k:'call'})}
+   const amt=to-p.bet,inc=to-G.bet;put(p,amt);if(inc>=G.minR)G.minR=inc;G.bet=to;G.pl.forEach(q=>{if(q!==p)q.acted=false});p.last=p.allin?'ALL-IN':(G.street===0&&G.bet===to&&inc===to?'Setzt':'Erhöht')+' '+to;G.log=p.name+(p.allin?' geht ALL-IN! ('+to+')':' erhöht auf '+to)}
+  else if(a.k!=='fold')return false;p.acted=true;advance(G);return true},
+ bot(G,pid){return botAct(G,G.pl.find(q=>q.id===pid))},
+ botDelay:G=>700+Math.random()*900,render});
+function put(p,amt){amt=Math.max(0,Math.min(amt,p.chips));p.chips-=amt;p.bet+=amt;p.tot+=amt;if(p.chips===0)p.allin=true}
+const live=G=>G.pl.filter(p=>!p.fold&&!p.out);
+function nextFrom(G,i,ok){const n=G.pl.length;for(let k=1;k<=n;k++){const j=(i+k)%n;if(ok(G.pl[j]))return j}return -1}
+function newHand(G){const alive=G.pl.filter(p=>p.chips>0);if(alive.length<=1){G.winner=alive[0]?alive[0].name:'?';G.phase='end';G.log='🏆 '+G.winner+' hat alle Chips gewonnen!';return}
+ G.hand++;if(G.hand>1&&(G.hand-1)%8===0){G.sb*=2;G.blindUp=true}else G.blindUp=false;
+ const deck=[];for(const s of SU)RK.forEach((r,v)=>deck.push({s,r,v}));K.shuffle(deck);G.deck=deck;G.board=[];G.bhl=[];G.show=false;G.phase='bet';
+ for(const p of G.pl){p.cards=[];p.bet=0;p.tot=0;p.out=p.chips<=0;p.fold=p.out;p.allin=false;p.acted=false;p.last='';p.win=0;p.hn='';p.hl=[]}
+ G.dealer=nextFrom(G,G.dealer,p=>!p.out);for(let r=0;r<2;r++)for(let k=1;k<=G.pl.length;k++){const p=G.pl[(G.dealer+k)%G.pl.length];if(!p.out)p.cards.push(deck.pop())}
+ const sbI=alive.length===2?G.dealer:nextFrom(G,G.dealer,p=>!p.out),bbI=nextFrom(G,sbI,p=>!p.out);put(G.pl[sbI],G.sb);put(G.pl[bbI],G.sb*2);G.pl[sbI].last='Small Blind';G.pl[bbI].last='Big Blind';
+ G.bet=G.sb*2;G.minR=G.sb*2;G.street=0;G.turn=nextFrom(G,bbI,p=>!p.out&&!p.fold&&!p.allin);G.log='Hand #'+G.hand+(G.blindUp?' – Blinds steigen auf ':' – Blinds ')+G.sb+'/'+G.sb*2;
+ if(G.turn<0||roundDone(G))advance(G,true)}
+function roundDone(G){const act=live(G),can=act.filter(p=>!p.allin);if(act.length<=1)return true;if(can.length===0)return true;if(can.length===1&&can[0].bet>=G.bet)return true;return can.every(p=>p.acted&&p.bet===G.bet)}
+function advance(G,force){const act=live(G);if(act.length===1){award(G,[act[0]]);return}
+ if(!force&&!roundDone(G)){G.turn=nextFrom(G,G.turn,p=>!p.fold&&!p.out&&!p.allin);return}
+ // nächste Straße
+ for(const p of G.pl){p.bet=0;p.acted=false;if(p.last&&!p.fold&&!p.allin)p.last=''}G.bet=0;G.minR=G.sb*2;G.street++;
  if(G.street===1)G.board.push(G.deck.pop(),G.deck.pop(),G.deck.pop());else if(G.street<=3)G.board.push(G.deck.pop());
  if(G.street>3){showdown(G);return}
- if(act.filter(p=>!p.allin).length<=1){// alle all-in: Rest aufdecken
-  G.phase='run';G.show=true;E.later(1200,()=>{G.phase='bet';advance(G)});return}
- const n=G.pl.length;G.turn=G.dealer;do{G.turn=(G.turn+1)%n}while(G.pl[G.turn].fold||G.pl[G.turn].out||G.pl[G.turn].allin);G.log+=' · '+['','Flop','Turn','River'][G.street]}
-function showdown(G){G.show=true;const act=active(G);for(const p of act){const e=best([...p.cards,...G.board]);p.ev=e;p.hn=HN[e[0]]}award(G,act)}
-function award(G,cands){// Nebentöpfe
- const levels=[...new Set(G.pl.map(p=>p.tot).filter(t=>t>0))].sort((a,b)=>a-b);let prev=0;const msgs=[];
- for(const L of levels){let pot=0;for(const p of G.pl)pot+=Math.max(0,Math.min(p.tot,L)-prev);const el=cands.filter(p=>p.tot>=L);if(pot>0&&el.length){let w=[el[0]];if(el.length>1&&el[0].ev){w=[];let b=null;for(const p of el){const c=b?cmp(p.ev,b):1;if(c>0){b=p.ev;w=[p]}else if(c===0)w.push(p)}}const share=Math.floor(pot/w.length);w.forEach(p=>{p.chips+=share;p.win+=share})}prev=L}
- const ws=G.pl.filter(p=>p.win>0);G.log=ws.map(p=>p.name+' gewinnt '+p.win+(p.hn?' mit '+p.hn:'')).join(' · ');G.phase='end';
- E.later(G.show?4500:2200,()=>newHand(G))}
-let lastLog='';
-function render(v,send){if(!root){root=document.createElement('div');root.className='tg';document.body.appendChild(root)}root.style.display='flex';if(v.log!==lastLog){lastLog=v.log;K.sfx(/gewinnt/.test(v.log)?'coin':'card')}
- const me=v.pl[v.me],myTurn=v.turn===v.me&&v.phase==='bet'&&!me.fold&&!me.allin;const maxTo=me.bet+me.chips;if(raiseTo<v.minRaise||raiseTo>maxTo)raiseTo=Math.min(maxTo,v.minRaise);
- const n=v.pl.length,seat=(i)=>{const k=(i-v.me+n)%n,a=Math.PI/2+k/n*Math.PI*2;return{l:50+Math.cos(a)*44,t:50+Math.sin(a)*40}};
+ G.log=['','🃏 Flop','🃏 Turn','🃏 River'][G.street];
+ if(act.filter(p=>!p.allin).length<=1){G.phase='run';G.show=true;E.later(1300,()=>{G.phase='bet';advance(G,true)});return}
+ G.turn=nextFrom(G,G.dealer,p=>!p.fold&&!p.out&&!p.allin)}
+function showdown(G){G.show=true;const act=live(G);for(const p of act){const all=[...p.cards,...G.board];p.ev=evalN(all);p.hn=HN[p.ev[0]];p.hl5=best5(all)}award(G,act)}
+function award(G,cands){const levels=[...new Set(G.pl.map(p=>p.tot).filter(t=>t>0))].sort((a,b)=>a-b);let prev=0;
+ for(const L of levels){let pot=0;for(const p of G.pl)pot+=Math.max(0,Math.min(p.tot,L)-prev);const el=cands.filter(p=>p.tot>=L);
+  if(pot>0&&el.length){let w=[el[0]];if(el.length>1&&el[0].ev){w=[];let b=null;for(const p of el){const c=b?cmp(p.ev,b):1;if(c>0){b=p.ev;w=[p]}else if(c===0)w.push(p)}}
+   const share=Math.floor(pot/w.length);w.forEach((p,k)=>{const s=share+(k===0?pot-share*w.length:0);p.chips+=s;p.win+=s})}prev=L}
+ const ws=G.pl.filter(p=>p.win>0);
+ if(G.show){for(const p of ws){if(!p.hl5)continue;p.hl=p.hl5.filter(i=>i<2);G.bhl=[...new Set([...(G.bhl||[]),...p.hl5.filter(i=>i>=2).map(i=>i-2)])]}}
+ G.log=ws.map(p=>'🏆 '+p.name+' gewinnt '+p.win+(p.hn&&G.show?' mit '+p.hn:'')).join(' · ');G.phase='end';
+ for(const p of G.pl)p.last=p.win?'':p.last;
+ E.later(G.show?5200:2400,()=>{for(const p of G.pl)if(p.chips<=0&&!p.out){p.out=true}newHand(G)})}
+/* ---------- Bots ---------- */
+function botAct(G,p){const toCall=Math.max(0,G.bet-p.bet),pot=G.pl.reduce((t,q)=>t+q.tot,0),opp=live(G).length-1,P=PERS[p.pers],r=Math.random();
+ let eq=equity(p.cards,G.board,Math.min(opp,5),G.board.length?220:160);eq+=P.loose;
+ const fair=1/(opp+1),odds=toCall/(pot+toCall||1),stack=p.chips+p.bet;
+ const strong=eq>fair*1.9||eq>.72,good=eq>fair*1.35||eq>.55;
+ const raiseAmt=f=>{let to=G.bet+Math.max(G.minR,Math.round((pot+toCall)*f));return Math.min(stack,to)};
+ if(strong&&r<.75*P.agg)return{k:'raise',to:raiseAmt(.55+Math.random()*.6)};
+ if(good&&toCall===0&&r<.45*P.agg)return{k:'raise',to:raiseAmt(.4+Math.random()*.3)};
+ if(toCall===0){if(r<P.bluff&&G.street>0)return{k:'raise',to:raiseAmt(.5)};return{k:'call'}}
+ if(eq>odds+.06||(toCall<=G.sb*2&&eq>fair*.7))return{k:'call'};
+ if(r<P.bluff*.5&&toCall<stack*.15)return{k:'raise',to:raiseAmt(.7)};return{k:'fold'}}
+/* ---------- Darstellung ---------- */
+function card(c,cls='',hl=false){if(!c)return`<div class="pc back ${cls}"></div>`;const red=c.s==='♥'||c.s==='♦';return`<div class="pc ${red?'red':''} ${cls} ${hl?'hl':''}"><b>${c.r}</b><i>${c.s}</i><em>${c.s}</em></div>`}
+function chips(n){const cols=['#e74c3c','#2e86de','#2ecc71','#111','#9b59b6','#f39c12'];let h='',k=Math.min(6,Math.max(1,Math.ceil(Math.log10(n+1)*1.6)));for(let i=0;i<k;i++)h+=`<span style="background:${cols[(n+i)%cols.length]};bottom:${i*3}px"></span>`;return`<span class="chs">${h}</span>`}
+function render(v,send){if(!root){root=document.createElement('div');root.className='tg pk';document.body.appendChild(root)}root.style.display='flex';
+ if(v.log!==lastLog){lastLog=v.log;K.sfx(/gewinnt/.test(v.log)?'coin':/ALL-IN|erhöht/.test(v.log)?'pop':'card')}
+ const newHand=v.hand!==lastHand;if(newHand){lastHand=v.hand;lastBoard=0}const dealt=v.board.length;const newCards=dealt>lastBoard?lastBoard:dealt;lastBoard=dealt;
+ const me=v.pl[v.me],myTurn=v.turn===v.me&&v.phase==='bet'&&!me.fold&&!me.allin&&!me.out;const maxTo=me.bet+me.chips;const minTo=Math.min(v.minRaise,maxTo);if(raiseTo<minTo||raiseTo>maxTo)raiseTo=minTo;
+ const n=v.pl.length,seat=i=>{const k=(i-v.me+n)%n,a=Math.PI/2+k/n*Math.PI*2;return{l:50+Math.cos(a)*45,t:50+Math.sin(a)*43,bl:50+Math.cos(a)*27,bt:50+Math.sin(a)*24}};
+ const seats=v.pl.map((p,i)=>{if(i===v.me)return'';const s=seat(i);return`<div class="pseat ${v.turn===i&&v.phase==='bet'?'turn':''} ${p.fold?'fold':''} ${p.out?'out':''} ${p.win?'won':''}" style="left:${s.l}%;top:${s.t}%">
+  <div class="pcs">${p.cards.map((c,k)=>card(c,'sm'+(newHand?' deal':''),p.hl.includes(k))).join('')}</div>
+  <div class="pava">${K.esc(p.name[0]||'?')}</div><div class="pinfo"><div class="pname">${i===v.dealer?'<span class="dbtn">D</span>':''}${K.esc(p.name)}</div><div class="pchips">${p.out?'raus':'🪙 '+p.chips}</div></div>
+  <div class="plast">${p.win?'🏆 +'+p.win:K.esc(p.hn||p.last)}</div></div>${p.bet?`<div class="pbet" style="left:${s.bl}%;top:${s.bt}%">${chips(p.bet)}${p.bet}</div>`:''}`}).join('');
+ const ms=seat(v.me);
+ let acts='';
+ if(v.winner)acts=`<div class="msg" style="color:#ffd23f">🏆 ${K.esc(v.winner)} gewinnt das Turnier!</div>${E.host?'<div class="bar"><button class="pri k-big" id="pAgain">🔁 Neues Turnier</button></div>':''}`;
+ else if(myTurn){acts=`<div class="bar"><button id="pF" class="pfold">${v.toCall?'Passen':'Passen'}</button><button id="pC" class="pcall">${v.toCall?(v.toCall>=me.chips?'ALL-IN '+me.chips:'Mitgehen '+v.toCall):'Checken'}</button>${maxTo>v.bet?`<button id="pRB" class="praise">${raiseTo>=maxTo?'ALL-IN '+maxTo:(v.bet?'Erhöhen auf ':'Setzen ')+raiseTo}</button>`:''}</div>
+  ${maxTo>v.bet&&maxTo>minTo?`<div class="bar prow"><input type="range" id="pR" min="${minTo}" max="${maxTo}" step="${v.sb}" value="${raiseTo}"><button data-q="m">Min</button><button data-q="h">½ Pot</button><button data-q="P">Pot</button><button data-q="a">All-in</button></div>`:''}`}
+ else if(me.out)acts=`<div class="msg">Du bist raus – die anderen spielen weiter.</div>${E.host&&!E.room?'<div class="bar"><button class="pri" id="pAgain">🔁 Neues Turnier</button></div>':''}`;
+ else acts=`<div class="msg pwait">${v.phase==='bet'?'⏳ '+K.esc(v.pl[v.turn].name)+' ist dran …':''}</div>`;
  root.innerHTML=`<div class="top"><a href="#" id="pB">← Menü</a><b>♠ POKER</b><span>Blinds ${v.sb}/${v.sb*2}${E.room?' · '+E.room.code:''}</span></div>
- <div class="ptable"><div class="pfelt"></div>
- <div class="pcenter"><div class="ppot">💰 ${v.pot}</div><div style="display:flex;gap:6px;justify-content:center">${[0,1,2,3,4].map(i=>v.board[i]?K.cardHTML(v.board[i]):'<div class="kc ghost"></div>').join('')}</div></div>
- ${v.pl.map((p,i)=>{const s=seat(i);return`<div class="pseat ${v.turn===i&&v.phase==='bet'?'turn':''} ${p.fold||p.out?'fold':''} ${p.win?'won':''}" style="left:${s.l}%;top:${s.t}%"><div class="pcards">${p.cards.map(c=>K.cardHTML(c,'mini')).join('')}</div><div class="pname">${i===v.dealer?'<span class="dbtn">D</span>':''}${K.esc(p.name)}</div><div class="pchips">🪙 ${p.chips}</div>${p.bet?`<div class="pbet">${p.bet}</div>`:''}<div class="plast">${p.win?'🏆 +'+p.win:K.esc(p.hn||p.last)}</div></div>`}).join('')}</div>
- <div class="msg">${K.esc(v.log)}</div>${v.mine?`<div class="k-mut" style="color:#cfe">Du hast: <b>${v.mine}</b></div>`:''}
- ${v.winner?`<div class="msg" style="color:#ffd23f">🏆 ${K.esc(v.winner)} gewinnt das Turnier!</div>${E.host?'<button class="pri" id="pAgain">🔁 Neues Turnier</button>':''}`:myTurn?`<div class="bar"><button id="pF" style="background:#c0392b">Passen</button><button id="pC" class="pri">${v.toCall?'Mitgehen '+Math.min(v.toCall,me.chips):'Schieben'}</button></div>
- ${maxTo>v.bet?`<div class="bar" style="align-items:center"><input type="range" id="pR" min="${Math.min(v.minRaise,maxTo)}" max="${maxTo}" step="${v.sb}" value="${raiseTo}" style="width:180px"><button id="pRB" style="background:#e67e22">${raiseTo>=maxTo?'ALL-IN':'Erhöhen auf '+raiseTo}</button></div>
- <div class="bar"><button data-q="2">2× BB</button><button data-q="p">½ Pot</button><button data-q="P">Pot</button><button data-q="a">All-in</button></div>`:''}`:me.out?'<div class="msg">Du bist raus – schau zu oder starte neu.</div>':''}`;
- K.$('pB').onclick=e=>{e.preventDefault();E.stop();root.style.display='none';menu()};if(K.$('pAgain'))K.$('pAgain').onclick=()=>E.room?E.start(E.players):E.solo(nBots);
- if(!myTurn)return;K.$('pF').onclick=()=>send({k:'fold'});K.$('pC').onclick=()=>send({k:'call'});
- if(K.$('pR')){K.$('pR').oninput=e=>{raiseTo=+e.target.value;K.$('pRB').textContent=raiseTo>=maxTo?'ALL-IN':'Erhöhen auf '+raiseTo};K.$('pRB').onclick=()=>send({k:'raise',to:raiseTo});
-  root.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{const q=b.dataset.q;let to=q==='2'?v.bet+v.sb*4:q==='p'?v.bet+Math.round(v.pot/2):q==='P'?v.bet+v.pot:maxTo;to=Math.max(v.minRaise,Math.min(maxTo,to));send({k:'raise',to})})}}
-const st=document.createElement('style');st.textContent=`.ptable{position:relative;width:min(820px,96vw);height:min(460px,58vh);margin:6px 0}
-.pfelt{position:absolute;inset:8% 6%;border-radius:200px;background:radial-gradient(ellipse at center,#2a8a5a,#145a37 70%);border:14px solid #5a3418;box-shadow:inset 0 0 40px rgba(0,0,0,.5),0 10px 30px rgba(0,0,0,.5)}
-.pcenter{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);text-align:center}.ppot{font-weight:900;font-size:20px;margin-bottom:8px}
-.kc.ghost{background:rgba(0,0,0,.18);box-shadow:none;border:2px dashed rgba(255,255,255,.2)}
-.pseat{position:absolute;transform:translate(-50%,-50%);background:rgba(10,14,24,.78);border-radius:14px;padding:6px 10px;text-align:center;min-width:104px;border:2px solid transparent;font-size:13px}
-.pseat.turn{border-color:#ffd23f;box-shadow:0 0 18px rgba(255,210,63,.5)}.pseat.fold{opacity:.45}.pseat.won{border-color:#2ed573;box-shadow:0 0 22px rgba(46,213,115,.6)}
-.pcards{display:flex;gap:3px;justify-content:center;margin-top:-30px}.kc.mini{width:38px;height:54px}.kc.mini .km{font-size:18px}.kc.mini .kr{font-size:10px}.kc.mini .kb{display:none}
-.pname{font-weight:800}.pchips{color:#ffd23f}.pbet{position:absolute;left:50%;bottom:-20px;transform:translateX(-50%);background:#ffd23f;color:#3a2200;border-radius:10px;padding:1px 8px;font-weight:800}
-.plast{font-size:11px;color:#cfe;min-height:14px}.dbtn{background:#fff;color:#111;border-radius:50%;padding:0 5px;margin-right:4px;font-size:11px}`;document.head.appendChild(st);
-function menu(){if(root)root.style.display='none';K.menu({title:'POKER',emoji:'♠️',sub:'Texas Hold\'em mit Spielgeld. Jeder startet mit 1000 Chips – wer am Ende alles hat, gewinnt.',
- body:`<div class="k-box"><div class="k-set"><span>🤖 Gegner</span>${K.chips('pkB',[[1,'1'],[3,'3'],[4,'4'],[6,'6']],nBots,v=>nBots=v)}</div><div class="k-mut">Nur Spielgeld – kein echtes Geld.</div></div>`,
- solo:[{t:'▶ An den Tisch',f:()=>E.solo(nBots)}],online:{game:'poker',max:8,onStart:r=>E.hostStart(r,Math.max(0,Math.min(nBots,8-r.peers.length)))},
- help:'Blätter: Paar < Zwei Paare < Drilling < Straße < Flush < Full House < Vierling < Straight Flush. Die Blinds verdoppeln sich alle 6 Hände.'})}
-menu();window.PK={eval5,best,cmp};
-
+ <div class="ptable"><div class="prail"><div class="pfelt"><div class="plogo">♠ ♥ HOLD'EM ♦ ♣</div></div></div>
+  <div class="pcenter"><div class="ppot">${v.pot?chips(v.pot)+' Pot: '+v.pot:''}</div><div class="pboard">${[0,1,2,3,4].map(i=>v.board[i]?card(v.board[i],i>=newCards?'deal d'+(i-newCards):'',v.bhl.includes(i)):'<div class="pc ghost"></div>').join('')}</div><div class="plog">${K.esc(v.log)}</div></div>
+  ${seats}${me.bet?`<div class="pbet" style="left:${ms.bl}%;top:${ms.bt}%">${chips(me.bet)}${me.bet}</div>`:''}</div>
+ <div class="phero ${myTurn?'turn':''} ${me.win?'won':''}"><div class="pcs big">${me.cards.map((c,k)=>card(c,newHand?'deal d'+k:'',me.hl.includes(k))).join('')}</div>
+  <div><div class="pname">${v.me===v.dealer?'<span class="dbtn">D</span>':''}${K.esc(me.name)} <small>(du)</small></div><div class="pchips">🪙 ${me.chips}</div><div class="plast">${me.win?'🏆 +'+me.win:me.fold?'Gepasst':v.mine?'Du hast: <b>'+v.mine+'</b>':''}</div></div></div>
+ ${acts}`;
+ K.$('pB').onclick=e=>{e.preventDefault();if(!v.winner&&!me.out&&!confirm('Tisch verlassen?'))return;E.stop();root.style.display='none';menu()};
+ if(K.$('pAgain'))K.$('pAgain').onclick=()=>{lastHand=-1;E.room?E.start(E.players,{chips:startChips}):E.solo(nBots,{chips:startChips})};
+ if(v.winner&&v.winner!==lastWinner){lastWinner=v.winner;K.sfx(v.winner===me.name?'win':'lose')}if(!v.winner)lastWinner=null;
+ if(!myTurn)return;K.sfx('blip');K.$('pF').onclick=()=>send({k:'fold'});K.$('pC').onclick=()=>send({k:'call'});
+ if(K.$('pRB'))K.$('pRB').onclick=()=>send({k:'raise',to:raiseTo});
+ if(K.$('pR')){K.$('pR').oninput=e=>{raiseTo=+e.target.value;K.$('pRB').textContent=raiseTo>=maxTo?'ALL-IN '+maxTo:(v.bet?'Erhöhen auf ':'Setzen ')+raiseTo};
+  root.querySelectorAll('[data-q]').forEach(b=>b.onclick=()=>{const q=b.dataset.q;let to=q==='m'?minTo:q==='h'?v.bet+Math.round((v.pot+v.toCall)/2):q==='P'?v.bet+v.pot+v.toCall:maxTo;raiseTo=Math.max(minTo,Math.min(maxTo,to));K.$('pR').value=raiseTo;K.$('pRB').textContent=raiseTo>=maxTo?'ALL-IN '+maxTo:(v.bet?'Erhöhen auf ':'Setzen ')+raiseTo;K.sfx('click')})}}
+const st=document.createElement('style');st.textContent=`.tg.pk{background:radial-gradient(1100px 700px at 50% 35%,#24324f,#0b1020 75%);gap:6px}
+.ptable{position:relative;width:min(900px,96vw);height:min(470px,52vh,62vw);margin:8px 0 0;flex:0 0 auto}
+.prail{position:absolute;inset:6% 4%;border-radius:999px;background:linear-gradient(180deg,#5a341a,#2e1a0b);box-shadow:0 18px 40px rgba(0,0,0,.6),inset 0 3px 0 rgba(255,255,255,.18);padding:16px}
+.pfelt{width:100%;height:100%;border-radius:999px;background:radial-gradient(ellipse at 50% 40%,#2fa36a,#18774a 55%,#0e5234);box-shadow:inset 0 0 50px rgba(0,0,0,.55);display:grid;place-items:center;border:3px solid #c9a24a}
+.plogo{position:absolute;bottom:22%;font-weight:900;letter-spacing:.3em;color:rgba(255,255,255,.12);font-size:clamp(10px,2vw,18px)}
+.pcenter{position:absolute;left:50%;top:47%;transform:translate(-50%,-50%);text-align:center;display:flex;flex-direction:column;align-items:center;gap:6px;width:70%}
+.ppot{font-weight:900;font-size:clamp(14px,2.2vw,19px);min-height:22px;display:flex;align-items:center;gap:8px;text-shadow:0 2px 3px rgba(0,0,0,.6)}
+.pboard{display:flex;gap:clamp(3px,.8vw,8px);justify-content:center}.plog{font-weight:800;font-size:clamp(11px,1.8vw,15px);color:#fff7cc;text-shadow:0 2px 3px #000;min-height:18px}
+.pc{position:relative;width:clamp(36px,7vw,62px);aspect-ratio:5/7;border-radius:7px;background:linear-gradient(160deg,#fff,#eef1f7);color:#15171c;box-shadow:0 4px 10px rgba(0,0,0,.4);flex:0 0 auto;font-weight:900;transition:transform .2s}
+.pc.red{color:#d81e2b}.pc b{position:absolute;left:5px;top:3px;font-size:clamp(11px,2vw,17px);line-height:1}.pc i{position:absolute;left:5px;top:clamp(14px,2.6vw,22px);font-style:normal;font-size:clamp(9px,1.6vw,13px)}.pc em{position:absolute;right:4px;bottom:1px;font-style:normal;font-size:clamp(18px,3.6vw,32px);line-height:1}
+.pc.back{background:repeating-linear-gradient(45deg,#b3262e 0 5px,#8e1d24 5px 10px);border:3px solid #fff}.pc.ghost{background:rgba(0,0,0,.16);box-shadow:none;border:2px dashed rgba(255,255,255,.18)}
+.pc.hl{transform:translateY(-6px);box-shadow:0 0 0 3px #ffd23f,0 0 18px rgba(255,210,63,.8)}
+.pc.deal{animation:pdeal .45s cubic-bezier(.2,1.3,.4,1) backwards}.pc.d1{animation-delay:.12s}.pc.d2{animation-delay:.24s}@keyframes pdeal{from{transform:translateY(-40px) rotate(-20deg) scale(.6);opacity:0}}
+.pc.sm{width:clamp(26px,4.4vw,40px)}.pc.sm em{font-size:clamp(12px,2.2vw,20px)}.pc.sm i{display:none}.pc.sm b{font-size:clamp(9px,1.5vw,13px)}
+.pseat{position:absolute;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;min-width:92px;transition:opacity .3s}
+.pcs{display:flex;gap:2px;justify-content:center;margin-bottom:-10px;z-index:1}.pcs.big{margin:0;gap:6px}.pcs.big .pc{width:clamp(54px,11vw,74px)}
+.pava{width:clamp(34px,5vw,44px);height:clamp(34px,5vw,44px);border-radius:50%;background:linear-gradient(135deg,#7d5fff,#2e86de);display:grid;place-items:center;font-weight:900;font-size:18px;border:3px solid #1a2033;position:relative;z-index:2;margin-bottom:-8px}
+.pinfo{background:rgba(8,12,24,.9);border-radius:10px;padding:8px 10px 4px;text-align:center;border:2px solid #2a3354;min-width:92px}
+.pseat.turn .pinfo,.phero.turn{border-color:#ffd23f;box-shadow:0 0 18px rgba(255,210,63,.55)}.pseat.turn .pava{border-color:#ffd23f}
+.pseat.fold{opacity:.45}.pseat.out{opacity:.25}.pseat.won .pinfo,.phero.won{border-color:#2ed573;box-shadow:0 0 22px rgba(46,213,115,.7)}
+.pname{font-weight:800;font-size:13px;white-space:nowrap}.pname small{color:#ffd23f}.pchips{color:#ffd23f;font-weight:800;font-size:13px}.plast{font-size:11px;color:#cfe;min-height:14px;font-weight:700;text-shadow:0 1px 2px #000}
+.pbet{position:absolute;transform:translate(-50%,-50%);background:rgba(0,0,0,.55);border-radius:99px;padding:2px 9px 2px 4px;font-weight:900;font-size:13px;display:flex;align-items:center;gap:5px;color:#ffe680}
+.chs{position:relative;display:inline-block;width:16px;height:22px}.chs span{position:absolute;left:0;width:16px;height:6px;border-radius:50%;border:1.5px dashed rgba(255,255,255,.85);box-sizing:border-box}
+.dbtn{background:#fff;color:#111;border-radius:50%;display:inline-grid;place-items:center;width:16px;height:16px;margin-right:4px;font-size:10px;font-weight:900}
+.phero{display:flex;gap:14px;align-items:center;background:rgba(8,12,24,.85);border:2px solid #2a3354;border-radius:16px;padding:8px 16px;transition:.2s}
+.bar button.pfold{background:#c0392b}.bar button.pcall{background:linear-gradient(135deg,#2ed573,#18a058);color:#06210f}.bar button.praise{background:linear-gradient(135deg,#ffb300,#ff6a00);color:#2a1300}
+.tg.pk .bar button{min-width:96px;font-size:16px;padding:13px 16px}.prow input{width:min(260px,60vw);accent-color:#ffb300}.prow button{min-width:0!important;font-size:13px!important;padding:8px 10px!important}
+.pwait{color:#9aa4c4;font-size:15px}`;document.head.appendChild(st);
+function menu(){if(root)root.style.display='none';K.menu({title:'POKER',emoji:'♠️',sub:'Texas Hold\'em mit Spielgeld. Wer am Ende alle Chips hat, gewinnt das Turnier.',
+ body:`<div class="k-box"><div class="k-set"><span>🤖 Gegner</span>${K.chips('pkB',[[1,'1'],[3,'3'],[5,'5'],[7,'7']],nBots,v=>{nBots=v;K.store.set('pk_bots',v)})}</div><div class="k-set"><span>🪙 Start-Chips</span>${K.chips('pkC',[[500,'500'],[1000,'1000'],[2500,'2500']],startChips,v=>{startChips=v;K.store.set('pk_chips',v)})}</div><div class="k-mut">Nur Spielgeld – kein echtes Geld. Die Blinds verdoppeln sich alle 8 Hände.</div></div>`,
+ solo:[{t:'▶ An den Tisch',f:()=>{lastHand=-1;E.solo(nBots,{chips:startChips})}}],online:{game:'poker',max:8,onStart:r=>{lastHand=-1;E.hostStart(r,Math.max(0,Math.min(nBots,8-r.peers.length)),{chips:startChips})}},
+ help:'Rangfolge: Höchste Karte < Paar < Zwei Paare < Drilling < Straße < Flush < Full House < Vierling < Straight Flush. Beim Showdown leuchten die 5 Gewinnkarten gelb.'})}
+menu();window.PK={evalN,cmp,equity,best5,E};
 </script>
 </body>
 </html>

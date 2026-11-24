@@ -15,93 +15,212 @@
 <script src="../shared/kit.js"></script>
 <script>
 'use strict';
-/* STADTMOGUL – Straßen kaufen, Häuser bauen, Miete kassieren. Wer pleite ist, fliegt raus. */
-const GC={br:'#8d5524',hb:'#7fd3ff',pi:'#ff6ec7',or:'#ff9f1a',rt:'#ff4757',ge:'#ffd23f',gr:'#2ed573',db:'#2e5cde'};
+/* STADTMOGUL 2.0 – Straßen kaufen, Häuser bauen, handeln, Hypotheken, Miete kassieren. */
+const GC={br:'#8d5524',hb:'#5fc8f5',pi:'#e84fb0',or:'#ff9f1a',rt:'#e63946',ge:'#f4c20d',gr:'#22a559',db:'#2a4fd6'};
 const F=[{t:'go',n:'LOS'},{t:'st',n:'Pfützenweg',g:'br',p:60,r:2},{t:'cm',n:'Gemeinschaft'},{t:'st',n:'Kaugummigasse',g:'br',p:60,r:4},{t:'tax',n:'Einkommensteuer',a:200},{t:'rr',n:'Südbahnhof',p:200},{t:'st',n:'Lakritzallee',g:'hb',p:100,r:6},{t:'ch',n:'Ereignis'},{t:'st',n:'Brausepulverweg',g:'hb',p:100,r:6},{t:'st',n:'Zuckerwattestr.',g:'hb',p:120,r:8},
- {t:'jail',n:'Gefängnis / Besuch'},{t:'st',n:'Skaterpark',g:'pi',p:140,r:10},{t:'ut',n:'Stromwerk',p:150},{t:'st',n:'Pixelplatz',g:'pi',p:140,r:10},{t:'st',n:'Gamerstraße',g:'pi',p:160,r:12},{t:'rr',n:'Westbahnhof',p:200},{t:'st',n:'Pizzaweg',g:'or',p:180,r:14},{t:'cm',n:'Gemeinschaft'},{t:'st',n:'Dönerdamm',g:'or',p:180,r:14},{t:'st',n:'Burgerboulevard',g:'or',p:200,r:16},
+ {t:'jail',n:'Gefängnis'},{t:'st',n:'Skaterpark',g:'pi',p:140,r:10},{t:'ut',n:'Stromwerk',p:150},{t:'st',n:'Pixelplatz',g:'pi',p:140,r:10},{t:'st',n:'Gamerstraße',g:'pi',p:160,r:12},{t:'rr',n:'Westbahnhof',p:200},{t:'st',n:'Pizzaweg',g:'or',p:180,r:14},{t:'cm',n:'Gemeinschaft'},{t:'st',n:'Dönerdamm',g:'or',p:180,r:14},{t:'st',n:'Burgerboulevard',g:'or',p:200,r:16},
  {t:'park',n:'Frei Parken'},{t:'st',n:'Raketenring',g:'rt',p:220,r:18},{t:'ch',n:'Ereignis'},{t:'st',n:'Mondstraße',g:'rt',p:220,r:18},{t:'st',n:'Sternenallee',g:'rt',p:240,r:20},{t:'rr',n:'Nordbahnhof',p:200},{t:'st',n:'Goldgräberweg',g:'ge',p:260,r:22},{t:'st',n:'Diamantgasse',g:'ge',p:260,r:22},{t:'ut',n:'Wasserwerk',p:150},{t:'st',n:'Schatzinsel',g:'ge',p:280,r:24},
  {t:'gojail',n:'Ab ins Gefängnis'},{t:'st',n:'Drachenhöhe',g:'gr',p:300,r:26},{t:'st',n:'Zauberwald',g:'gr',p:300,r:26},{t:'cm',n:'Gemeinschaft'},{t:'st',n:'Einhornwiese',g:'gr',p:320,r:28},{t:'rr',n:'Ostbahnhof',p:200},{t:'ch',n:'Ereignis'},{t:'st',n:'Schlossallee 2.0',g:'db',p:350,r:35},{t:'tax',n:'Luxussteuer',a:100},{t:'st',n:'Königspalast',g:'db',p:400,r:50}];
-const HM=[1,5,15,45,62,78];// Mietfaktor je Häuserzahl (5=Hotel)
+const HM=[1,5,15,45,62,78];
 const hc=f=>f.p<=120?50:f.p<=200?100:f.p<=280?150:200;
-const CARDS=[['Du findest 50 € im Sofa',50],['Geburtstag! Alle zahlen dir je 20 €','bd'],['Handy-Reparatur: zahle 80 €',-80],['Gewinnst den Schul-Wettbewerb: +100 €',100],['Rücke vor bis LOS','go'],['Gehe ins Gefängnis!','jail'],['Zahle 15 € Bußgeld fürs Zuspätkommen',-15],['Zinsen: +60 €',60],['Gehe 3 Felder zurück','b3'],['Rücke vor zum Nordbahnhof','rr25'],['Rücke vor zum Königspalast','to39'],['Renovierung: 25 € pro Haus','rep'],['Lotto-Gewinn: +150 €',150],['Kino-Abend: zahle 30 €',-30]];
-let nBots=3,rounds=30,root=null,showBuild=false,info=-1;
+const buyable=f=>['st','rr','ut'].includes(f.t);
+const ICON={go:'🏁',jail:'🚔',park:'🅿️',gojail:'👮',rr:'🚂',ch:'❓',cm:'🎁',tax:'💸'};
+const TOK=['🚗','🎩','🐶','🚀','⛵','🦖'],PCOL=['#ff4757','#2e86de','#f4c20d','#2ed573','#b15cff','#ff9f1a'];
+const CH=[['Rücke vor bis LOS (+200 €)','go'],['Gehe ins Gefängnis!','jail'],['Gehe 3 Felder zurück','b3'],['Rücke vor zum Nordbahnhof','to25'],['Rücke vor zum Königspalast','to39'],['Rücke vor zum Skaterpark','to11'],['Bank zahlt dir Dividende: +50 €',50],['Renovierung: 25 € pro Haus, 100 € pro Hotel','rep'],['Strafzettel: zahle 15 €',-15],['Du gewinnst ein Kreuzworträtsel: +100 €',100],['Du wirst Klassensprecher – zahle jedem 50 €','each'],['Frei aus dem Gefängnis – Karte behalten!','free']];
+const CM=[['Du findest 50 € im Sofa',50],['Geburtstag! Alle zahlen dir je 10 €','bd'],['Handy-Reparatur: zahle 100 €',-100],['Schul-Wettbewerb gewonnen: +100 €',100],['Rücke vor bis LOS (+200 €)','go'],['Gehe ins Gefängnis!','jail'],['Zinsen: +20 €',20],['Lotto-Gewinn: +200 €',200],['Kino-Abend: zahle 50 €',-50],['Steuerrückzahlung: +20 €',20],['Straßenfest: 40 € pro Haus, 115 € pro Hotel','rep2'],['Frei aus dem Gefängnis – Karte behalten!','free']];
+let nBots=K.store.get('sm_bots',3),rounds=K.store.get('sm_rounds',30),parkPot=K.store.get('sm_park',true),root=null,modal=null,curV=null,curSend=null,lastLog='',lastWin=null,shownPos=[],animT=null,diceAnim=0,lastDice='',tradeDraft=null;
 const E=K.TG({game:'mogul',max:6,
- setup(ps,o){return{pl:ps.map((p,i)=>({id:p.id,name:p.name,c:K.COLS[i],pos:0,m:1500,jail:0,out:false,dbl:0})),own:{},hs:{},turn:0,phase:'roll',dice:[0,0],log:'Willkommen in Stadtmogul! Jeder startet mit 1500 €.',winner:null,round:1,maxR:o.rounds||rounds,card:null}},
- actors:G=>G.winner?[]:[G.pl[G.turn].id],over:G=>!!G.winner,
- view(G,pid){const me=G.pl.findIndex(p=>p.id===pid);return{me,pl:G.pl,own:G.own,hs:G.hs,turn:G.turn,phase:G.phase,dice:G.dice,log:G.log,winner:G.winner,round:G.round,maxR:G.maxR,card:G.card,build:me===G.turn?buildable(G,G.pl[me]):[]}},
- act(G,pid,a){const i=G.pl.findIndex(p=>p.id===pid);if(i!==G.turn||G.winner)return false;const p=G.pl[i];
+ setup(ps,o){return{pl:ps.map((p,i)=>({id:p.id,name:p.name,c:PCOL[i%6],tok:TOK[i%6],pos:0,m:1500,jail:0,out:false,dbl:0,free:0,bot:!!p.bot})),own:{},hs:{},mort:{},turn:0,phase:'roll',dice:[0,0],rolls:0,log:['Willkommen in Stadtmogul! Jeder startet mit 1500 €.'],winner:null,round:1,maxR:o.rounds||30,card:null,pot:0,park:o.park!==false,offer:null}},
+ actors:G=>G.winner?[]:G.phase==='trade'?[G.pl[G.offer.to].id]:[G.pl[G.turn].id],over:G=>!!G.winner,
+ view(G,pid){const me=G.pl.findIndex(p=>p.id===pid);return{me,pl:G.pl,own:G.own,hs:G.hs,mort:G.mort,turn:G.turn,phase:G.phase,dice:G.dice,rolls:G.rolls,log:G.log,winner:G.winner,round:G.round,maxR:G.maxR,card:G.card,pot:G.pot,park:G.park,offer:G.offer,build:me>=0?buildable(G,me):[]}},
+ act(G,pid,a){const i=G.pl.findIndex(p=>p.id===pid);if(G.winner||i<0)return false;const p=G.pl[i];
+  if(G.phase==='trade'){if(i!==G.offer.to)return false;if(a.k==='accept'){doTrade(G);log(G,'🤝 '+p.name+' nimmt den Handel an!')}else if(a.k==='decline')log(G,'❌ '+p.name+' lehnt den Handel ab.');else return false;G.phase=G.offer.back;G.offer=null;return true}
+  // Verwaltung (nur am Zug, außer beim Kaufen-Dialog)
+  if(a.k==='build'||a.k==='sell'||a.k==='mort'||a.k==='unmort'){if(i!==G.turn)return false;return manage(G,i,a)}
+  if(i!==G.turn)return false;
   if(a.k==='roll'&&G.phase==='roll'){roll(G,p);return true}
-  if(a.k==='buy'&&G.phase==='buy'){const f=F[p.pos];if(p.m<f.p)return false;p.m-=f.p;G.own[p.pos]=i;G.log=p.name+' kauft '+f.n+' für '+f.p+' € 🏠';afterLand(G,p);return true}
-  if(a.k==='skip'&&G.phase==='buy'){G.log=p.name+' kauft '+F[p.pos].n+' nicht';afterLand(G,p);return true}
-  if(a.k==='bail'&&G.phase==='roll'&&p.jail){if(p.m<50)return false;p.m-=50;p.jail=0;G.log=p.name+' zahlt 50 € Kaution';return true}
-  if(a.k==='build'&&(G.phase==='end'||G.phase==='roll')){const f=F[a.f];if(!buildable(G,p).includes(a.f))return false;p.m-=hc(f);G.hs[a.f]=(G.hs[a.f]||0)+1;G.log=p.name+' baut '+(G.hs[a.f]===5?'ein Hotel 🏨':'ein Haus 🏠')+' auf '+f.n;return true}
+  if(a.k==='buy'&&G.phase==='buy'){const f=F[p.pos];if(p.m<f.p)return false;p.m-=f.p;G.own[p.pos]=i;log(G,p.name+' kauft '+f.n+' für '+f.p+' € 🏠');finishLand(G,p);return true}
+  if(a.k==='skip'&&G.phase==='buy'){log(G,p.name+' kauft '+F[p.pos].n+' nicht');finishLand(G,p);return true}
+  if(a.k==='bail'&&G.phase==='roll'&&p.jail){if(p.free){p.free--;p.jail=0;log(G,p.name+' nutzt die Frei-Karte 🎫')}else{if(p.m<50)return false;p.m-=50;toPot(G,50);p.jail=0;log(G,p.name+' zahlt 50 € Kaution')}return true}
+  if(a.k==='offer'&&(G.phase==='roll'||G.phase==='end')){const o=sanitizeOffer(G,i,a.o);if(!o)return false;G.offer=Object.assign(o,{from:i,back:G.phase});G.phase='trade';log(G,'🤝 '+p.name+' bietet '+G.pl[o.to].name+' einen Handel an');return true}
   if(a.k==='end'&&G.phase==='end'){nextP(G);return true}return false},
- bot(G,pid){const i=G.pl.findIndex(p=>p.id===pid),p=G.pl[i];if(G.phase==='roll'){if(p.jail&&p.m>400)return{k:'bail'};return{k:'roll'}}
-  if(G.phase==='buy'){const f=F[p.pos];const completes=f.g&&F.every((q,k)=>q.g!==f.g||k===p.pos||G.own[k]===i);return p.m-f.p>=(completes?20:120)?{k:'buy'}:{k:'skip'}}
-  if(G.phase==='end'){const b=buildable(G,p).filter(k=>p.m-hc(F[k])>250);if(b.length){b.sort((x,y)=>(G.hs[x]||0)-(G.hs[y]||0));return{k:'build',f:b[0]}}return{k:'end'}}return null},
- botDelay:G=>G.phase==='roll'?900:700,render});
-function buildable(G,p){const i=G.pl.indexOf(p);const out=[];F.forEach((f,k)=>{if(f.t!=='st'||G.own[k]!==i||(G.hs[k]||0)>=5||p.m<hc(f))return;const grp=F.map((q,j)=>[q,j]).filter(([q])=>q.g===f.g);if(!grp.every(([,j])=>G.own[j]===i))return;const mn=Math.min(...grp.map(([,j])=>G.hs[j]||0));if((G.hs[k]||0)>mn)return;out.push(k)});return out}
-function roll(G,p){const d=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)];G.dice=d;const dbl=d[0]===d[1];G.card=null;
- if(p.jail){if(dbl){p.jail=0;G.log=p.name+' würfelt einen Pasch und kommt frei!';move(G,p,d[0]+d[1]);p.dbl=0;G.again=false;return}p.jail++;if(p.jail>3){p.m-=50;p.jail=0;G.log=p.name+' zahlt 50 € und kommt frei';move(G,p,d[0]+d[1]);return}G.log=p.name+' sitzt im Gefängnis ('+(p.jail-1)+'/3)';G.phase='end';G.again=false;return}
- if(dbl){p.dbl++;if(p.dbl>=3){toJail(G,p);G.log=p.name+' würfelt 3× Pasch – ab ins Gefängnis!';return}}else p.dbl=0;G.again=dbl;G.log=p.name+' würfelt '+d[0]+' + '+d[1]+(dbl?' (Pasch!)':'');move(G,p,d[0]+d[1])}
-function move(G,p,n){const old=p.pos;p.pos=(p.pos+n+40)%40;if(n>0&&p.pos<old){p.m+=200;G.log+=' · über LOS +200 €'}land(G,p)}
+ bot(G,pid){const i=G.pl.findIndex(p=>p.id===pid),p=G.pl[i];
+  if(G.phase==='trade')return botJudge(G)?{k:'accept'}:{k:'decline'};
+  if(G.phase==='roll'){if(p.jail&&(p.free||(p.m>500&&G.round<20)))return{k:'bail'};const um=Object.keys(G.mort).map(Number).filter(k=>G.own[k]===i&&p.m-F[k].p*.55>400);if(um.length)return{k:'unmort',f:um[0]};return{k:'roll'}}
+  if(G.phase==='buy'){const f=F[p.pos];const completes=f.g&&F.every((q,k)=>q.g!==f.g||k===p.pos||G.own[k]===i);return p.m-f.p>=(completes?0:G.round>12?60:110)?{k:'buy'}:{k:'skip'}}
+  if(G.phase==='end'){const b=buildable(G,i).filter(k=>p.m-hc(F[k])>220);if(b.length){b.sort((x,y)=>(G.hs[x]||0)-(G.hs[y]||0)||F[y].p-F[x].p);return{k:'build',f:b[0]}}
+   const um=Object.keys(G.mort).map(Number).filter(k=>G.own[k]===i&&p.m-F[k].p*.55>350);if(um.length)return{k:'unmort',f:um[0]};return{k:'end'}}return null},
+ botDelay:G=>G.phase==='roll'?1000:G.phase==='trade'?1400:800,render});
+function log(G,t){G.log.push(t);if(G.log.length>7)G.log.shift()}
+function toPot(G,n){if(G.park)G.pot+=n}
+function group(g){return F.map((q,j)=>[q,j]).filter(([q])=>q.g===g).map(([,j])=>j)}
+function buildable(G,i){const p=G.pl[i];const out=[];F.forEach((f,k)=>{if(f.t!=='st'||G.own[k]!==i||(G.hs[k]||0)>=5||p.m<hc(f))return;const grp=group(f.g);if(!grp.every(j=>G.own[j]===i&&!G.mort[j]))return;const mn=Math.min(...grp.map(j=>G.hs[j]||0));if((G.hs[k]||0)>mn)return;out.push(k)});return out}
+function manage(G,i,a){const p=G.pl[i],k=a.f|0,f=F[k];if(G.own[k]!==i)return false;
+ if(a.k==='build'){if(!buildable(G,i).includes(k))return false;p.m-=hc(f);G.hs[k]=(G.hs[k]||0)+1;log(G,p.name+' baut '+(G.hs[k]===5?'ein Hotel 🏨':'ein Haus 🏠')+' auf '+f.n);return true}
+ if(a.k==='sell'){const h=G.hs[k]||0;if(!h)return false;const grp=group(f.g);if(h<Math.max(...grp.map(j=>G.hs[j]||0)))return false;G.hs[k]=h-1;if(!G.hs[k])delete G.hs[k];p.m+=hc(f)/2;log(G,p.name+' verkauft ein Haus auf '+f.n);return true}
+ if(a.k==='mort'){if(G.mort[k])return false;if(f.g&&group(f.g).some(j=>G.hs[j]))return false;G.mort[k]=1;p.m+=f.p/2;log(G,p.name+' nimmt eine Hypothek auf '+f.n+' (+'+f.p/2+' €)');return true}
+ if(a.k==='unmort'){const c=Math.round(f.p*.55);if(!G.mort[k]||p.m<c)return false;p.m-=c;delete G.mort[k];log(G,p.name+' löst die Hypothek auf '+f.n);return true}return false}
+function roll(G,p){const d=[1+Math.floor(Math.random()*6),1+Math.floor(Math.random()*6)];G.dice=d;G.rolls++;const dbl=d[0]===d[1];G.card=null;
+ if(p.jail){if(dbl){p.jail=0;log(G,p.name+' würfelt '+d[0]+'+'+d[1]+' – Pasch, frei! 🎉');G.again=false;move(G,p,d[0]+d[1]);return}p.jail++;if(p.jail>3){pay(G,p,50,null);toPot(G,50);p.jail=0;log(G,p.name+' zahlt nach 3 Runden 50 € und kommt frei');G.again=false;move(G,p,d[0]+d[1]);return}log(G,p.name+' würfelt '+d[0]+'+'+d[1]+' und bleibt im Gefängnis ('+(p.jail-1)+'/3)');G.phase='end';G.again=false;return}
+ if(dbl){p.dbl++;if(p.dbl>=3){toJail(G,p);log(G,p.name+' würfelt 3× Pasch – ab ins Gefängnis! 🚔');return}}else p.dbl=0;G.again=dbl;log(G,p.name+' würfelt '+d[0]+' + '+d[1]+(dbl?' – Pasch!':''));move(G,p,d[0]+d[1])}
+function move(G,p,n){const old=p.pos;p.pos=(p.pos+n+40)%40;if(n>0&&p.pos<old){p.m+=200;log(G,p.name+' kommt über LOS: +200 €')}land(G,p)}
+function moveTo(G,p,k){if(k<p.pos){p.m+=200;log(G,p.name+' kommt über LOS: +200 €')}p.pos=k;land(G,p)}
 function toJail(G,p){p.pos=10;p.jail=1;p.dbl=0;G.again=false;G.phase='end'}
-function rent(G,k,dice){const f=F[k],o=G.own[k];if(f.t==='st'){const h=G.hs[k]||0;if(h)return f.r*HM[h];const full=F.every((q,j)=>q.g!==f.g||G.own[j]===o);return full?f.r*2:f.r}if(f.t==='rr'){const n=[5,15,25,35].filter(j=>G.own[j]===o).length;return 25*Math.pow(2,n-1)}if(f.t==='ut'){const n=[12,28].filter(j=>G.own[j]===o).length;return(dice[0]+dice[1])*(n===2?10:4)}return 0}
+function rent(G,k){const f=F[k],o=G.own[k];if(G.mort[k])return 0;if(f.t==='st'){const h=G.hs[k]||0;if(h)return f.r*HM[h];return group(f.g).every(j=>G.own[j]===o)?f.r*2:f.r}
+ if(f.t==='rr'){const n=[5,15,25,35].filter(j=>G.own[j]===o).length;return 25*Math.pow(2,n-1)}if(f.t==='ut'){const n=[12,28].filter(j=>G.own[j]===o).length;return(G.dice[0]+G.dice[1])*(n===2?10:4)}return 0}
 function land(G,p){const k=p.pos,f=F[k],i=G.pl.indexOf(p);G.phase='end';
- if(['st','rr','ut'].includes(f.t)){const o=G.own[k];if(o==null){G.phase='buy';G.log+=' · '+f.n+' ist frei ('+f.p+' €)';return}if(o!==i&&!G.pl[o].out){const r=rent(G,k,G.dice);pay(G,p,r,G.pl[o]);G.log+=' · zahlt '+r+' € Miete an '+G.pl[o].name}}
- else if(f.t==='tax'){pay(G,p,f.a,null);G.log+=' · '+f.n+': '+f.a+' €'}
- else if(f.t==='gojail'){toJail(G,p);G.log+=' · ab ins Gefängnis! 🚔'}
- else if(f.t==='ch'||f.t==='cm'){const c=K.pick(CARDS);G.card=c[0];G.log+=' · 🃏 '+c[0];const v=c[1];
-  if(typeof v==='number'){if(v>0)p.m+=v;else pay(G,p,-v,null)}else if(v==='bd'){for(const q of G.pl)if(q!==p&&!q.out)pay(G,q,20,p)}else if(v==='go'){p.pos=0;p.m+=200}else if(v==='jail'){toJail(G,p)}else if(v==='b3'){p.pos=(p.pos+37)%40;land(G,p);return}else if(v==='rr25'){if(p.pos>25)p.m+=200;p.pos=25;land(G,p);return}else if(v==='to39'){if(p.pos>39)p.m+=200;p.pos=39;land(G,p);return}else if(v==='rep'){let n=0;for(const k2 in G.hs)if(G.own[k2]===i)n+=G.hs[k2];pay(G,p,n*25,null)}}
- afterLand(G,p,true)}
-function afterLand(G,p,already){if(G.phase==='buy'&&!already)G.phase='end';else if(!already)G.phase='end';if(G.phase!=='buy'){if(G.again&&!p.jail&&!p.out)G.phase='roll';else G.phase='end'}checkOver(G)}
-function pay(G,p,amt,to){if(amt<=0)return;const i=G.pl.indexOf(p);if(p.m<amt){// Häuser verkaufen
-  for(const k in G.hs){if(p.m>=amt)break;if(G.own[k]!==i)continue;while(G.hs[k]>0&&p.m<amt){G.hs[k]--;p.m+=hc(F[k])/2}if(!G.hs[k])delete G.hs[k]}}
- if(p.m<amt){const got=Math.max(0,p.m);if(to)to.m+=got;p.m=0;p.out=true;for(const k in G.own)if(G.own[k]===i){delete G.own[k];delete G.hs[k]}G.log+=' · '+p.name+' ist PLEITE! 💸';return}
+ if(buyable(f)){const o=G.own[k];if(o==null){G.phase='buy';return}if(o!==i&&!G.pl[o].out){const r=rent(G,k);if(G.mort[k])log(G,f.n+' hat eine Hypothek – keine Miete');else{log(G,p.name+' zahlt '+r+' € Miete an '+G.pl[o].name);pay(G,p,r,G.pl[o])}}}
+ else if(f.t==='tax'){log(G,p.name+': '+f.n+' '+f.a+' €');pay(G,p,f.a,null);toPot(G,f.a)}
+ else if(f.t==='park'){if(G.park&&G.pot>0){log(G,'🅿️ '+p.name+' kassiert den Topf: +'+G.pot+' €!');p.m+=G.pot;G.pot=0}}
+ else if(f.t==='gojail'){toJail(G,p);log(G,p.name+' muss ins Gefängnis! 🚔');return}
+ else if(f.t==='ch'||f.t==='cm'){const c=K.pick(f.t==='ch'?CH:CM);G.card={t:f.t,txt:c[0]};log(G,(f.t==='ch'?'❓ ':'🎁 ')+c[0]);const v=c[1];
+  if(typeof v==='number'){if(v>0)p.m+=v;else{pay(G,p,-v,null);toPot(G,-v)}}
+  else if(v==='bd'){for(const q of G.pl)if(q!==p&&!q.out)pay(G,q,10,p)}
+  else if(v==='each'){for(const q of G.pl)if(q!==p&&!q.out)pay(G,p,50,q)}
+  else if(v==='go'){p.pos=0;p.m+=200}else if(v==='jail'){toJail(G,p);return}else if(v==='free')p.free++;
+  else if(v==='b3'){p.pos=(p.pos+37)%40;land(G,p);return}else if(v.startsWith('to')){moveTo(G,p,+v.slice(2));return}
+  else if(v==='rep'||v==='rep2'){let h=0,ho=0;for(const k2 in G.hs)if(G.own[k2]===i){if(G.hs[k2]===5)ho++;else h+=G.hs[k2]}const c=v==='rep'?h*25+ho*100:h*40+ho*115;if(c){pay(G,p,c,null);toPot(G,c)}}}
+ finishLand(G,p,true)}
+function finishLand(G,p){if(p.out){G.phase='end';checkOver(G);return}G.phase=(G.again&&!p.jail)?'roll':'end';checkOver(G)}
+function raise(G,i,amt){// Geld beschaffen: Häuser verkaufen, Hypotheken aufnehmen
+ const p=G.pl[i];let guard=0;while(p.m<amt&&guard++<200){const hk=Object.keys(G.hs).map(Number).filter(k=>G.own[k]===i).sort((a,b)=>(G.hs[b]||0)-(G.hs[a]||0))[0];if(hk!=null){G.hs[hk]--;if(!G.hs[hk])delete G.hs[hk];p.m+=hc(F[hk])/2;continue}
+  const mk=Object.keys(G.own).map(Number).filter(k=>G.own[k]===i&&!G.mort[k]).sort((a,b)=>F[a].p-F[b].p)[0];if(mk!=null){G.mort[mk]=1;p.m+=F[mk].p/2;continue}break}}
+function pay(G,p,amt,to){if(amt<=0)return;const i=G.pl.indexOf(p);if(p.m<amt)raise(G,i,amt);
+ if(p.m<amt){const got=Math.max(0,p.m);if(to)to.m+=got;p.m=0;p.out=true;const ti=to?G.pl.indexOf(to):-1;for(const k in G.own)if(G.own[k]===i){delete G.hs[k];if(ti>=0)G.own[k]=ti;else{delete G.own[k];delete G.mort[k]}}if(to&&p.free){to.free+=p.free;p.free=0}log(G,'💸 '+p.name+' ist PLEITE!'+(to?' Alles geht an '+to.name+'.':''));return}
  p.m-=amt;if(to)to.m+=amt}
-function worth(G,i){let w=G.pl[i].m;for(const k in G.own)if(G.own[k]===i)w+=F[k].p+(G.hs[k]||0)*hc(F[k]);return w}
-function checkOver(G){const al=G.pl.filter(p=>!p.out);if(al.length===1){G.winner=al[0].name;G.log='🏆 '+G.winner+' ist der Stadtmogul!'}}
+function worth(G,i){let w=G.pl[i].m;for(const k in G.own)if(G.own[k]===i)w+=(G.mort[k]?F[k].p/2:F[k].p)+(G.hs[k]||0)*hc(F[k]);return w}
+function checkOver(G){const al=G.pl.filter(p=>!p.out);if(al.length===1){G.winner=al[0].name;log(G,'🏆 '+G.winner+' ist der Stadtmogul!')}}
 function nextP(G){const n=G.pl.length;G.pl[G.turn].dbl=0;let t=G.turn;do{t=(t+1)%n;if(t===0)G.round++}while(G.pl[t].out);G.turn=t;G.phase='roll';G.again=false;G.card=null;
- if(G.round>G.maxR){let b=-1,bi=0;G.pl.forEach((p,i)=>{if(p.out)return;const w=worth(G,i);if(w>b){b=w;bi=i}});G.winner=G.pl[bi].name;G.log='⏱ Rundenlimit erreicht – '+G.winner+' ist am reichsten ('+b+' €)! 🏆'}}
+ if(G.round>G.maxR){let b=-1,bi=0;G.pl.forEach((p,i)=>{if(p.out)return;const w=worth(G,i);if(w>b){b=w;bi=i}});G.winner=G.pl[bi].name;log(G,'⏱ Rundenlimit – '+G.winner+' ist am reichsten ('+b+' €)! 🏆')}}
+/* ---------- Handel ---------- */
+function sanitizeOffer(G,from,o){if(!o)return null;const to=o.to|0;if(to===from||!G.pl[to]||G.pl[to].out)return null;const give=(o.give||[]).map(Number).filter(k=>G.own[k]===from&&!group(F[k].g||'x').some(j=>G.hs[j])),get=(o.get||[]).map(Number).filter(k=>G.own[k]===to&&!group(F[k].g||'x').some(j=>G.hs[j]));
+ const gm=Math.max(0,Math.min(G.pl[from].m,o.gm|0)),wm=Math.max(0,Math.min(G.pl[to].m,o.wm|0));if(!give.length&&!get.length&&!gm&&!wm)return null;return{to,give,get,gm,wm}}
+function doTrade(G){const o=G.offer,a=G.pl[o.from],b=G.pl[o.to];for(const k of o.give)G.own[k]=o.to;for(const k of o.get)G.own[k]=o.from;a.m+=o.wm-o.gm;b.m+=o.gm-o.wm}
+function propVal(G,k,i,own){const f=F[k];let v=f.p*(G.mort[k]?.55:1);if(f.g){const grp=group(f.g),mine=grp.filter(j=>own(j)===i).length;if(mine===grp.length)v*=2.6;else if(mine===grp.length-1)v*=1.5}if(f.t==='rr')v*=1+[5,15,25,35].filter(j=>own(j)===i).length*.2;return v}
+function botJudge(G){const o=G.offer,me=o.to,them=o.from;const before=G.own,after=k=>o.give.includes(k)?me:o.get.includes(k)?them:G.own[k];const cur=k=>G.own[k];
+ let mine=0,theirs=0;for(const k in G.own){const K2=+k;if(after(K2)===me)mine+=propVal(G,K2,me,after);if(cur(K2)===me)mine-=propVal(G,K2,me,cur);if(after(K2)===them)theirs+=propVal(G,K2,them,after);if(cur(K2)===them)theirs-=propVal(G,K2,them,cur)}
+ mine+=o.gm-o.wm;theirs+=o.wm-o.gm;return mine>40&&mine>=theirs*.6}
 /* ---------- Darstellung ---------- */
 const posOf=k=>{if(k<=10)return[10-k,10];if(k<=20)return[0,20-k];if(k<=30)return[k-20,0];return[10,k-30]};
-let lastLog='',lastPos={};
-function render(v,send){if(!root){root=document.createElement('div');root.className='tg';root.style.background='radial-gradient(900px 600px at 50% 40%,#1e5a3a,#0b2a1a)';document.body.appendChild(root)}root.style.display='flex';
- if(v.log!==lastLog){lastLog=v.log;K.sfx(/würfelt/.test(v.log)?'dice':/kauft|baut/.test(v.log)?'coin':/PLEITE|Gefängnis/.test(v.log)?'bad':'card')}
- const me=v.pl[v.me],myTurn=v.turn===v.me&&!v.winner;
- let cells='';F.forEach((f,k)=>{const [c,r]=posOf(k),o=v.own[k],h=v.hs[k]||0;const tok=v.pl.map((p,i)=>!p.out&&p.pos===k?`<i style="background:${p.c}" class="${i===v.turn?'cur':''}"></i>`:'').join('');
-  const corner=k%10===0;cells+=`<div class="mf ${corner?'corner':''} side${Math.floor(k/10)}" data-k="${k}" style="grid-column:${c+1};grid-row:${r+1}">${f.g?`<div class="mbar" style="background:${GC[f.g]}">${h===5?'🏨':h?'🏠'.repeat(h):''}</div>`:''}<div class="mname">${f.t==='rr'?'🚂 ':f.t==='ut'?(k===12?'⚡ ':'💧 '):f.t==='ch'?'❓ ':f.t==='cm'?'🎁 ':f.t==='tax'?'💸 ':''}${f.n}</div>${f.p?`<div class="mprice">${f.p}€</div>`:''}${o!=null?`<div class="mown" style="background:${v.pl[o].c}"></div>`:''}<div class="mtok">${tok}</div></div>`});
- const dice=v.dice[0]?`<span class="mdie">${['','⚀','⚁','⚂','⚃','⚄','⚅'][v.dice[0]]}</span><span class="mdie">${['','⚀','⚁','⚂','⚃','⚄','⚅'][v.dice[1]]}</span>`:'🎲🎲';
+const ctr=c=>c===0?.75:c===10?11.25:1.5+(c-1)+.5;
+const PIPS={1:[4],2:[0,8],3:[0,4,8],4:[0,2,6,8],5:[0,2,4,6,8],6:[0,2,3,5,6,8]};
+const die=n=>`<div class="mdie">${[...Array(9)].map((_,i)=>`<i class="${(PIPS[n]||[]).includes(i)?'on':''}"></i>`).join('')}</div>`;
+function tileHTML(k){const f=F[k],side=k===0||k===10||k===20||k===30?-1:Math.floor(k/10);const [c,r]=posOf(k);
+ let inner;if(side<0)inner=`<div class="mcorner c${k/10}"><span class="mbig">${ICON[f.t]}</span><b>${f.n}</b>${f.t==='park'?'<small id="mPot"></small>':''}</div>`;
+ else inner=`<div class="min s${side}">${f.g?`<div class="mbar" style="background:${GC[f.g]}"><span id="mH${k}"></span></div>`:`<div class="mico">${f.t==='ut'?(k===12?'⚡':'💧'):ICON[f.t]}</div>`}<div class="mname">${f.n}</div><div class="mprice">${f.p?f.p+' €':f.a?f.a+' €':''}</div><div class="mown" id="mO${k}"></div></div>`;
+ return`<div class="mf" data-k="${k}" style="grid-column:${c+1};grid-row:${r+1}">${inner}</div>`}
+function ensureRoot(){if(root)return;root=document.createElement('div');root.className='tg mg';document.body.appendChild(root);
+ root.innerHTML=`<div class="top"><a href="#" id="mBk">← Menü</a><b>🏙 STADTMOGUL</b><span id="mRound"></span></div>
+ <div class="mwrap"><div class="mboard" id="mBoard">${F.map((_,k)=>tileHTML(k)).join('')}<div class="mcenter"><div class="mlogo">STADT<br>MOGUL</div><div class="mdice" id="mDice"></div><div id="mCard"></div><div class="mlog" id="mLog"></div><div class="bar" id="mActs"></div></div><div id="mToks"></div></div>
+ <div class="mpl" id="mPl"></div></div><div id="mModal"></div>`;
+ K.$('mBk').onclick=e=>{e.preventDefault();if(!curV.winner&&!confirm('Spiel verlassen?'))return;E.stop();root.style.display='none';menu()};
+ K.$('mBoard').addEventListener('click',e=>{const t=e.target.closest('.mf');if(t){modal={k:'info',f:+t.dataset.k};drawModal()}});
+ K.$('mPl').addEventListener('click',e=>{const t=e.target.closest('[data-prop]');if(t){modal={k:'info',f:+t.dataset.prop};drawModal()}})}
+function render(v,send){ensureRoot();root.style.display='flex';curV=v;curSend=send;const ll=v.log[v.log.length-1];
+ if(ll!==lastLog){lastLog=ll;K.sfx(/würfelt/.test(ll)?'dice':/kauft|baut|kassiert|\+/.test(ll)?'coin':/PLEITE|Gefängnis|Miete/.test(ll)?'bad':'card')}
+ const dk=v.rolls+':'+v.dice;if(dk!==lastDice){if(lastDice&&v.dice[0])diceAnim=performance.now();lastDice=dk}
+ if(v.winner&&v.winner!==lastWin){lastWin=v.winner;setTimeout(()=>K.sfx(v.winner===v.pl[v.me].name?'win':'lose'),400)}if(!v.winner)lastWin=null;
+ draw();if(modal)drawModal();
+ if(v.phase==='trade'&&v.offer&&v.offer.to===v.me&&!v.pl[v.me].bot){modal={k:'offer'};drawModal()}else if(modal&&modal.k==='offer'){modal=null;drawModal()}}
+function draw(){const v=curV,me=v.pl[v.me],myTurn=v.turn===v.me&&!v.winner;
+ K.$('mRound').textContent='Runde '+Math.min(v.round,v.maxR)+(v.maxR<999?'/'+v.maxR:'')+(E.room?' · '+E.room.code:'');
+ F.forEach((f,k)=>{if(!buyable(f))return;const o=v.own[k],el=K.$('mO'+k);el.style.background=o!=null?v.pl[o].c:'transparent';el.parentNode.parentNode.classList.toggle('mortg',!!v.mort[k]);
+  const h=K.$('mH'+k);if(h){const n=v.hs[k]||0;h.innerHTML=n===5?'<i class="hotel"></i>':'<i class="house"></i>'.repeat(n)}});
+ if(K.$('mPot'))K.$('mPot').textContent=v.park&&v.pot?'Topf: '+v.pot+' €':'';
+ // Würfel
+ const rolling=performance.now()-diceAnim<650;K.$('mDice').innerHTML=v.dice[0]?(rolling?die(1+Math.random()*6|0)+die(1+Math.random()*6|0):die(v.dice[0])+die(v.dice[1])):die(6)+die(6);K.$('mDice').classList.toggle('roll',rolling);
+ if(rolling)setTimeout(()=>{if(curV===v)draw()},90);
+ K.$('mCard').innerHTML=v.card?`<div class="mcard ${v.card.t}"><small>${v.card.t==='ch'?'❓ EREIGNIS':'🎁 GEMEINSCHAFT'}</small>${K.esc(v.card.txt)}</div>`:'';
+ K.$('mLog').innerHTML=v.log.slice(-4).map((t,i,a)=>`<div style="opacity:${.45+.55*(i+1)/a.length}">${K.esc(t)}</div>`).join('');
  const f=F[me.pos];let acts='';
- if(v.winner)acts=E.host?'<button class="pri" id="mA">🔁 Neues Spiel</button>':'';
- else if(myTurn){if(v.phase==='roll')acts=`<button class="pri" id="mR">🎲 Würfeln</button>${me.jail?'<button id="mBail">50 € Kaution</button>':''}`;if(v.phase==='buy')acts=`<button class="pri" id="mBuy" ${me.m<f.p?'disabled':''}>Kaufen ${f.p} €</button><button id="mSkip">Nicht kaufen</button>`;if(v.phase==='end')acts=`<button class="pri" id="mE">Zug beenden ➜</button>`;if(v.build.length&&v.phase!=='buy')acts+=`<button id="mBld" style="background:#e67e22">🏠 Bauen (${v.build.length})</button>`}
- root.innerHTML=`<div class="top"><a href="#" id="mBk">← Menü</a><b>🏙 STADTMOGUL</b><span>Runde ${Math.min(v.round,v.maxR)}/${v.maxR}</span></div>
- <div class="mwrap"><div class="mboard">${cells}<div class="mcenter"><div class="mlogo">STADTMOGUL</div><div style="font-size:34px">${dice}</div>${v.card?`<div class="mcard">🃏 ${K.esc(v.card)}</div>`:''}<div class="mlog">${K.esc(v.log)}</div><div class="bar">${acts}</div>
- ${showBuild&&myTurn&&v.build.length?`<div class="mbuild">${v.build.map(k=>`<button data-b="${k}" style="border-left:6px solid ${GC[F[k].g]}">${F[k].n} · ${hc(F[k])} €</button>`).join('')}</div>`:''}</div></div>
- <div class="mpl">${v.pl.map((p,i)=>`<div class="opp ${v.turn===i?'turn':''}" style="border-left:6px solid ${p.c};opacity:${p.out?.4:1}">${K.esc(p.name)}${i===v.me?' (du)':''}<div style="color:#7dff6a;font-size:18px">${p.out?'pleite':p.m+' €'}</div><div style="font-size:11px">${Object.keys(v.own).filter(k=>v.own[k]===i).length} Felder${p.jail?' · 🚔':''}</div></div>`).join('')}</div></div>
- ${info>=0?infoBox(v,info):''}`;
- K.$('mBk').onclick=e=>{e.preventDefault();E.stop();root.style.display='none';menu()};
- const on=(id,a)=>{const el=K.$(id);if(el)el.onclick=()=>{showBuild=false;send(a)}};on('mR',{k:'roll'});on('mBail',{k:'bail'});on('mBuy',{k:'buy'});on('mSkip',{k:'skip'});on('mE',{k:'end'});
- if(K.$('mBld'))K.$('mBld').onclick=()=>{showBuild=!showBuild;render(v,send)};root.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>send({k:'build',f:+b.dataset.b}));
- if(K.$('mA'))K.$('mA').onclick=()=>E.room?E.start(E.players,{rounds}):E.solo(nBots,{rounds});
- root.querySelectorAll('.mf').forEach(el=>el.onclick=()=>{info=+el.dataset.k;render(v,send)});if(K.$('mInfoX'))K.$('mInfoX').onclick=()=>{info=-1;render(v,send)};
- if(v.winner)K.sfx(v.winner===me.name?'win':'lose')}
-function infoBox(v,k){const f=F[k],o=v.own[k];let t=`<b style="font-size:18px">${f.n}</b>`;if(f.g)t+=`<div style="height:8px;background:${GC[f.g]};border-radius:4px;margin:6px 0"></div><div>Preis ${f.p} € · Haus ${hc(f)} €</div><div class="k-mut">Miete: ${f.r} € · Straßenzug ${f.r*2} € · mit Häusern ${HM.slice(1,5).map(m=>f.r*m).join(' / ')} € · Hotel ${f.r*HM[5]} €</div>`;else if(f.t==='rr')t+='<div>Preis 200 € · Miete 25/50/100/200 € je nach Anzahl Bahnhöfe</div>';else if(f.t==='ut')t+='<div>Preis 150 € · Miete 4× (beide: 10×) Augenzahl</div>';else t+='<div class="k-mut">Sonderfeld</div>';if(o!=null)t+=`<div>Besitzer: <b style="color:${v.pl[o].c}">${K.esc(v.pl[o].name)}</b>${v.hs[k]?' · '+(v.hs[k]===5?'Hotel':v.hs[k]+' Häuser'):''}</div>`;return`<div class="minfo k-box">${t}<button id="mInfoX">Schließen</button></div>`}
-const st=document.createElement('style');st.textContent=`.mwrap{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
-.mboard{display:grid;grid-template-columns:1.4fr repeat(9,1fr) 1.4fr;grid-template-rows:1.4fr repeat(9,1fr) 1.4fr;width:min(96vw,78vh,760px);height:min(96vw,78vh,760px);background:#cfe8d0;border:6px solid #0b2a1a;border-radius:10px;gap:2px;padding:2px;flex:0 0 auto}
-.mf{background:#f6f9f2;position:relative;overflow:hidden;color:#122;font-size:clamp(6px,1.05vw,10px);line-height:1.1;text-align:center;display:flex;flex-direction:column;cursor:pointer}
-.mf.corner{background:#e4f2dc;font-weight:900;justify-content:center;font-size:clamp(7px,1.2vw,12px)}.mbar{height:24%;font-size:clamp(6px,1vw,10px);display:grid;place-items:center}.mname{padding:1px;font-weight:700;word-break:break-word;hyphens:auto;-webkit-hyphens:auto;flex:1;display:flex;align-items:center;justify-content:center}.mprice{font-size:clamp(6px,.9vw,9px);color:#555}
-.mown{position:absolute;right:2px;bottom:2px;width:8px;height:8px;border-radius:50%;border:1px solid #fff}.mtok{position:absolute;left:1px;bottom:1px;display:flex;flex-wrap:wrap;gap:1px;max-width:70%}.mtok i{width:clamp(8px,1.6vw,14px);height:clamp(8px,1.6vw,14px);border-radius:50%;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.5)}.mtok i.cur{animation:dpb2 .6s infinite alternate}@keyframes dpb2{to{transform:scale(1.3)}}
-.mcenter{grid-column:2/11;grid-row:2/11;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:8px;color:#0b2a1a;text-align:center}
-.mlogo{font-weight:900;font-size:clamp(18px,4vw,40px);color:#c0392b;transform:rotate(-8deg);text-shadow:2px 2px 0 #fff}.mlog{font-weight:700;font-size:clamp(11px,1.6vw,15px);max-width:90%}.mcard{background:#fff8d6;border:2px solid #e0b000;border-radius:10px;padding:6px 10px;font-weight:700;font-size:13px}
-.mdie{display:inline-block;background:#fff;border-radius:8px;padding:0 4px;margin:0 3px;box-shadow:0 3px 6px rgba(0,0,0,.3)}.mbuild{display:flex;flex-wrap:wrap;gap:4px;justify-content:center;max-height:120px;overflow:auto}.mbuild button{font-size:12px;padding:6px 8px;background:#fff;color:#122}
-.mpl{display:flex;flex-direction:column;gap:6px;min-width:150px}.minfo{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;width:min(340px,90vw)}`;document.head.appendChild(st);
-function menu(){if(root)root.style.display='none';K.menu({title:'STADTMOGUL',emoji:'🏙️',sub:'Kauf Straßen, bau Häuser und Hotels, kassiere Miete – und treib die anderen in die Pleite!',
- body:`<div class="k-box"><div class="k-set"><span>🤖 Gegner</span>${K.chips('smB',[[1,'1'],[2,'2'],[3,'3'],[5,'5']],nBots,v=>nBots=v)}</div><div class="k-set"><span>⏱ Runden</span>${K.chips('smR',[[15,'15'],[30,'30'],[999,'Unbegrenzt']],rounds,v=>rounds=v)}</div></div>`,
- solo:[{t:'▶ Spielen',f:()=>E.solo(nBots,{rounds})}],online:{game:'mogul',max:6,onStart:r=>E.hostStart(r,Math.max(0,Math.min(nBots,6-r.peers.length)),{rounds})},
- help:'Bei einem Pasch würfelst du nochmal. Gehört dir ein ganzer Straßenzug (alle Felder einer Farbe), verdoppelt sich die Miete und du kannst Häuser bauen. Tippe auf ein Feld für Infos.'})}
-menu();
-
+ if(v.winner)acts=`<div class="mwin">🏆 ${K.esc(v.winner)} gewinnt!</div>`+(E.host?'<button class="pri" id="mA">🔁 Neues Spiel</button>':'');
+ else if(v.phase==='trade')acts=`<div class="k-mut">🤝 ${K.esc(v.pl[v.offer.to].name)} prüft das Angebot …</div>`;
+ else if(myTurn&&!rolling&&!moving()){if(v.phase==='roll')acts=`<button class="pri k-big" id="mR">🎲 Würfeln</button>${me.jail?`<button id="mBail">${me.free?'🎫 Frei-Karte':'50 € Kaution'}</button>`:''}`;
+  if(v.phase==='buy')acts=`<div class="mbuyq"><b>${f.n}</b> kaufen?</div><button class="pri" id="mBuy" ${me.m<f.p?'disabled':''}>Kaufen ${f.p} €</button><button id="mSkip">Nein</button>`;
+  if(v.phase==='end')acts=`<button class="pri k-big" id="mE">Zug beenden ➜</button>`;
+  if(v.phase!=='buy')acts+=`<button id="mMg">🏠 Verwalten${v.build.length?' ('+v.build.length+')':''}</button><button id="mTr">🤝 Handeln</button>`}
+ else if(!myTurn)acts=`<div class="k-mut">⏳ ${K.esc(v.pl[v.turn].name)} ist dran …</div>`;
+ const A=K.$('mActs');if(A.dataset.h!==acts){A.dataset.h=acts;A.innerHTML=acts;const on=(id,a)=>{const el=K.$(id);if(el)el.onclick=()=>curSend(a)};on('mR',{k:'roll'});on('mBail',{k:'bail'});on('mBuy',{k:'buy'});on('mSkip',{k:'skip'});on('mE',{k:'end'});
+  if(K.$('mA'))K.$('mA').onclick=()=>{shownPos=[];E.room?E.start(E.players,{rounds,park:parkPot}):E.solo(nBots,{rounds,park:parkPot})};if(K.$('mMg'))K.$('mMg').onclick=()=>{modal={k:'manage'};drawModal()};if(K.$('mTr'))K.$('mTr').onclick=()=>{tradeDraft={to:v.pl.findIndex((p,i)=>i!==v.me&&!p.out),give:[],get:[],gm:0,wm:0};modal={k:'trade'};drawModal()}}
+ // Spieler
+ K.$('mPl').innerHTML=v.pl.map((p,i)=>{const props=Object.keys(v.own).map(Number).filter(k=>v.own[k]===i).sort((a,b)=>a-b);return`<div class="mpc ${v.turn===i&&!v.winner?'turn':''} ${p.out?'out':''}" style="--pc:${p.c}"><div class="mph"><span class="mtk">${p.tok}</span><b>${K.esc(p.name)}${i===v.me?' (du)':''}</b><span class="mmoney">${p.out?'pleite':p.m+' €'}</span></div>
+  <div class="mprops">${props.map(k=>`<span data-prop="${k}" class="${v.mort[k]?'mo':''}" style="background:${F[k].g?GC[F[k].g]:'#cfd6e6'}" title="${F[k].n}">${F[k].t==='rr'?'🚂':F[k].t==='ut'?(k===12?'⚡':'💧'):(v.hs[k]?(v.hs[k]===5?'H':v.hs[k]):'')}</span>`).join('')}${p.jail?'<em>🚔</em>':''}${p.free?'<em>🎫</em>':''}</div></div>`}).join('');
+ animTokens()}
+function moving(){return curV&&curV.pl.some((p,i)=>shownPos[i]!=null&&shownPos[i]!==p.pos)}
+function animTokens(){const v=curV;const box=K.$('mToks');if(box.children.length!==v.pl.length){box.innerHTML=v.pl.map((p,i)=>`<div class="mtoken" id="mT${i}" style="--pc:${p.c}">${p.tok}</div>`).join('')}
+ let need=false;v.pl.forEach((p,i)=>{if(shownPos[i]==null)shownPos[i]=p.pos;if(shownPos[i]!==p.pos){const fw=(p.pos-shownPos[i]+40)%40;if(fw>0&&fw<=12&&!(p.jail&&p.pos===10)){shownPos[i]=(shownPos[i]+1)%40;K.sfx('tick')}else shownPos[i]=p.pos;need=true}
+  const same=v.pl.map((q,j)=>j).filter(j=>!v.pl[j].out&&shownPos[j]===shownPos[i]),ix=same.indexOf(i),[c,r]=posOf(shownPos[i]);const el=K.$('mT'+i);
+  el.style.left=`calc(var(--u)*${ctr(c)} + ${(ix-(same.length-1)/2)*12}px)`;el.style.top=`calc(var(--u)*${ctr(r)} + ${(ix%2)*6}px)`;el.style.display=p.out?'none':'';el.classList.toggle('cur',i===v.turn)});
+ clearTimeout(animT);if(need)animT=setTimeout(()=>{draw()},170)}
+function drawModal(){const M=K.$('mModal');if(!modal){M.innerHTML='';return}const v=curV,me=v.me;let h='';
+ if(modal.k==='info'){const k=modal.f,f=F[k],o=v.own[k];h=`<div class="mcardbig">${f.g?`<div class="mcbh" style="background:${GC[f.g]}">${f.n}</div>`:`<div class="mcbh" style="background:#33405f">${f.t==='ut'?(k===12?'⚡':'💧'):ICON[f.t]||''} ${f.n}</div>`}<div class="mcbb">`;
+  if(f.t==='st')h+=`<table class="k-table"><tr><td>Miete</td><td>${f.r} €</td></tr><tr><td>Straßenzug komplett</td><td>${f.r*2} €</td></tr>${[1,2,3,4].map(n=>`<tr><td>mit ${n} ${n>1?'Häusern':'Haus'}</td><td>${f.r*HM[n]} €</td></tr>`).join('')}<tr><td>mit Hotel</td><td>${f.r*HM[5]} €</td></tr></table><div class="k-mut">Kaufpreis ${f.p} € · Haus ${hc(f)} € · Hypothek ${f.p/2} €</div>`;
+  else if(f.t==='rr')h+='<table class="k-table"><tr><td>1 Bahnhof</td><td>25 €</td></tr><tr><td>2 Bahnhöfe</td><td>50 €</td></tr><tr><td>3 Bahnhöfe</td><td>100 €</td></tr><tr><td>4 Bahnhöfe</td><td>200 €</td></tr></table><div class="k-mut">Kaufpreis 200 € · Hypothek 100 €</div>';
+  else if(f.t==='ut')h+='<div>Miete: 4× Augenzahl, mit beiden Werken 10× Augenzahl.</div><div class="k-mut">Kaufpreis 150 € · Hypothek 75 €</div>';
+  else h+=`<div class="k-mut">${{go:'Jedes Mal, wenn du über LOS ziehst, bekommst du 200 €.',jail:'Nur zu Besuch – oder du sitzt ein. Raus mit Pasch, 50 € oder Frei-Karte.',park:v.park?'Hier landen alle Steuern und Strafen. Wer drauf kommt, kassiert den Topf!':'Einfach ausruhen.',gojail:'Direkt ins Gefängnis, ohne über LOS!',ch:'Zieh eine Ereigniskarte.',cm:'Zieh eine Gemeinschaftskarte.',tax:'Steuer an die Bank.'}[f.t]||''}</div>`;
+  if(o!=null)h+=`<div style="margin-top:8px">Besitzer: <b style="color:${v.pl[o].c}">${K.esc(v.pl[o].name)}</b>${v.hs[k]?' · '+(v.hs[k]===5?'Hotel':v.hs[k]+' Haus/Häuser'):''}${v.mort[k]?' · <b style="color:#ff8a8a">Hypothek</b>':''}</div>`;
+  h+=`</div></div><button id="mX">Schließen</button>`}
+ else if(modal.k==='manage'){const mine=Object.keys(v.own).map(Number).filter(k=>v.own[k]===me).sort((a,b)=>a-b);
+  h=`<h3 style="margin:0">🏠 Deine Grundstücke</h3><div class="k-mut">Bauen geht nur mit komplettem Straßenzug ohne Hypothek – gleichmäßig verteilt.</div><div class="mmlist">${mine.length?mine.map(k=>{const f=F[k],n=v.hs[k]||0;return`<div class="mmrow"><span class="mmc" style="background:${f.g?GC[f.g]:'#cfd6e6'}"></span><div class="mmn"><b>${f.n}</b><small>${v.mort[k]?'Hypothek':n===5?'Hotel':n?n+' Haus/Häuser':''}</small></div>
+   ${v.build.includes(k)?`<button data-a="build" data-f="${k}">+🏠 ${hc(f)}€</button>`:''}${n?`<button data-a="sell" data-f="${k}">−🏠 +${hc(f)/2}€</button>`:''}${!v.mort[k]&&!(f.g&&group(f.g).some(j=>v.hs[j]))?`<button data-a="mort" data-f="${k}">Hypothek +${f.p/2}€</button>`:''}${v.mort[k]?`<button data-a="unmort" data-f="${k}" ${v.pl[me].m<Math.round(f.p*.55)?'disabled':''}>Lösen −${Math.round(f.p*.55)}€</button>`:''}</div>`}).join(''):'<div class="k-mut">Du besitzt noch nichts.</div>'}</div><button id="mX">Fertig</button>`}
+ else if(modal.k==='trade'){const d=tradeDraft,others=v.pl.map((p,i)=>[p,i]).filter(([p,i])=>i!==me&&!p.out);const tradable=i=>Object.keys(v.own).map(Number).filter(k=>v.own[k]===i&&!(F[k].g&&group(F[k].g).some(j=>v.hs[j])));
+  const list=(i,sel,key)=>tradable(i).map(k=>`<button class="mtp ${sel.includes(k)?'on':''}" data-t="${key}" data-f="${k}" style="border-left:6px solid ${F[k].g?GC[F[k].g]:'#cfd6e6'}">${F[k].n}${v.mort[k]?' (H)':''}</button>`).join('')||'<span class="k-mut">–</span>';
+  h=`<h3 style="margin:0">🤝 Handel anbieten</h3><div class="k-chips">${others.map(([p,i])=>`<button data-to="${i}" class="${d.to===i?'on':''}">${p.tok} ${K.esc(p.name)}</button>`).join('')}</div>
+  <div class="mtcols"><div><b>Du gibst</b><div class="mtl">${list(me,d.give,'give')}</div><label>💶 <input type="number" min="0" max="${v.pl[me].m}" step="10" id="mGm" value="${d.gm}"></label></div>
+  <div><b>Du bekommst</b><div class="mtl">${list(d.to,d.get,'get')}</div><label>💶 <input type="number" min="0" max="${v.pl[d.to].m}" step="10" id="mWm" value="${d.wm}"></label></div></div>
+  <div class="bar"><button class="pri" id="mSend">Angebot senden</button><button id="mX">Abbrechen</button></div>`}
+ else if(modal.k==='offer'){const o=v.offer,from=v.pl[o.from];const L=a=>a.length?a.map(k=>`<div style="border-left:6px solid ${F[k].g?GC[F[k].g]:'#cfd6e6'};padding-left:6px">${F[k].n}${v.mort[k]?' (Hypothek)':''}</div>`).join(''):'';
+  h=`<h3 style="margin:0">🤝 Angebot von ${K.esc(from.name)}</h3><div class="mtcols"><div><b>Du bekommst</b>${L(o.give)}${o.gm?`<div>💶 ${o.gm} €</div>`:''}${!o.give.length&&!o.gm?'<div class="k-mut">nichts</div>':''}</div><div><b>Du gibst</b>${L(o.get)}${o.wm?`<div>💶 ${o.wm} €</div>`:''}${!o.get.length&&!o.wm?'<div class="k-mut">nichts</div>':''}</div></div>
+  <div class="bar"><button class="pri" id="mAcc">✅ Annehmen</button><button id="mDec">❌ Ablehnen</button></div>`}
+ M.innerHTML=`<div class="mmodal"><div class="k-box">${h}</div></div>`;
+ const X=K.$('mX');if(X)X.onclick=()=>{modal=null;drawModal()};M.querySelector('.mmodal').onclick=e=>{if(e.target.classList.contains('mmodal')&&modal.k!=='offer'){modal=null;drawModal()}};
+ M.querySelectorAll('[data-a]').forEach(b=>b.onclick=()=>{curSend({k:b.dataset.a,f:+b.dataset.f})});
+ if(modal.k==='trade'){M.querySelectorAll('[data-to]').forEach(b=>b.onclick=()=>{tradeDraft={to:+b.dataset.to,give:tradeDraft.give,get:[],gm:tradeDraft.gm,wm:0};drawModal()});
+  M.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{const a=tradeDraft[b.dataset.t],k=+b.dataset.f;const j=a.indexOf(k);if(j>=0)a.splice(j,1);else a.push(k);drawModal()});
+  K.$('mGm').oninput=e=>tradeDraft.gm=Math.max(0,e.target.value|0);K.$('mWm').oninput=e=>tradeDraft.wm=Math.max(0,e.target.value|0);
+  K.$('mSend').onclick=()=>{const d=tradeDraft;if(!d.give.length&&!d.get.length&&!d.gm&&!d.wm){K.toast('Wähle etwas zum Handeln aus.');return}curSend({k:'offer',o:d});modal=null;drawModal()}}
+ if(modal.k==='offer'){K.$('mAcc').onclick=()=>{curSend({k:'accept'});modal=null;drawModal()};K.$('mDec').onclick=()=>{curSend({k:'decline'});modal=null;drawModal()}}}
+const st=document.createElement('style');st.textContent=`.tg.mg{background:radial-gradient(1100px 700px at 50% 35%,#1f5a3c,#0a2416 75%);gap:8px}
+.mwrap{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;align-items:flex-start;width:100%}
+.mboard{--S:min(96vw,calc(100vh - 150px),780px);--u:calc(var(--S)/12);position:relative;display:grid;grid-template-columns:calc(var(--u)*1.5) repeat(9,var(--u)) calc(var(--u)*1.5);grid-template-rows:calc(var(--u)*1.5) repeat(9,var(--u)) calc(var(--u)*1.5);width:var(--S);height:var(--S);background:#123d29;border:4px solid #0a2416;border-radius:12px;box-shadow:0 20px 40px rgba(0,0,0,.55);flex:0 0 auto;padding:0;gap:0;overflow:hidden}
+.mf{position:relative;background:#f7f4e8;border:1px solid #b9c7b0;cursor:pointer;overflow:hidden;color:#16261c}
+.mf:hover{filter:brightness(1.06)}.mf.mortg .min{opacity:.45;filter:grayscale(.8)}.mf.mortg:after{content:"H";position:absolute;right:2px;top:2px;font-size:calc(var(--u)*.2);font-weight:900;color:#c0392b}
+.min{position:absolute;left:50%;top:50%;width:var(--u);height:calc(var(--u)*1.5);display:flex;flex-direction:column;align-items:center;text-align:center;transform:translate(-50%,-50%)}
+.min.s0{transform:translate(-50%,-50%)}.min.s1{transform:translate(-50%,-50%) rotate(90deg)}.min.s2{transform:translate(-50%,-50%) rotate(180deg)}.min.s3{transform:translate(-50%,-50%) rotate(-90deg)}
+.mbar{width:100%;height:24%;border-bottom:1px solid rgba(0,0,0,.35);display:flex;align-items:center;justify-content:center;gap:1px}
+.mbar i.house{width:calc(var(--u)*.16);height:calc(var(--u)*.16);background:#27ae60;border:1px solid #0b4a22;clip-path:polygon(50% 0,100% 40%,100% 100%,0 100%,0 40%)}.mbar i.hotel{width:calc(var(--u)*.45);height:calc(var(--u)*.2);background:#e74c3c;border:1px solid #6a1410;border-radius:2px}
+.mico{font-size:calc(var(--u)*.38);margin-top:6%}
+.mname{font-weight:800;font-size:calc(var(--u)*.13);line-height:1.08;padding:3% 4% 0;word-break:break-word;hyphens:auto;-webkit-hyphens:auto;flex:1}
+.mprice{font-size:calc(var(--u)*.13);font-weight:700;color:#444;padding-bottom:12%}
+.mown{position:absolute;left:0;right:0;bottom:0;height:9%}
+.mcorner{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:calc(var(--u)*.16);font-weight:900;text-align:center;background:#eaf4e2}
+.mcorner .mbig{font-size:calc(var(--u)*.55)}.mcorner small{color:#c0392b;font-size:calc(var(--u)*.14)}.mcorner.c0{transform:rotate(-45deg)}.mcorner.c1{transform:rotate(45deg)}.mcorner.c2{transform:rotate(135deg)}.mcorner.c3{transform:rotate(-135deg)}
+.mcenter{grid-column:2/11;grid-row:2/11;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*.12);padding:calc(var(--u)*.3);background:radial-gradient(circle,#e9f5e1,#cfe6c2);color:#10261a;text-align:center;border:1px solid #b9c7b0}
+.mlogo{font-weight:900;font-size:calc(var(--u)*.62);line-height:.95;color:#fff;background:#d63031;padding:calc(var(--u)*.08) calc(var(--u)*.3);transform:rotate(-12deg);border:4px solid #fff;box-shadow:0 0 0 3px #d63031,0 8px 16px rgba(0,0,0,.25);letter-spacing:2px}
+.mdice{display:flex;gap:calc(var(--u)*.2);margin-top:calc(var(--u)*.15)}.mdice.roll .mdie{animation:mroll .1s infinite alternate}@keyframes mroll{from{transform:rotate(-14deg) translateY(-3px)}to{transform:rotate(14deg) translateY(2px)}}
+.mdie{width:calc(var(--u)*.62);height:calc(var(--u)*.62);background:linear-gradient(145deg,#fff,#e6e6e6);border-radius:18%;display:grid;grid-template-columns:repeat(3,1fr);padding:12%;gap:4%;box-shadow:0 4px 0 #b5b5b5,0 8px 14px rgba(0,0,0,.25)}
+.mdie i{border-radius:50%}.mdie i.on{background:radial-gradient(circle at 35% 35%,#555,#111)}
+.mlog{font-weight:700;font-size:clamp(10px,calc(var(--u)*.2),15px);max-width:95%;min-height:calc(var(--u)*1)}
+.mcard{background:#fff8d6;border:3px solid #e0b000;border-radius:10px;padding:6px 12px;font-weight:800;font-size:clamp(11px,calc(var(--u)*.2),15px);box-shadow:0 6px 14px rgba(0,0,0,.2);animation:mcard .4s cubic-bezier(.2,1.4,.4,1)}.mcard.cm{background:#dff3ff;border-color:#2e86de}.mcard small{display:block;font-size:10px;color:#8a6a00;letter-spacing:.1em}
+@keyframes mcard{from{transform:scale(.4) rotate(-10deg);opacity:0}}
+.mcenter .bar button{font-size:clamp(12px,calc(var(--u)*.2),16px);padding:calc(var(--u)*.12) calc(var(--u)*.2)}.mcenter .k-mut{color:#355}.mbuyq{width:100%;font-size:clamp(12px,calc(var(--u)*.22),17px)}.mwin{width:100%;font-size:calc(var(--u)*.35);font-weight:900;color:#c0392b}
+#mToks{position:absolute;inset:0;pointer-events:none}.mtoken{position:absolute;width:calc(var(--u)*.5);height:calc(var(--u)*.5);margin:calc(var(--u)*-.25) 0 0 calc(var(--u)*-.25);border-radius:50%;background:var(--pc);border:3px solid #fff;display:grid;place-items:center;font-size:calc(var(--u)*.28);box-shadow:0 4px 8px rgba(0,0,0,.45);transition:left .16s ease-out,top .16s ease-out}
+.mtoken.cur{animation:mbob .6s infinite alternate;z-index:2}@keyframes mbob{to{transform:translateY(-5px) scale(1.12)}}
+.mpl{display:flex;flex-direction:column;gap:8px;width:min(300px,96vw)}
+.mpc{background:rgba(0,0,0,.35);border-radius:14px;padding:8px 10px;border:2px solid transparent;border-left:6px solid var(--pc)}.mpc.turn{border-color:#ffd23f;border-left-color:var(--pc);box-shadow:0 0 16px rgba(255,210,63,.4)}.mpc.out{opacity:.4}
+.mph{display:flex;align-items:center;gap:8px}.mph b{flex:1;font-size:14px}.mtk{font-size:20px}.mmoney{color:#7dff6a;font-weight:900;font-size:17px}
+.mprops{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}.mprops span{min-width:18px;height:22px;border-radius:4px;font-size:11px;font-weight:900;display:grid;place-items:center;color:#fff;text-shadow:0 1px 2px #000;cursor:pointer;padding:0 3px}.mprops span.mo{opacity:.35}.mprops em{font-style:normal}
+.mmodal{position:fixed;inset:0;z-index:30;background:rgba(0,0,0,.55);display:flex;align-items:center;justify-content:center;padding:14px}.mmodal .k-box{width:min(460px,96vw);max-height:90vh;overflow:auto}
+.mcardbig{border-radius:12px;overflow:hidden;background:#fff;color:#122}.mcbh{padding:12px;font-weight:900;font-size:20px;color:#fff;text-align:center;text-shadow:0 2px 3px rgba(0,0,0,.4)}.mcbb{padding:10px 14px}.mcbb .k-table td{border-color:#dde}.mcbb .k-mut{color:#567}
+.mmlist{display:flex;flex-direction:column;gap:6px}.mmrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:#070a14;border-radius:10px;padding:6px}.mmc{width:10px;align-self:stretch;border-radius:4px}.mmn{flex:1;min-width:110px}.mmn small{display:block;color:var(--mut)}.mmrow button{font-size:12px;padding:7px 8px}
+.mtcols{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mtl{display:flex;flex-direction:column;gap:4px;margin:6px 0;max-height:200px;overflow:auto}.mtp{font-size:12px;padding:6px;text-align:left}.mtp.on{background:var(--a);color:#06121a}
+.mtcols input{padding:6px;font-size:14px}`;document.head.appendChild(st);
+function start(players){shownPos=[];modal=null;lastDice='';}
+function menu(){if(root)root.style.display='none';K.menu({title:'STADTMOGUL',emoji:'🏙️',sub:'Kauf Straßen, bau Häuser und Hotels, handle mit den anderen – und treib sie in die Pleite!',
+ body:`<div class="k-box"><div class="k-set"><span>🤖 Gegner</span>${K.chips('smB',[[1,'1'],[2,'2'],[3,'3'],[5,'5']],nBots,v=>{nBots=v;K.store.set('sm_bots',v)})}</div><div class="k-set"><span>⏱ Runden</span>${K.chips('smR',[[15,'15'],[30,'30'],[999,'∞']],rounds,v=>{rounds=v;K.store.set('sm_rounds',v)})}</div><div class="k-set"><span>🅿️ Topf</span>${K.chips('smP',[[1,'Frei-Parken-Topf'],[0,'Aus']],parkPot?1:0,v=>{parkPot=!!v;K.store.set('sm_park',parkPot)})}</div></div>`,
+ solo:[{t:'▶ Spielen',f:()=>{start();E.solo(nBots,{rounds,park:parkPot})}}],online:{game:'mogul',max:6,onStart:r=>{start();E.hostStart(r,Math.max(0,Math.min(nBots,6-r.peers.length)),{rounds,park:parkPot})}},
+ help:'Pasch = nochmal würfeln. Gehört dir ein ganzer Straßenzug, verdoppelt sich die Miete und du kannst Häuser bauen. Mit „Verwalten“ baust du, verkaufst oder nimmst Hypotheken auf, mit „Handeln“ tauschst du Grundstücke und Geld. Tippe auf ein Feld für Infos.'})}
+menu();window.SM={get v(){return curV},E,F};
 </script>
 </body>
 </html>

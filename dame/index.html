@@ -15,63 +15,117 @@
 <script src="../shared/kit.js"></script>
 <script>
 'use strict';
-/* DAME – Schlagpflicht, Mehrfachsprünge, fliegende Damen. */
-let mode='ai',diff=1,root=null,selSq=-1;
+/* DAME 2.0 – Schlagpflicht, Mehrfachsprünge, fliegende Damen, animierte Steine. */
+let mode='ai',diff=K.store.get('dm_diff',1),root=null,selSq=-1,hintM=null,boardEl=null,pieceEls=new Map(),lastKey='',lastWin=null,curV=null,curSend=null;
 const D=[[-1,-1],[-1,1],[1,-1],[1,1]];
 const rc=i=>[i>>3,i&7],ix=(r,c)=>r*8+c,inb=(r,c)=>r>=0&&r<8&&c>=0&&c<8;
-function initBoard(){const b=new Array(64).fill(0);for(let r=0;r<8;r++)for(let c=0;c<8;c++)if((r+c)%2===1){if(r<3)b[ix(r,c)]=-1;if(r>4)b[ix(r,c)]=1}return b}
+function initBoard(){const b=new Array(64).fill(0),id=new Array(64).fill(0);let n=1;for(let r=0;r<8;r++)for(let c=0;c<8;c++)if((r+c)%2===1){if(r<3){b[ix(r,c)]=-1;id[ix(r,c)]=n++}if(r>4){b[ix(r,c)]=1;id[ix(r,c)]=n++}}return{b,id}}
 const own=(v,side)=>side>0?v>0:v<0;
 function capsFrom(b,i){const v=b[i],side=Math.sign(v),out=[];const [r,c]=rc(i);for(const [dr,dc] of D){if(Math.abs(v)===1){const r1=r+dr,c1=c+dc,r2=r+2*dr,c2=c+2*dc;if(inb(r2,c2)&&b[ix(r1,c1)]&&!own(b[ix(r1,c1)],side)&&!b[ix(r2,c2)])out.push({f:i,t:ix(r2,c2),x:ix(r1,c1)})}
  else{let rr=r+dr,cc=c+dc;while(inb(rr,cc)&&!b[ix(rr,cc)]){rr+=dr;cc+=dc}if(inb(rr,cc)&&!own(b[ix(rr,cc)],side)){const x=ix(rr,cc);rr+=dr;cc+=dc;while(inb(rr,cc)&&!b[ix(rr,cc)]){out.push({f:i,t:ix(rr,cc),x});rr+=dr;cc+=dc}}}}return out}
 function stepsFrom(b,i){const v=b[i],out=[];const [r,c]=rc(i);for(const [dr,dc] of D){if(Math.abs(v)===1){if(dr!==(v>0?-1:1))continue;if(inb(r+dr,c+dc)&&!b[ix(r+dr,c+dc)])out.push({f:i,t:ix(r+dr,c+dc)})}else{let rr=r+dr,cc=c+dc;while(inb(rr,cc)&&!b[ix(rr,cc)]){out.push({f:i,t:ix(rr,cc)});rr+=dr;cc+=dc}}}return out}
 function legal(b,side,chain){if(chain>=0)return capsFrom(b,chain);let caps=[];for(let i=0;i<64;i++)if(own(b[i],side))caps.push(...capsFrom(b,i));if(caps.length)return caps;let st=[];for(let i=0;i<64;i++)if(own(b[i],side))st.push(...stepsFrom(b,i));return st}
-function applyMove(b,m){const nb=b.slice();const v=nb[m.f];nb[m.f]=0;nb[m.t]=v;let promo=false;if(m.x!=null)nb[m.x]=0;const [r]=rc(m.t);if(Math.abs(v)===1&&((v>0&&r===0)||(v<0&&r===7))){nb[m.t]=v*2;promo=true}return{b:nb,more:m.x!=null&&!promo&&capsFrom(nb,m.t).length>0}}
-/* KI: vollständige Zugfolgen */
+function applyMove(b,m,id){const nb=b.slice(),nid=id?id.slice():null;const v=nb[m.f];nb[m.f]=0;nb[m.t]=v;if(nid){nid[m.t]=nid[m.f];nid[m.f]=0}let promo=false;if(m.x!=null){nb[m.x]=0;if(nid)nid[m.x]=0}const [r]=rc(m.t);if(Math.abs(v)===1&&((v>0&&r===0)||(v<0&&r===7))){nb[m.t]=v*2;promo=true}return{b:nb,id:nid,promo,more:m.x!=null&&!promo&&capsFrom(nb,m.t).length>0}}
+/* ---------- KI: vollständige Zugfolgen, Alpha-Beta ---------- */
 function seqs(b,side,chain){const out=[];for(const m of legal(b,side,chain)){const r=applyMove(b,m);if(r.more){for(const s of seqs(r.b,side,m.t))out.push({ms:[m,...s.ms],b:s.b})}else out.push({ms:[m],b:r.b})}return out}
-function evalB(b){let s=0;for(let i=0;i<64;i++){const v=b[i];if(!v)continue;const [r]=rc(i);const val=Math.abs(v)===2?3.2:1+(v>0?(7-r):r)*.06;s+=v>0?val:-val}return s}
-function mm(b,side,d,a,be){const ss=seqs(b,side,-1);if(!ss.length)return side>0?-99:99;if(d===0)return evalB(b);if(side>0){let v=-1e9;for(const s of ss){v=Math.max(v,mm(s.b,-1,d-1,a,be));a=Math.max(a,v);if(a>=be)break}return v}let v=1e9;for(const s of ss){v=Math.min(v,mm(s.b,1,d-1,a,be));be=Math.min(be,v);if(a>=be)break}return v}
-function aiPick(b,side){const ss=K.shuffle(seqs(b,side,-1));const dep=[1,3,5][diff];let best=null,bv=-1e9;for(const s of ss){const v=mm(s.b,-side,dep,-1e9,1e9)*side+Math.random()*(diff===0?.8:.05);if(v>bv){bv=v;best=s}}return best?best.ms:[]}
+const CENTER=[0,.02,.05,.07,.07,.05,.02,0];
+function evalB(b){let s=0,wm=0,bm=0;for(let i=0;i<64;i++){const v=b[i];if(!v)continue;const [r,c]=rc(i);let val;if(Math.abs(v)===2)val=3.3+CENTER[c]+CENTER[r];else{val=1+(v>0?(7-r):r)*.07+CENTER[c];if((v>0&&r===7)||(v<0&&r===0))val+=.12;if(c===0||c===7)val-=.04}
+ if(v>0){s+=val;wm++}else{s-=val;bm++}}
+ // Vorteil verstärken, wenn man vorne liegt (Abtausch lohnt)
+ if(wm+bm)s*=1+Math.abs(wm-bm)/(wm+bm)*.3;return s}
+let nodes=0;
+function mm(b,side,d,a,be){nodes++;const ss=seqs(b,side,-1);if(!ss.length)return side>0?-99-d:99+d;if(d<=0){// Ruhesuche: Schlagzüge weiter rechnen
+  if(d>-4&&ss[0].ms[0].x!=null){}else return evalB(b)}
+ if(side>0){let v=-1e9;for(const s of ss){v=Math.max(v,mm(s.b,-1,d-1,a,be));a=Math.max(a,v);if(a>=be||nodes>250000)break}return v}let v=1e9;for(const s of ss){v=Math.min(v,mm(s.b,1,d-1,a,be));be=Math.min(be,v);if(a>=be||nodes>250000)break}return v}
+function aiPick(b,side,lvl,chain=-1){const ss=K.shuffle(seqs(b,side,chain));if(!ss.length)return[];if(ss.length===1)return ss[0].ms;const dep=[1,4,6][lvl];nodes=0;
+ // Zugsortierung: Schlagzüge zuerst
+ ss.sort((p,q)=>q.ms.length-p.ms.length);let best=null,bv=-1e9;for(const s of ss){const v=mm(s.b,-side,dep,-1e9,1e9)*side+Math.random()*(lvl===0?1.2:.04);if(v>bv){bv=v;best=s}}return best.ms}
+/* ---------- Spielmotor ---------- */
+function snapshot(G){return{b:G.b.slice(),id:G.id.slice(),turn:G.turn,noCap:G.noCap,lastM:G.lastM,caps:G.caps.slice()}}
 const E=K.TG({game:'dame',max:2,seats:()=>2,
- setup(ps,o){return{pl:ps.map((p,i)=>({id:p.id,name:p.name,side:i===0?1:-1})),b:initBoard(),turn:0,chain:-1,log:'Weiß beginnt.',winner:null,local:!!o.local,plan:null,lastM:null,noCap:0}},
+ setup(ps,o){const ib=initBoard();return{pl:ps.map((p,i)=>({id:p.id,name:p.name,side:i===0?1:-1})),b:ib.b,id:ib.id,turn:0,chain:-1,log:'Weiß beginnt.',winner:null,local:!!o.local,ai:!!o.ai,plan:null,lastM:null,path:[],noCap:0,hist:[],caps:[0,0],pos:{},moves:0}},
  actors:G=>G.winner?[]:[G.pl[G.turn].id],over:G=>!!G.winner,
- view(G,pid){let me=G.pl.findIndex(p=>p.id===pid);if(G.local)me=G.turn;const side=G.pl[G.turn].side;return{me,b:G.b,turn:G.turn,side,mySide:G.pl[me].side,moves:(me===G.turn&&!G.winner)?legal(G.b,side,G.chain):[],log:G.log,winner:G.winner,names:G.pl.map(p=>p.name),last:G.lastM,local:G.local,cnt:[G.b.filter(v=>v>0).length,G.b.filter(v=>v<0).length]}},
- act(G,pid,a){const i=G.pl.findIndex(p=>p.id===pid);if(!G.local&&i!==G.turn)return false;if(G.winner)return false;const side=G.pl[G.turn].side;const mv=legal(G.b,side,G.chain).find(m=>m.f===a.f&&m.t===a.t);if(!mv)return false;
-  const r=applyMove(G.b,mv);G.b=r.b;G.lastM=mv;if(mv.x!=null)G.noCap=0;else G.noCap++;
+ view(G,pid){let me=G.pl.findIndex(p=>p.id===pid);if(G.local)me=G.turn;const side=G.pl[G.turn].side;return{me,b:G.b,id:G.id,turn:G.turn,side,mySide:G.pl[me].side,chain:G.chain,moves:(me===G.turn&&!G.winner)?legal(G.b,side,G.chain):[],log:G.log,winner:G.winner,names:G.pl.map(p=>p.name),last:G.lastM,path:G.path,local:G.local,canUndo:G.ai&&G.hist.length>0&&G.chain<0,caps:G.caps,cnt:[G.b.filter(v=>v>0).length,G.b.filter(v=>v<0).length],nm:G.moves}},
+ act(G,pid,a){const i=G.pl.findIndex(p=>p.id===pid);if(G.winner)return false;
+  if(a.undo){if(!G.ai||!G.hist.length||G.chain>=0)return false;const h=G.hist.pop();Object.assign(G,{b:h.b,id:h.id,turn:h.turn,noCap:h.noCap,lastM:h.lastM,caps:h.caps,plan:null,path:[]});G.log='Zug zurückgenommen.';return true}
+  if(!G.local&&i!==G.turn)return false;const side=G.pl[G.turn].side;const mv=legal(G.b,side,G.chain).find(m=>m.f===a.f&&m.t===a.t);if(!mv)return false;
+  if(G.chain<0){if(G.ai&&!G.pl[G.turn].id.startsWith('bot'))G.hist.push(snapshot(G));G.path=[mv.f]}
+  const r=applyMove(G.b,mv,G.id);G.b=r.b;G.id=r.id;G.lastM=mv;G.path.push(mv.t);if(mv.x!=null){G.noCap=0;G.caps[G.turn]++}else G.noCap++;
   if(r.more){G.chain=mv.t;G.log=G.pl[G.turn].name+' muss weiterspringen!';return true}
-  G.chain=-1;G.turn=1-G.turn;const ns=G.pl[G.turn].side;
-  if(!legal(G.b,ns,-1).length){G.winner=G.pl[1-G.turn].name;G.log=G.winner+' gewinnt! 🏆'}else if(G.noCap>=50){G.winner='Unentschieden';G.log='Unentschieden (50 Züge ohne Schlagen)'}else G.log=(mv.x!=null?'Geschlagen! ':'')+G.pl[G.turn].name+' ist dran.';return true},
- bot(G,pid){const side=G.pl[G.turn].side;if(!G.plan||!G.plan.length)G.plan=aiPick(G.b,side);const m=G.plan.shift();return m?{f:m.f,t:m.t}:null},
- botDelay:G=>G.chain>=0?450:700,render});
-let lastLog='';
-function render(v,send){if(!root){root=document.createElement('div');root.className='tg';root.style.background='radial-gradient(900px 600px at 50% 40%,#3a2a1a,#1a120a)';document.body.appendChild(root)}root.style.display='flex';
- if(v.log!==lastLog){lastLog=v.log;K.sfx(/Geschlagen|weiter/.test(v.log)?'hit':'click')}const myTurn=v.me===v.turn&&!v.winner;
- const flip=!v.local&&v.mySide<0;const mvFrom=new Set(v.moves.map(m=>m.f)),targets=v.moves.filter(m=>m.f===selSq).map(m=>m.t);
- if(!mvFrom.has(selSq))selSq=-1;if(myTurn&&mvFrom.size===1)selSq=[...mvFrom][0];
- let cells='';for(let k=0;k<64;k++){const i=flip?63-k:k,[r,c]=rc(i),dark=(r+c)%2===1,p=v.b[i];
-  cells+=`<div class="dq ${dark?'dk':'lt'} ${v.last&&(v.last.f===i||v.last.t===i)?'lm':''} ${targets.includes(i)?'tg':''} ${selSq===i?'sl':''}" data-i="${i}">${p?`<div class="dp ${p>0?'w':'b'} ${Math.abs(p)===2?'k':''} ${mvFrom.has(i)&&myTurn?'can':''}"></div>`:''}</div>`}
- root.innerHTML=`<div class="top"><a href="#" id="dB">← Menü</a><b>⛀ DAME</b><span>${E.room?'Raum '+E.room.code:''}</span></div>
- <div class="opps"><div class="opp ${v.turn===0?'turn':''}">⚪ ${K.esc(v.names[0])} · ${v.cnt[0]}</div><div class="opp ${v.turn===1?'turn':''}">⚫ ${K.esc(v.names[1])} · ${v.cnt[1]}</div></div>
- <div class="dboard">${cells}</div><div class="msg">${K.esc(v.log)}</div>
- <div class="msg" style="color:#ffd23f">${v.winner?'':myTurn?(v.moves.some(m=>m.x!=null)?'Schlagpflicht!':'Du bist dran'):'⏳ '+K.esc(v.names[v.turn])+' denkt nach …'}</div>
- ${v.winner&&E.host?'<button class="pri" id="dA">🔁 Neues Spiel</button>':''}`;
- K.$('dB').onclick=e=>{e.preventDefault();E.stop();root.style.display='none';menu()};if(K.$('dA'))K.$('dA').onclick=()=>start(mode);
- root.querySelectorAll('.dq').forEach(el=>el.onclick=()=>{if(!myTurn)return;const i=+el.dataset.i;if(targets.includes(i)){send({f:selSq,t:i});selSq=-1;return}if(mvFrom.has(i)){selSq=i;K.sfx('click');render(v,send)}});
- if(v.winner)K.sfx(v.winner===v.names[v.me]||v.local?'win':'lose')}
-const st=document.createElement('style');st.textContent=`.dboard{display:grid;grid-template-columns:repeat(8,1fr);width:min(94vw,66vh,600px);height:min(94vw,66vh,600px);flex:0 0 auto;border:12px solid #5a3418;border-radius:10px;box-shadow:0 14px 30px rgba(0,0,0,.6)}
-.dq{position:relative;display:grid;place-items:center}.dq.lt{background:#f0d9b5}.dq.dk{background:#9c6b3c}.dq.lm{box-shadow:inset 0 0 0 100px rgba(255,210,63,.25)}.dq.sl{box-shadow:inset 0 0 0 4px #ffd23f}
-.dq.tg:after{content:"";position:absolute;width:30%;height:30%;border-radius:50%;background:rgba(46,213,115,.85);box-shadow:0 0 12px #2ed573}
-.dp{width:78%;height:78%;border-radius:50%;box-shadow:0 4px 0 rgba(0,0,0,.45),inset 0 -4px 0 rgba(0,0,0,.2);position:relative}
-.dp.w{background:radial-gradient(circle at 35% 30%,#fff,#e8e2d4 60%,#cfc6b0)}.dp.b{background:radial-gradient(circle at 35% 30%,#666,#222 60%,#111)}
-.dp:before{content:"";position:absolute;inset:18%;border-radius:50%;border:3px solid rgba(0,0,0,.15)}.dp.b:before{border-color:rgba(255,255,255,.12)}
-.dp.k:after{content:"♛";position:absolute;inset:0;display:grid;place-items:center;font-size:min(5vw,3.6vh,30px);color:#d4a017}
-.dp.can{animation:dpb .7s infinite alternate}@keyframes dpb{to{box-shadow:0 4px 0 rgba(0,0,0,.45),0 0 16px 4px #2ed573}}`;document.head.appendChild(st);
-function start(m){mode=m;if(m==='ai')E.solo(1);else if(m==='local'){E.host=true;E.room=null;E.start([{id:K.uid(),name:'Weiß'},{id:K.uid()+'#2',name:'Schwarz'}],{local:true})}else if(E.room)E.start(E.players)}
+  G.chain=-1;G.moves++;const who=G.pl[G.turn].name;G.turn=1-G.turn;const ns=G.pl[G.turn].side;
+  const key=G.b.join(',')+G.turn;G.pos[key]=(G.pos[key]||0)+1;
+  if(!legal(G.b,ns,-1).length){G.winner=G.pl[1-G.turn].name;G.log=G.winner+' gewinnt! 🏆'}
+  else if(G.noCap>=50){G.winner='Unentschieden';G.log='Unentschieden – 25 Züge je Seite ohne Schlagen.'}
+  else if(G.pos[key]>=3){G.winner='Unentschieden';G.log='Unentschieden – dreimal dieselbe Stellung.'}
+  else G.log=(mv.x!=null?who+' schlägt'+(G.path.length>2?' '+(G.path.length-1)+'×':'')+'! ':'')+(r.promo?'👑 Neue Dame! ':'')+G.pl[G.turn].name+' ist dran.';return true},
+ bot(G,pid){const side=G.pl[G.turn].side;if(G.chain<0||!G.plan||!G.plan.length||G.plan[0].f!==G.chain)G.plan=aiPick(G.b,side,diff,G.chain);const m=G.plan.shift();return m?{f:m.f,t:m.t}:null},
+ botDelay:G=>G.chain>=0?520:650+Math.random()*400,render});
+/* ---------- Darstellung ---------- */
+function ensureRoot(){if(root)return;root=document.createElement('div');root.className='tg dm';document.body.appendChild(root);
+ root.innerHTML=`<div class="top"><a href="#" id="dB">← Menü</a><b>⛀ DAME</b><span id="dRoom"></span></div>
+ <div class="dmplayers"><div class="dmp" id="dP0"></div><div class="dmp" id="dP1"></div></div>
+ <div class="dmwrap"><div class="dmcoords" id="dCo"></div><div class="dboard" id="dBoard"></div></div>
+ <div class="msg" id="dLog"></div><div class="msg dmhint" id="dSt"></div><div class="bar" id="dBar"></div>`;
+ boardEl=K.$('dBoard');
+ K.$('dB').onclick=e=>{e.preventDefault();E.stop();root.style.display='none';menu()};
+ boardEl.addEventListener('click',e=>{const q=e.target.closest('[data-i]');if(!q||!curV)return;clickSq(+q.dataset.i)})}
+function clickSq(i){const v=curV;if(!v)return;const myTurn=v.me===v.turn&&!v.winner;if(!myTurn)return;const targets=v.moves.filter(m=>m.f===selSq).map(m=>m.t);
+ if(targets.includes(i)){hintM=null;curSend({f:selSq,t:i});selSq=-1;return}const mvFrom=new Set(v.moves.map(m=>m.f));if(mvFrom.has(i)){selSq=i;K.sfx('click');draw()}else if(v.b[i]&&own(v.b[i],v.side)){K.sfx('bad');K.toast(v.moves.some(m=>m.x!=null)?'Schlagpflicht! Ein anderer Stein muss schlagen.':'Dieser Stein kann nicht ziehen.')}}
+function render(v,send){ensureRoot();root.style.display='flex';curV=v;curSend=send;const key=v.log+'|'+v.nm+'|'+v.chain+'|'+(v.last?v.last.t:'');
+ if(key!==lastKey){if(lastKey){if(v.last&&v.last.x!=null)K.sfx('hit');else K.sfx('card')}lastKey=key;hintM=null}
+ if(v.winner&&v.winner!==lastWin){lastWin=v.winner;setTimeout(()=>K.sfx(v.winner==='Unentschieden'?'click':(v.local||v.winner===v.names[v.me])?'win':'lose'),300)}if(!v.winner)lastWin=null;
+ if(v.chain>=0)selSq=v.chain;draw()}
+function draw(){const v=curV;const myTurn=v.me===v.turn&&!v.winner;const flip=!v.local&&v.mySide<0;
+ const mvFrom=new Set(v.moves.map(m=>m.f));if(!mvFrom.has(selSq))selSq=-1;if(myTurn&&mvFrom.size===1)selSq=[...mvFrom][0];const targets=v.moves.filter(m=>m.f===selSq);
+ const pos=i=>{let [r,c]=rc(i);if(flip){r=7-r;c=7-c}return[r,c]};
+ // Felder
+ if(!boardEl.dataset.ok){let h='';for(let i=0;i<64;i++){const [r,c]=rc(i);h+=`<div class="dq ${(r+c)%2?'dk':'lt'}" data-sq="${i}"></div>`}boardEl.innerHTML=h+'<div id="dPcs"></div><svg id="dPath" viewBox="0 0 8 8" preserveAspectRatio="none"></svg>';boardEl.dataset.ok=1}
+ boardEl.querySelectorAll('.dq').forEach(el=>{const i=+el.dataset.sq,[r,c]=pos(i);el.style.gridRow=r+1;el.style.gridColumn=c+1;el.dataset.i=i;
+  el.className='dq '+((r+c)%2?'dk':'lt')+(v.last&&(v.last.f===i||v.last.t===i)?' lm':'')+(targets.some(m=>m.t===i)?(targets.find(m=>m.t===i).x!=null?' tg cap':' tg'):'')+(selSq===i?' sl':'')+(hintM&&(hintM.f===i||hintM.t===i)?' hint':'')});
+ // Weg des letzten Zugs
+ const path=K.$('dPath');if(v.path&&v.path.length>1){const pts=v.path.map(i=>{const [r,c]=pos(i);return(c+.5)+','+(r+.5)}).join(' ');path.innerHTML=`<polyline points="${pts}" fill="none" stroke="rgba(255,210,63,.75)" stroke-width=".09" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray=".2 .14"/>`}else path.innerHTML='';
+ // Steine (mit Animation)
+ const pc=K.$('dPcs'),seen=new Set();for(let i=0;i<64;i++){const id=v.id[i],val=v.b[i];if(!id||!val)continue;seen.add(id);let el=pieceEls.get(id);
+  if(!el){el=document.createElement('div');el.className='dp';el.innerHTML='<i></i>';pc.appendChild(el);pieceEls.set(id,el);el.style.transition='none'}
+  const [r,c]=pos(i);el.style.transform=`translate(${c*100}%,${r*100}%)`;el.className='dp '+(val>0?'w':'b')+(Math.abs(val)===2?' k':'')+(mvFrom.has(i)&&myTurn?' can':'')+(selSq===i?' sel':'');el.dataset.i=i;
+  if(el.style.transition==='none'){void el.offsetWidth;el.style.transition=''}}
+ for(const [id,el] of pieceEls)if(!seen.has(id)){pieceEls.delete(id);el.classList.add('gone');el.dataset.i='';setTimeout(()=>el.remove(),450)}
+ // Koordinaten
+ K.$('dCo').innerHTML='';
+ // Spieler
+ for(let s=0;s<2;s++){const el=K.$('dP'+s);el.className='dmp'+(v.turn===s&&!v.winner?' turn':'')+(v.me===s&&!v.local?' me':'');
+  el.innerHTML=`<span class="dmdot ${s?'b':'w'}"></span><div><b>${K.esc(v.names[s])}</b>${v.me===s&&!v.local?' <small>(du)</small>':''}<div class="dmsub">${v.cnt[s]} Steine · geschlagen: <span style="color:${s?'#fff':'#c0472c'}">${'●'.repeat(Math.min(12,v.caps[s]))||'–'}</span></div></div>`}
+ K.$('dRoom').textContent=E.room?'Raum '+E.room.code:'';K.$('dLog').textContent=v.log;
+ K.$('dSt').textContent=v.winner?'':myTurn?(v.chain>=0?'Weiterspringen!':v.moves.some(m=>m.x!=null)?'⚠️ Schlagpflicht!':selSq>=0?'Wähle das Zielfeld':'Wähle einen Stein'):'⏳ '+v.names[v.turn]+' überlegt …';
+ let bar='';if(v.winner&&E.host)bar+='<button class="pri" id="dA">🔁 Neues Spiel</button>';if(v.canUndo&&!v.winner)bar+='<button id="dU">↶ Zurück</button>';if(myTurn&&!v.local&&mode==='ai'&&v.chain<0)bar+='<button id="dH">💡 Tipp</button>';
+ const bEl=K.$('dBar');if(bEl.dataset.h!==bar){bEl.innerHTML=bar;bEl.dataset.h=bar;if(K.$('dA'))K.$('dA').onclick=()=>start(mode);if(K.$('dU'))K.$('dU').onclick=()=>{selSq=-1;curSend({undo:1})};if(K.$('dH'))K.$('dH').onclick=()=>{const ms=aiPick(curV.b,curV.side,1);hintM=ms[0]||null;if(hintM){selSq=hintM.f;draw()}}}}
+const st=document.createElement('style');st.textContent=`.tg.dm{background:radial-gradient(1000px 700px at 50% 30%,#4a3320,#1c120a 75%)}
+.dmplayers{display:flex;gap:10px;justify-content:center;width:100%;max-width:640px}
+.dmp{flex:1;display:flex;gap:10px;align-items:center;background:rgba(0,0,0,.35);border-radius:14px;padding:8px 12px;border:2px solid transparent;transition:.2s}.dmp.turn{border-color:#ffd23f;box-shadow:0 0 18px rgba(255,210,63,.4)}
+.dmp small{color:#ffd23f}.dmsub{font-size:12px;color:#d8c8b0;letter-spacing:1px}.dmdot{width:26px;height:26px;border-radius:50%;flex:0 0 auto;box-shadow:0 3px 0 rgba(0,0,0,.5)}.dmdot.w{background:radial-gradient(circle at 35% 30%,#fff,#d9cfb8)}.dmdot.b{background:radial-gradient(circle at 35% 30%,#8a2a1a,#3a0c05)}
+.dmwrap{padding:14px;border-radius:16px;background:linear-gradient(145deg,#7a4a22,#3d2210);box-shadow:0 20px 40px rgba(0,0,0,.6),inset 0 2px 0 rgba(255,255,255,.15)}
+.dboard{position:relative;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);width:min(90vw,60vh,620px);height:min(90vw,60vh,620px);border-radius:4px;overflow:hidden;box-shadow:inset 0 0 0 2px rgba(0,0,0,.4)}
+.dq{position:relative}.dq.lt{background:linear-gradient(135deg,#f3dfbd,#e8cfa4)}.dq.dk{background:linear-gradient(135deg,#8b5a2b,#6e4220)}
+.dq.lm{box-shadow:inset 0 0 0 100px rgba(255,210,63,.22)}.dq.sl{box-shadow:inset 0 0 0 4px #ffd23f}.dq.hint{box-shadow:inset 0 0 0 4px #4ade80}
+.dq.tg:after{content:"";position:absolute;left:35%;top:35%;width:30%;height:30%;border-radius:50%;background:rgba(74,222,128,.9);box-shadow:0 0 14px #4ade80;z-index:3;pointer-events:none}.dq.tg.cap:after{background:rgba(255,90,90,.95);box-shadow:0 0 16px #ff5a5a}
+.dq.tg{cursor:pointer;z-index:4}
+#dPcs{position:absolute;inset:0;pointer-events:none}#dPath{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;z-index:2}
+.dp{position:absolute;left:0;top:0;width:12.5%;height:12.5%;transition:transform .38s cubic-bezier(.3,1.3,.5,1),opacity .4s;pointer-events:auto;cursor:pointer;z-index:1}
+.dp i{position:absolute;inset:9%;border-radius:50%;box-shadow:0 5px 0 rgba(0,0,0,.45),0 8px 12px rgba(0,0,0,.35),inset 0 -5px 0 rgba(0,0,0,.25),inset 0 3px 0 rgba(255,255,255,.35);transition:transform .15s}
+.dp.w i{background:repeating-radial-gradient(circle at 50% 50%,transparent 0 22%,rgba(0,0,0,.08) 23% 25%,transparent 26% 40%),radial-gradient(circle at 35% 30%,#fffef8,#efe5cf 55%,#cbbd9c)}
+.dp.b i{background:repeating-radial-gradient(circle at 50% 50%,transparent 0 22%,rgba(255,255,255,.08) 23% 25%,transparent 26% 40%),radial-gradient(circle at 35% 30%,#b8442c,#6b1a0c 55%,#3a0a03)}
+.dp.k i:after{content:"♛";position:absolute;inset:0;display:grid;place-items:center;font-size:min(5.5vw,3.8vh,36px);color:#ffcf3d;text-shadow:0 2px 0 rgba(0,0,0,.5)}
+.dp.can i{animation:dpb .8s infinite alternate}@keyframes dpb{to{box-shadow:0 5px 0 rgba(0,0,0,.45),0 0 18px 5px rgba(74,222,128,.8),inset 0 -5px 0 rgba(0,0,0,.25)}}
+.dp.sel i{transform:translateY(-6px) scale(1.06);box-shadow:0 11px 0 rgba(0,0,0,.35),0 0 0 4px #ffd23f,inset 0 -5px 0 rgba(0,0,0,.25)}
+.dp.gone{opacity:0}.dp.gone i{transform:scale(.3) rotate(90deg)}
+.dmhint{color:#ffd23f;font-size:16px}`;document.head.appendChild(st);
+function resetBoard(){selSq=-1;hintM=null;lastKey='';lastWin=null;for(const el of pieceEls.values())el.remove();pieceEls.clear()}
+function start(m){mode=m;resetBoard();if(m==='ai')E.solo(1,{ai:true});else if(m==='local'){E.host=true;E.room=null;E.start([{id:K.uid(),name:'Weiß'},{id:K.uid()+'#2',name:'Rot'}],{local:true})}else if(E.room)E.start(E.players)}
 function menu(){if(root)root.style.display='none';K.menu({title:'DAME',emoji:'⛀',sub:'Schlagpflicht, Mehrfachsprünge und fliegende Damen – der Strategie-Klassiker.',
- body:`<div class="k-box"><div class="k-set"><span>🤖 KI</span>${K.chips('dD',[[0,'Leicht'],[1,'Mittel'],[2,'Schwer']],diff,v=>diff=v)}</div></div>`,
- solo:[{t:'▶ Gegen KI',f:()=>start('ai')},{t:'👥 Zu zweit an einem Gerät',f:()=>start('local')}],online:{game:'dame',max:2,min:2,onStart:r=>{mode='online';E.hostStart(r,0)},botsNote:'Warte auf einen Gegner.'},
- help:'Steine ziehen schräg nach vorn und schlagen in alle Richtungen. Wer die letzte Reihe erreicht, wird zur Dame und darf weit ziehen. Schlagen ist Pflicht!'})}
-menu();
-
+ body:`<div class="k-box"><div class="k-set"><span>🤖 KI</span>${K.chips('dD',[[0,'Leicht'],[1,'Mittel'],[2,'Schwer']],diff,v=>{diff=v;K.store.set('dm_diff',v)})}</div></div>`,
+ solo:[{t:'▶ Gegen KI',f:()=>start('ai')},{t:'👥 Zu zweit an einem Gerät',f:()=>start('local')}],online:{game:'dame',max:2,min:2,onStart:r=>{mode='online';resetBoard();E.hostStart(r,0)},botsNote:'Warte auf einen Gegner.'},
+ help:'Steine ziehen schräg nach vorn und schlagen in alle Richtungen – auch mehrfach hintereinander. Wer die letzte Reihe erreicht, wird zur Dame (♛) und darf beliebig weit ziehen. Schlagen ist Pflicht! Gegen die KI kannst du Züge zurücknehmen und dir Tipps holen.'})}
+menu();window.DM={get v(){return curV},E};
 </script>
 </body>
 </html>
