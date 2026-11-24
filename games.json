@@ -56,7 +56,7 @@
   "title": "Billard",
   "emoji": "🎱",
   "path": "billard/",
-  "desc": "8-Ball mit echter Kugel-Physik und Ziellinie. Gegen die KI, zu zweit an einem Gerät oder online.",
+  "desc": "8-Ball mit echten Banden und Taschen, Kraftregler, Effet und Ansage der 8. Gegen die KI, zu zweit an einem Gerät oder online.",
   "players": "1–2 Spieler",
   "tags": [
    "Online",
@@ -67,7 +67,7 @@
    "#16a34a",
    "#facc15"
   ],
-  "badge": "Neu"
+  "badge": "Update"
  },
  {
   "id": "kopfball",
@@ -286,7 +286,7 @@
   "title": "Poker",
   "emoji": "♠️",
   "path": "poker/",
-  "desc": "Texas Hold'em mit Spielgeld: bluffen, erhöhen, alles setzen. Jeder startet mit 1000 Chips.",
+  "desc": "Texas Hold'em mit Spielgeld, schlauen Bots und echten Nebentöpfen. Wer am Ende alle Chips hat, gewinnt.",
   "players": "1–8 Spieler",
   "tags": [
    "Online",
@@ -297,14 +297,14 @@
    "#1e8449",
    "#145a32"
   ],
-  "badge": "Neu"
+  "badge": "Update"
  },
  {
   "id": "stadtmogul",
   "title": "Stadtmogul",
   "emoji": "🏙️",
   "path": "stadtmogul/",
-  "desc": "Straßen kaufen, Häuser und Hotels bauen, Miete kassieren – bis alle anderen pleite sind.",
+  "desc": "Kauf Straßen, bau Häuser und Hotels, handle mit den anderen, nimm Hypotheken auf – und werde der Stadtmogul!",
   "players": "1–6 Spieler",
   "tags": [
    "Online",
@@ -315,7 +315,7 @@
    "#c0392b",
    "#f39c12"
   ],
-  "badge": "Neu"
+  "badge": "Update"
  },
  {
   "id": "maumau",
@@ -376,7 +376,7 @@
   "title": "Dame",
   "emoji": "⛀",
   "path": "dame/",
-  "desc": "Schlagpflicht, Mehrfachsprünge und fliegende Damen – gegen KI, zu zweit oder online.",
+  "desc": "Der Strategie-Klassiker mit Schlagpflicht, Mehrfachsprüngen und fliegenden Damen – jetzt mit Animationen, Tipps und Zurücknehmen.",
   "players": "1–2 Spieler",
   "tags": [
    "Online",
@@ -387,14 +387,14 @@
    "#8e5a2b",
    "#3a2414"
   ],
-  "badge": "Neu"
+  "badge": "Update"
  },
  {
   "id": "zellfresser",
   "title": "Zellfresser",
   "emoji": "🦠",
   "path": "zellfresser/",
-  "desc": "Friss Punkte und kleinere Zellen, teile dich, um Gegner zu schnappen, und meide die Viren.",
+  "desc": "Friss Punkte und kleinere Zellen, werde riesig – teilen, auswerfen, Viren füttern. Mit Motiven und Online-Modus.",
   "players": "1–10 Spieler",
   "tags": [
    "Online",
@@ -405,14 +405,14 @@
    "#0bd17a",
    "#05a6ff"
   ],
-  "badge": "Neu"
+  "badge": "Update"
  },
  {
   "id": "revier",
   "title": "Revier",
   "emoji": "🟩",
   "path": "revier/",
-  "desc": "Verlasse dein Gebiet, kreise Land ein und schneide Gegnern die Spur ab.",
+  "desc": "Lenke frei durch die runde Arena, kreise Land ein und schneide Gegnern die Spur ab!",
   "players": "1–10 Spieler",
   "tags": [
    "Online",
@@ -423,7 +423,7 @@
    "#2ed573",
    "#ffb300"
   ],
-  "badge": "Neu"
+  "badge": "Update"
  },
  {
   "id": "panzer",
@@ -483,7 +483,7 @@
   "title": "Sturm Royale",
   "emoji": "🪂",
   "path": "sturm-royale/",
-  "desc": "Battle Royale auf einer Insel: abspringen, Waffen looten, Wände und Rampen bauen und vor dem Sturm fliehen. Online mit Freunden, Bots füllen auf.",
+  "desc": "Sturm Royale 3.0: eigene Figuren mit 10 Outfits, riesige Insel mit 15 Orten, Schnee & Wüste, 9 Waffen inkl. Raketenwerfer & Granaten, Bauen in Holz, Stein & Metall mit Vorschau, Versorgungskisten.",
   "players": "1–16 + Bots",
   "tags": [
    "Online",
@@ -494,7 +494,7 @@
    "#7d3cff",
    "#ffb300"
   ],
-  "badge": ""
+  "badge": "Update"
  },
  {
   "id": "snake-io",
@@ -519,7 +519,7 @@
   "title": "Pizza Profi",
   "emoji": "🍕",
   "path": "pizza-profi/",
-  "desc": "Back Pizzas, bediene Kunden, kassier ab und bau dein Restaurant aus – mit Mitarbeitern, Tischen und Drive-in.",
+  "desc": "Back Pizzas, bediene Kunden, kassier ab und bau dein Restaurant aus – mit Mitarbeitern, Tischen und Drive-in. NEU: Terrasse, Lieferdienst, VIP-Gäste und Aufträge!",
   "players": "1 Spieler",
   "tags": [
    "Idle",
@@ -529,7 +529,7 @@
    "#e8471c",
    "#ffb347"
   ],
-  "badge": ""
+  "badge": "Update"
  },
  {
   "id": "goldminer",

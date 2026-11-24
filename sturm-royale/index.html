@@ -84,6 +84,24 @@ a.back{color:var(--mut);text-decoration:none;background:var(--card);padding:8px 
 #tUse{right:max(200px,env(safe-area-inset-right));bottom:calc(max(20px,env(safe-area-inset-bottom)) + 164px);width:54px;height:54px;font-size:20px}
 #tEmote{right:max(224px,env(safe-area-inset-right));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 210px);width:46px;height:46px;font-size:20px}
 #tMenu{right:max(12px,env(safe-area-inset-right));top:calc(max(10px,env(safe-area-inset-top)) + 228px);width:46px;height:46px;font-size:18px}
+
+#skinRow{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}#skinRow button{width:auto;height:auto;min-height:64px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:6px 2px;border-radius:12px;border:3px solid transparent;background:#1a2147}#skinRow button span{font-size:26px}#skinRow button small{font-size:10px;font-weight:700;color:#c9d0f0;line-height:1.1}#skinRow button.on{border-color:#ffd23f;background:#2c3566;box-shadow:0 0 12px rgba(255,210,63,.5)}
+#slots div{width:60px;height:60px}#slots div img{width:52px;height:30px;pointer-events:none}#slots div em{position:absolute;left:4px;top:2px;font-size:10px;font-style:normal;opacity:.7}
+#cons{position:absolute;left:max(14px,env(safe-area-inset-left));bottom:calc(max(14px,env(safe-area-inset-bottom)) + 56px);display:flex;gap:5px;pointer-events:auto}#cons div{background:rgba(10,14,30,.6);border-radius:8px;padding:3px 7px;font-size:16px;display:flex;align-items:center;gap:4px;border:2px solid rgba(255,255,255,.15)}#cons div b{font-size:13px}#cons div.zero{opacity:.35}
+#rbox{position:absolute;right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));text-align:right;pointer-events:auto}#ammoInfo{font-size:15px;font-weight:800;text-shadow:0 2px 3px #000;margin-bottom:6px}#ammoInfo b{font-size:26px}#ammoInfo small{display:block;font-size:11px;opacity:.8}
+#mats{display:flex;gap:5px;justify-content:flex-end}#mats div{background:rgba(10,14,30,.6);border:2px solid rgba(255,255,255,.15);border-radius:8px;padding:3px 7px;font-size:16px;display:flex;gap:4px;align-items:center}#mats div b{font-size:13px;min-width:22px}#mats div.on{border-color:#4fc3ff;background:rgba(40,90,160,.7)}
+#healBar{position:absolute;left:50%;top:62%;transform:translateX(-50%);width:200px;height:8px;border-radius:4px;background:rgba(0,0,0,.5);display:none;overflow:hidden}#healBar i{display:block;height:100%;background:linear-gradient(90deg,#2fd16a,#7fdcff);width:0}
+#stormDist{position:absolute;right:max(12px,env(safe-area-inset-right));top:calc(max(10px,env(safe-area-inset-top)) + 228px);font-size:12px;font-weight:800;text-shadow:0 2px 3px #000;max-width:170px;text-align:right}
+#buildBar{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(max(12px,env(safe-area-inset-bottom)) + 74px);display:none;gap:6px;pointer-events:auto}#buildBar button{display:flex;flex-direction:column;align-items:center;font-size:22px;padding:6px 10px;background:rgba(10,14,30,.65);border:2px solid rgba(255,255,255,.2)}#buildBar button small{font-size:10px}#buildBar button.on{border-color:#4fc3ff;background:rgba(40,90,160,.8)}
+#bigMap{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border-radius:18px;border:3px solid rgba(255,255,255,.5);box-shadow:0 10px 40px rgba(0,0,0,.7);display:none;pointer-events:auto;z-index:3}
+#mini{pointer-events:auto;cursor:pointer;border-radius:50%!important}
+#cross.bld i{background:#4fc3ff}
+.ddir{position:absolute;left:50%;top:50%;width:0;height:0;pointer-events:none;animation:ddf .8s forwards}.ddir:before{content:"";position:absolute;left:-40px;top:-170px;width:80px;height:26px;border-radius:50% 50% 0 0;border-top:6px solid rgba(255,40,40,.9)}@keyframes ddf{to{opacity:0}}
+#tCone{right:max(224px,env(safe-area-inset-right));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 204px);width:58px;height:58px;font-size:22px}
+#tMat{right:max(26px,env(safe-area-inset-right));bottom:calc(max(26px,env(safe-area-inset-bottom)) + 270px);width:50px;height:50px;font-size:22px;display:none}
+.tb.hit{background:rgba(255,255,255,.35)}
+@media (pointer:coarse){#cons{bottom:calc(max(14px,env(safe-area-inset-bottom)) + 236px)}#bars{width:min(220px,34vw)}}
+#tEmote{right:auto!important;left:max(18px,env(safe-area-inset-left));bottom:auto!important;top:calc(max(10px,env(safe-area-inset-top)) + 150px)}
 #res2 table{width:100%;border-collapse:collapse}#res2 td{padding:6px;border-bottom:1px solid var(--line)}
 </style>
 </head>
@@ -99,27 +117,27 @@ a.back{color:var(--mut);text-decoration:none;background:var(--card);padding:8px 
   <div id="iStorm"></div>
   <canvas id="mini" width="300" height="300"></canvas>
   <div id="bars"><div class="bar" id="bSh"><i></i><b>🛡 0</b></div><div class="bar" id="bHp"><i></i><b>❤ 100</b></div></div>
-  <div id="res"></div>
+  <div id="res"></div><div id="cons"></div><div id="rbox"><div id="ammoInfo"></div><div id="mats"></div></div><div id="healBar"><i></i></div><div id="stormDist"></div><div id="buildBar"><button data-bp="wall">🧱<small>Q Wand</small></button><button data-bp="ramp">📐<small>F Rampe</small></button><button data-bp="floor">⬜<small>C Boden</small></button><button data-bp="cone">🔺<small>V Dach</small></button></div>
   <div id="slots"></div>
   <div id="big"></div><div id="elim"></div><div id="msg"></div>
   <div id="prompt"></div>
-  <div id="busUI"><button class="pri" id="bDrop">🪂 ABSPRINGEN!</button></div>
+  <canvas id="bigMap"></canvas><div id="busUI"><button class="pri" id="bDrop">🪂 ABSPRINGEN!</button></div>
 </div>
 <div id="touch">
   <div id="joy"><div id="kn"></div></div>
   <div class="tb" id="tFire">🎯</div><div class="tb" id="tJump">⤒</div>
-  <div class="tb" id="tWall">🧱</div><div class="tb" id="tRamp">📐</div><div class="tb" id="tFloor">⬜</div>
+  <div class="tb" id="tWall" data-k="wall">🧱</div><div class="tb" id="tRamp" data-k="ramp">📐</div><div class="tb" id="tFloor" data-k="floor">⬜</div><div class="tb" id="tCone" data-k="cone">🔺</div><div class="tb" id="tMat">🪵</div>
   <div class="tb" id="tRel">↻</div><div class="tb" id="tHeal">💊</div><div class="tb" id="tUse">✋</div><div class="tb" id="tEmote">💃</div><div class="tb" id="tMenu">☰</div>
 </div>
 
 <div class="scr" id="menu" style="display:none"><div class="panel">
   <a class="back" href="../">← Spiele</a>
   <h1>STURM ROYALE</h1>
-  <div class="sub">Abspringen · Looten · Bauen · Überleben</div>
-  <div class="box"><input id="name" maxlength="14" placeholder="Dein Name"><h3>Outfit-Farbe</h3><div id="skinRow"></div></div>
+  <div class="sub">Abspringen · Looten · Bauen · Überleben</div><div class="mut" style="text-align:center;color:#ffd23f;font-weight:800">NEU: Eigene Figuren mit 10 Outfits · 2,4× größere Insel mit 15 Orten · Raketenwerfer, Granaten & Munition · Bauen mit Vorschau in Holz, Stein & Metall · Versorgungskisten · große Karte (M)</div>
+  <div class="box"><input id="name" maxlength="14" placeholder="Dein Name"><h3>Outfit</h3><div id="skinRow"></div></div>
   <div class="box">
     <h3>Match einstellen</h3>
-    <div class="set"><span>🤖 Bots</span><div class="chips" id="sBots"><button data-v="0">0</button><button data-v="9">9</button><button data-v="19" class="on">19</button><button data-v="29">29</button></div></div>
+    <div class="set"><span>🤖 Bots</span><div class="chips" id="sBots"><button data-v="9">9</button><button data-v="19">19</button><button data-v="29">29</button><button data-v="49">49</button></div></div>
     <div class="set"><span>💪 Bot-Stärke</span><div class="chips" id="sDiff"><button data-v="0">Leicht</button><button data-v="1" class="on">Mittel</button><button data-v="2">Profi</button></div></div>
     <div class="set"><span>🌪 Sturm</span><div class="chips" id="sStorm"><button data-v="0">Langsam</button><button data-v="1" class="on">Normal</button><button data-v="2">Schnell</button></div></div>
     <div class="set"><span>🎨 Grafik</span><div class="chips" id="sGfx"><button data-v="0">Schnell</button><button data-v="1">Schön</button><button data-v="2">Ultra</button></div></div>
@@ -129,8 +147,8 @@ a.back{color:var(--mut);text-decoration:none;background:var(--card);padding:8px 
     <button id="bCreate">Raum erstellen</button>
     <div class="row"><input id="code" maxlength="4" placeholder="CODE" style="text-transform:uppercase;text-align:center;letter-spacing:6px;font-weight:800"><button id="bJoin" style="flex:0 0 auto">Beitreten</button></div>
     <div class="err" id="err"></div></div>
-  <p class="mut"><b>PC:</b> WASD laufen, Maus zielen (ins Bild klicken), Klick schießen, Rechtsklick zoomen, Leertaste springen/Gleiter, 1–5 Waffen, R nachladen, E aufheben, H heilen, Q Wand, F Rampe, C Boden, B tanzen.<br><b>iPad:</b> Links Joystick, rechts wischen zum Zielen, 🎯 schießen (gedrückt halten und ziehen geht auch).<br>Holz gibt's mit der Spitzhacke an Bäumen. Orte: Ziegelstadt, Heuhof, Burgberg, Leuchtturm, Tankstelle, Blauer See, Dunkelwald, Klippen.</p>
-  <p class="mut" style="font-size:11px;opacity:.6">Figuren: „RobotExpressive“ von Tomás Laulhé (Quaternius), CC0.</p>
+  <p class="mut"><b>PC:</b> WASD laufen, Maus zielen (ins Bild klicken), Klick schießen/bauen, Rechtsklick zoomen, Leertaste springen/Gleiter, 1–6 Waffen, R nachladen, E aufheben, H heilen, M Karte, B tanzen.<br><b>Bauen:</b> Q Wand, F Rampe, C Boden, V Dach – dann klicken zum Setzen (gedrückt halten = schnell bauen). R wechselt Holz/Stein/Metall, G Bau-Modus an/aus.<br><b>iPad:</b> Links Joystick, rechts wischen zum Zielen, 🎯 schießen bzw. bauen. Bau-Knöpfe oben rechts.<br>Material sammelst du mit der Spitzhacke: Bäume = Holz, Felsen & Mauern = Stein, Autos & Container = Metall.</p>
+  <p class="mut" id="stats" style="text-align:center"></p>
 </div></div>
 
 <div class="scr" id="lobby" style="display:none"><div class="panel">
@@ -148,8 +166,6 @@ a.back{color:var(--mut);text-decoration:none;background:var(--card);padding:8px 
 </div></div>
 
 <script src="../shared/three.min.js"></script>
-<script src="assets/GLTFLoader.js"></script>
-<script src="assets/SkeletonUtils.js"></script>
 <script src="assets/BufferGeometryUtils.js"></script>
 <script src="../shared/peerjs.min.js"></script>
 <script src="../shared/net.js"></script>
