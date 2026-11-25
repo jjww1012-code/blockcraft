@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/nozoom.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Tic Tac Toe</title>
+<link rel="stylesheet" href="../shared/kit.css">
+<style>:root{--a:#ff4d8d;--b:#38bdf8}</style>
+</head>
+<body>
+<script src="../shared/peerjs.min.js"></script>
+<script src="../shared/net.js"></script>
+<script src="../shared/kit.js"></script>
+<script>
+'use strict';
+/* TIC TAC TOE – Klassisch, Endlos (nur 3 Zeichen pro Spieler) und 5×5 (4 in einer Reihe). */
+const VARS={classic:{n:3,k:3,name:'Klassisch'},endless:{n:3,k:3,name:'Endlos',max:3},big:{n:5,k:4,name:'5×5 · 4 in Reihe'}};
+let variant=K.store.get('ttt_var','classic'),diff=K.store.get('ttt_diff',1),mode='ai',root=null,curV=null,curSend=null,lastKey='',lastWin='';
+function lines(n,k){const L=[];for(let r=0;r<n;r++)for(let c=0;c<n;c++)for(const [dr,dc] of[[0,1],[1,0],[1,1],[1,-1]]){const l=[];for(let i=0;i<k;i++){const rr=r+dr*i,cc=c+dc*i;if(rr<0||cc<0||rr>=n||cc>=n)break;l.push(rr*n+cc)}if(l.length===k)L.push(l)}return L}
+const LINES={};for(const v in VARS)LINES[v]=lines(VARS[v].n,VARS[v].k);
+function winner(b,v){for(const l of LINES[v]){const a=b[l[0]];if(a&&l.every(i=>b[i]===a))return{p:a,line:l}}return null}
+/* ---------- KI ---------- */
+function place(S,v,i,p){const b=S.b.slice(),h=[S.h[0].slice(),S.h[1].slice()];let gone=-1;b[i]=p;h[p-1].push(i);if(VARS[v].max&&h[p-1].length>VARS[v].max){gone=h[p-1].shift();b[gone]=0}return{b,h,gone}}
+function evalBig(b,v,me){let s=0;for(const l of LINES[v]){let a=0,o=0;for(const i of l){if(b[i]===me)a++;else if(b[i])o++}if(a&&!o)s+=[0,1,8,60,1000][a];if(o&&!a)s-=[0,1,10,80,1000][o]}return s}
+function mm(S,v,p,me,d,al,be,depth){const w=winner(S.b,v);if(w)return w.p===me?1000-depth:depth-1000;const free=[];for(let i=0;i<S.b.length;i++)if(!S.b[i])free.push(i);if(!free.length)return 0;if(d<=0)return v==='big'?evalBig(S.b,v,me):0;
+ if(v==='big')free.sort((a,b)=>centerScore(b)-centerScore(a));
+ let best=p===me?-1e9:1e9;for(const i of free){const n=place(S,v,i,p);const sc=mm(n,v,3-p,me,d-1,al,be,depth+1);if(p===me){best=Math.max(best,sc);al=Math.max(al,sc)}else{best=Math.min(best,sc);be=Math.min(be,sc)}if(al>=be)break}return best}
+function centerScore(i){const n=5,r=i/n|0,c=i%n;return -Math.abs(r-2)-Math.abs(c-2)}
+function aiMove(S,v,p,lvl){const free=[];for(let i=0;i<S.b.length;i++)if(!S.b[i])free.push(i);if(!free.length)return -1;
+ if(lvl===0&&Math.random()<.55)return K.pick(free);if(lvl===1&&Math.random()<.18)return K.pick(free);
+ // sofort gewinnen / blocken
+ for(const q of[p,3-p])for(const i of free){if(winner(place(S,v,i,q).b,v))return i}
+ const depth=v==='big'?(lvl===2?3:2):v==='endless'?(lvl===2?7:4):9;let best=-1e9,bi=free[0];for(const i of K.shuffle(free.slice())){const sc=mm(place(S,v,i,p),v,3-p,p,depth-1,-1e9,1e9,1)+(v==='big'?centerScore(i)*.5:0);if(sc>best){best=sc;bi=i}}return bi}
+/* ---------- Spielmotor ---------- */
+const E=K.TG({game:'tictactoe',max:2,seats:()=>2,
+ setup(ps,o){const v=o.variant||'classic';return{pl:ps.map(p=>({id:p.id,name:p.name})),v,b:Array(VARS[v].n**2).fill(0),h:[[],[]],turn:0,first:0,win:null,draw:false,score:[0,0,0],round:1,local:!!o.local,last:-1,gone:-1,moves:0}},
+ actors:G=>G.win||G.draw?[]:[G.pl[G.turn].id],over:G=>false,
+ view(G,pid){let me=G.pl.findIndex(p=>p.id===pid);if(G.local)me=G.turn;return{me,b:G.b,h:G.h,v:G.v,turn:G.turn,win:G.win,draw:G.draw,score:G.score,round:G.round,names:G.pl.map(p=>p.name),local:G.local,last:G.last,gone:G.gone,moves:G.moves,old:VARS[G.v].max&&G.h[G.turn].length>=VARS[G.v].max?G.h[G.turn][0]:-1}},
+ act(G,pid,a){const i=G.pl.findIndex(p=>p.id===pid);
+  if(a.next){if(!(G.win||G.draw))return false;G.first=1-G.first;G.turn=G.first;G.b=Array(VARS[G.v].n**2).fill(0);G.h=[[],[]];G.win=null;G.draw=false;G.round++;G.last=-1;G.gone=-1;G.moves=0;return true}
+  if(G.win||G.draw)return false;if(!G.local&&i!==G.turn)return false;const c=a.i|0;if(c<0||c>=G.b.length||G.b[c])return false;
+  const n=place(G,G.v,c,G.turn+1);G.b=n.b;G.h=n.h;G.gone=n.gone;G.last=c;G.moves++;const w=winner(G.b,G.v);
+  if(w){G.win={p:w.p-1,line:w.line};G.score[w.p-1]++}else if(!G.b.includes(0)||(G.v==='endless'&&G.moves>=60)){G.draw=true;G.score[2]++}else G.turn=1-G.turn;return true},
+ bot(G,pid){if(G.win||G.draw)return null;const i=aiMove(G,G.v,G.turn+1,diff);return i>=0?{i}:null},
+ botDelay:()=>450+Math.random()*450,render});
+/* ---------- Darstellung ---------- */
+const X_SVG='<svg viewBox="0 0 100 100"><path d="M22 22 L78 78" class="s1"/><path d="M78 22 L22 78" class="s2"/></svg>',O_SVG='<svg viewBox="0 0 100 100"><circle cx="50" cy="50" r="29" class="s1"/></svg>';
+function render(v,send){if(!root){root=document.createElement('div');root.className='tg ttt';document.body.appendChild(root)}root.style.display='flex';curV=v;curSend=send;
+ const key=v.moves+'|'+v.round;if(key!==lastKey){if(v.moves)K.sfx(v.last>=0&&v.b[v.last]===1?'pop':'blip');lastKey=key}
+ const wk=v.round+':'+(v.win?v.win.p:v.draw?'d':'');if((v.win||v.draw)&&wk!==lastWin){lastWin=wk;setTimeout(()=>K.sfx(v.draw?'click':(v.local||v.win.p===v.me)?'win':'lose'),350)}
+ const n=VARS[v.v].n,myTurn=(v.local||v.me===v.turn)&&!v.win&&!v.draw;
+ let cells='';for(let i=0;i<n*n;i++){const p=v.b[i];cells+=`<button class="tc ${p?'p'+p:''} ${v.win&&v.win.line.includes(i)?'wl':''} ${i===v.old&&myTurn?'old':i===v.old?'old2':''} ${i===v.last?'new':''}" data-i="${i}" ${p||!myTurn?'disabled':''}>${p===1?X_SVG:p===2?O_SVG:''}</button>`}
+ let line='';if(v.win){const a=v.win.line[0],b=v.win.line[v.win.line.length-1],cx=i=>(i%n+.5)/n*100,cy=i=>((i/n|0)+.5)/n*100;line=`<svg class="wline" viewBox="0 0 100 100"><line x1="${cx(a)}" y1="${cy(a)}" x2="${cx(b)}" y2="${cy(b)}"/></svg>`}
+ const nm=s=>K.esc(v.names[s]);const status=v.win?(v.local?`🏆 ${nm(v.win.p)} gewinnt!`:v.win.p===v.me?'🏆 Du gewinnst!':'😵 '+nm(v.win.p)+' gewinnt'):v.draw?'🤝 Unentschieden!':myTurn?(v.local?nm(v.turn)+' ist dran':'Du bist dran'):'⏳ '+nm(v.turn)+' überlegt …';
+ root.innerHTML=`<div class="top"><a href="#" id="tB">← Menü</a><b>❌⭕ TIC TAC TOE</b><span>${VARS[v.v].name}${E.room?' · '+E.room.code:''}</span></div>
+ <div class="tsc"><div class="tp x ${v.turn===0&&!v.win&&!v.draw?'on':''}"><i>${X_SVG}</i><b>${nm(0)}</b><em>${v.score[0]}</em></div><div class="tdraw">🤝 ${v.score[2]}<small>Runde ${v.round}</small></div><div class="tp o ${v.turn===1&&!v.win&&!v.draw?'on':''}"><em>${v.score[1]}</em><b>${nm(1)}</b><i>${O_SVG}</i></div></div>
+ <div class="tboard" style="grid-template-columns:repeat(${n},1fr);grid-template-rows:repeat(${n},1fr)">${cells}${line}</div>
+ <div class="msg tstat">${status}</div>${v.v==='endless'?'<div class="k-mut">Endlos: Jeder hat höchstens 3 Zeichen – das blasse verschwindet beim nächsten Zug.</div>':''}
+ ${(v.win||v.draw)&&E.host?'<div class="bar"><button class="pri k-big" id="tN">▶ Nächste Runde</button></div>':''}`;
+ K.$('tB').onclick=e=>{e.preventDefault();E.stop();root.style.display='none';menu()};if(K.$('tN'))K.$('tN').onclick=()=>send({next:1});
+ root.querySelectorAll('.tc').forEach(b=>b.onclick=()=>{if(!b.disabled)send({i:+b.dataset.i})})}
+const st=document.createElement('style');st.textContent=`.tg.ttt{background:radial-gradient(900px 600px at 50% 25%,#3b1d5e,#120a24 70%);gap:12px}
+.tsc{display:flex;gap:10px;align-items:stretch;width:min(560px,96vw)}.tp{flex:1;display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.35);border-radius:16px;padding:8px 12px;border:2px solid transparent;transition:.2s}.tp.o{justify-content:flex-end}
+.tp.on{border-color:#ffd23f;box-shadow:0 0 18px rgba(255,210,63,.45)}.tp i{width:34px;height:34px;display:block}.tp b{font-size:15px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.tp.o b{text-align:right}.tp em{font-style:normal;font-weight:900;font-size:28px}
+.tdraw{display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:800;color:#c9b8e8;padding:0 6px}.tdraw small{font-size:11px;opacity:.7}
+.tboard{position:relative;display:grid;gap:10px;width:min(92vw,60vh,520px);aspect-ratio:1;padding:12px;background:rgba(255,255,255,.06);border-radius:24px;box-shadow:inset 0 0 0 2px rgba(255,255,255,.08),0 20px 50px rgba(0,0,0,.5)}
+.tc{all:unset;cursor:pointer;border-radius:16px;background:linear-gradient(160deg,rgba(255,255,255,.12),rgba(255,255,255,.04));box-shadow:inset 0 -4px 0 rgba(0,0,0,.25);display:grid;place-items:center;transition:transform .12s,background .2s}
+.tc:not([disabled]):hover{background:rgba(255,255,255,.18);transform:scale(1.03)}.tc[disabled]{cursor:default}.tc svg{width:78%;height:78%}
+.tc svg path,.tc svg circle,.tp svg path,.tp svg circle{fill:none;stroke-width:13;stroke-linecap:round}
+.tc.p1 svg path,.tp.x svg path{stroke:#ff4d8d;filter:drop-shadow(0 0 8px rgba(255,77,141,.7))}.tc.p2 svg circle,.tp.o svg circle{stroke:#38bdf8;filter:drop-shadow(0 0 8px rgba(56,189,248,.7))}
+.tc.new svg .s1,.tc.new svg .s2{stroke-dasharray:120;stroke-dashoffset:120;animation:tdraw .25s forwards}.tc.new svg .s2{animation-delay:.18s}.tc.new svg circle{stroke-dasharray:190;stroke-dashoffset:190;animation:tdraw .38s forwards}@keyframes tdraw{to{stroke-dashoffset:0}}
+.tc.wl{background:rgba(255,210,63,.25);animation:twl .6s infinite alternate}@keyframes twl{to{transform:scale(1.05)}}
+.tc.old{opacity:.4}.tc.old2{opacity:.65}
+.wline{position:absolute;inset:12px;width:calc(100% - 24px);height:calc(100% - 24px);pointer-events:none}.wline line{stroke:#ffd23f;stroke-width:3;stroke-linecap:round;stroke-dasharray:150;stroke-dashoffset:150;animation:tdraw .5s .2s forwards;filter:drop-shadow(0 0 6px #ffd23f)}
+.tstat{font-size:20px}`;document.head.appendChild(st);
+function start(m){mode=m;lastKey='';lastWin='';if(m==='ai')E.solo(1,{variant});else if(m==='local'){E.host=true;E.room=null;E.start([{id:K.uid(),name:'Spieler ❌'},{id:K.uid()+'#2',name:'Spieler ⭕'}],{local:true,variant})}}
+function menu(){if(root)root.style.display='none';K.menu({title:'TIC TAC TOE',emoji:'❌⭕',sub:'Drei in einer Reihe! Klassisch, Endlos-Modus oder auf dem großen 5×5-Feld.',
+ body:`<div class="k-box"><div class="k-set"><span>🎲 Modus</span>${K.chips('tV',[['classic','Klassisch'],['endless','Endlos'],['big','5×5']],variant,v=>{variant=v;K.store.set('ttt_var',v)})}</div><div class="k-set"><span>🤖 KI</span>${K.chips('tD',[[0,'Leicht'],[1,'Mittel'],[2,'Unschlagbar']],diff,v=>{diff=v;K.store.set('ttt_diff',v)})}</div></div>`,
+ solo:[{t:'▶ Gegen KI',f:()=>start('ai')},{t:'👥 Zu zweit an einem Gerät',f:()=>start('local')}],online:{game:'tictactoe',max:2,min:2,onStart:r=>{mode='online';lastKey='';lastWin='';E.hostStart(r,0,{variant})},botsNote:'Warte auf einen Gegner. Der Gastgeber bestimmt den Modus.'},
+ help:'Abwechselnd setzt ihr ❌ und ⭕. Wer zuerst eine Reihe (waagerecht, senkrecht oder diagonal) voll hat, gewinnt. Im Endlos-Modus verschwindet dein ältestes Zeichen, sobald du ein viertes setzt – so gibt es kein Unentschieden mehr!'})}
+menu();window.TT={get v(){return curV},E,aiMove,winner};
+</script>
+</body>
+</html>

@@ -148,7 +148,7 @@ a.back{color:var(--mut);text-decoration:none;background:var(--card);padding:8px 
     <div class="row"><input id="code" maxlength="4" placeholder="CODE" style="text-transform:uppercase;text-align:center;letter-spacing:6px;font-weight:800"><button id="bJoin" style="flex:0 0 auto">Beitreten</button></div>
     <div class="err" id="err"></div></div>
   <p class="mut"><b>PC:</b> WASD laufen, Maus zielen (ins Bild klicken), Klick schießen/bauen, Rechtsklick zoomen, Leertaste springen/Gleiter, 1–6 Waffen, R nachladen, E aufheben, H heilen, M Karte, B tanzen.<br><b>Bauen:</b> Q Wand, F Rampe, C Boden, V Dach – dann klicken zum Setzen (gedrückt halten = schnell bauen). R wechselt Holz/Stein/Metall, G Bau-Modus an/aus.<br><b>iPad:</b> Links Joystick, rechts wischen zum Zielen, 🎯 schießen bzw. bauen. Bau-Knöpfe oben rechts.<br>Material sammelst du mit der Spitzhacke: Bäume = Holz, Felsen & Mauern = Stein, Autos & Container = Metall.</p>
-  <p class="mut" id="stats" style="text-align:center"></p>
+  <p class="mut" id="stats" style="text-align:center"></p><p class="mut" style="font-size:11px;opacity:.6;text-align:center">3D-Figuren, Autos und Gebäude: Quaternius &amp; Kenney (CC0, gemeinfrei).</p>
 </div></div>
 
 <div class="scr" id="lobby" style="display:none"><div class="panel">
@@ -166,6 +166,8 @@ a.back{color:var(--mut);text-decoration:none;background:var(--card);padding:8px 
 </div></div>
 
 <script src="../shared/three.min.js"></script>
+<script src="assets/GLTFLoader.js"></script>
+<script src="assets/SkeletonUtils.js"></script>
 <script src="assets/BufferGeometryUtils.js"></script>
 <script src="../shared/peerjs.min.js"></script>
 <script src="../shared/net.js"></script>

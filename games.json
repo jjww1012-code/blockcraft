@@ -18,6 +18,24 @@
   "badge": ""
  },
  {
+  "id": "tictactoe",
+  "title": "Tic Tac Toe",
+  "emoji": "❌",
+  "path": "tictactoe/",
+  "desc": "Drei in einer Reihe – klassisch, im Endlos-Modus (nur 3 Zeichen!) oder auf dem großen 5×5-Feld. Gegen eine unschlagbare KI, zu zweit oder online.",
+  "players": "1–2 Spieler",
+  "tags": [
+   "Online",
+   "KI",
+   "Klassiker"
+  ],
+  "colors": [
+   "#ff4d8d",
+   "#38bdf8"
+  ],
+  "badge": "Neu"
+ },
+ {
   "id": "horden",
   "title": "Horden-Überleben",
   "emoji": "🧛",
@@ -483,7 +501,7 @@
   "title": "Sturm Royale",
   "emoji": "🪂",
   "path": "sturm-royale/",
-  "desc": "Sturm Royale 3.0: eigene Figuren mit 10 Outfits, riesige Insel mit 15 Orten, Schnee & Wüste, 9 Waffen inkl. Raketenwerfer & Granaten, Bauen in Holz, Stein & Metall mit Vorschau, Versorgungskisten.",
+  "desc": "Sturm Royale 4.0: echte 3D-Figuren, Autos und Hochhäuser, richtig gebaute Häuser mit Zimmern, Treppen und Möbeln, riesige Insel, 9 Waffen, Bauen in Holz, Stein & Metall, Sprinten und Versorgungskisten.",
   "players": "1–16 + Bots",
   "tags": [
    "Online",
