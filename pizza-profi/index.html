@@ -15,6 +15,12 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 #money{color:#7dff6a}
 #back{position:fixed;left:max(10px,env(safe-area-inset-left));top:max(10px,env(safe-area-inset-top));z-index:4;background:rgba(0,0,0,.5);color:#fff;text-decoration:none;border-radius:12px;padding:8px 12px;font-weight:700}
 #tip{opacity:0;position:fixed;left:50%;transform:translateX(-50%);top:calc(max(10px,env(safe-area-inset-top)) + 54px);background:#ffd23f;color:#3a2200;font-weight:800;border-radius:12px;padding:8px 14px;z-index:3;pointer-events:none;max-width:90vw;text-align:center;box-shadow:0 4px 0 #b88a00;transition:opacity .3s}
+#rush{position:fixed;left:50%;transform:translateX(-50%);top:calc(max(10px,env(safe-area-inset-top)) + 100px);background:linear-gradient(90deg,#ff6a00,#ff2e4d);border-radius:12px;padding:6px 16px;font-weight:900;z-index:3;display:none;pointer-events:none;animation:rp .5s infinite alternate}@keyframes rp{to{transform:translateX(-50%) scale(1.08)}}
+#spinBtn{position:fixed;right:max(10px,env(safe-area-inset-right));top:max(10px,env(safe-area-inset-top));z-index:4;font:inherit;font-weight:900;border:0;border-radius:12px;padding:8px 12px;background:rgba(0,0,0,.5);color:#fff;display:none}#spinBtn.ready{background:linear-gradient(135deg,#ffd23f,#ff8a3d);color:#3a2200;animation:rp2 .7s infinite alternate}@keyframes rp2{to{transform:scale(1.08)}}
+#wheelBox{position:fixed;inset:0;z-index:8;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center}.wb{background:#2b1d16;border-radius:22px;padding:18px;display:flex;flex-direction:column;align-items:center;gap:10px;position:relative}.wptr{font-size:34px;color:#ffd23f;margin-bottom:-22px;z-index:2;text-shadow:0 3px 0 #000}
+#wheel{width:min(300px,75vw);height:min(300px,75vw);border-radius:50%;border:8px solid #ffd23f;position:relative;box-shadow:0 8px 0 #8a5a00}
+#wheel span{position:absolute;left:50%;top:50%;transform-origin:0 0;font-weight:900;font-size:14px;color:#fff;text-shadow:0 2px 2px #000;white-space:nowrap}
+#wheelRes{font-weight:900;font-size:18px;color:#ffd23f;min-height:24px}.wb button{font:inherit;font-weight:900;border:0;border-radius:12px;padding:12px 26px;background:linear-gradient(#ff8a3d,#e8471c);color:#fff;font-size:20px}.wb button#wheelX{font-size:14px;padding:8px 14px;background:#5a3a2a}
 #goal{position:fixed;left:max(10px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));z-index:3;background:rgba(0,0,0,.6);border-radius:14px;padding:8px 12px;width:min(250px,60vw);font-size:13px;pointer-events:none;display:none;box-shadow:0 3px 0 rgba(0,0,0,.3)}#goal b{color:#ffd23f}#goal i{display:block;height:7px;border-radius:4px;background:linear-gradient(90deg,#7dff6a,#2ecc71);margin:5px 0 3px}#goal small{opacity:.8}
 #joyH{position:fixed;pointer-events:none;z-index:4;display:none}
 #start{position:fixed;inset:0;z-index:6;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:14px;background:radial-gradient(700px 500px at 50% 30%,rgba(255,120,40,.45),transparent 70%),rgba(30,18,12,.9);text-align:center;padding:20px}
@@ -28,9 +34,9 @@ canvas{position:fixed;inset:0;width:100%;height:100%;display:block}
 <canvas id="c"></canvas>
 <a id="back" href="../">←</a>
 <div id="top"><div class="pill" id="money">💵 0</div><div class="pill" id="stars">⭐ 1</div></div>
-<div id="tip"></div><div id="goal"></div>
+<div id="tip"></div><div id="goal"></div><div id="rush"></div><button id="spinBtn">🎡</button><div id="wheelBox"><div class="wb"><div class="wptr">▼</div><div id="wheel"></div><div id="wheelRes"></div><button id="wheelGo">DREHEN!</button><button id="wheelX">Schließen</button></div></div>
 <div id="start"><h1>🍕 PIZZA PROFI</h1>
- <p style="color:#7dff6a;font-weight:800">NEU: Terrasse mit Holzofen, Lieferdienst mit Rollern, VIP-Gäste, Aufträge und mehr Upgrades!</p><p>Back Pizzas im Ofen, trag sie zur Theke, kassier das Geld und bau dein Restaurant aus! Stell dich auf die <b>gelben Felder</b>, um Öfen, Tische, Mitarbeiter und den Drive-in freizuschalten.</p>
+ <p style="color:#7dff6a;font-weight:800">NEU: Getränke-Automat, Musikbox, Leuchtschild, VIP-Lounge, Rush Hour, Glücksrad und klügere Mitarbeiter, die nicht mehr hängen bleiben!</p><p>Back Pizzas im Ofen, trag sie zur Theke, kassier das Geld und bau dein Restaurant aus! Stell dich auf die <b>gelben Felder</b>, um Öfen, Tische, Mitarbeiter und den Drive-in freizuschalten.</p>
  <p style="font-size:14px;opacity:.75">Steuerung: Finger irgendwo hinlegen und ziehen (oder WASD / Pfeiltasten). Aufheben und Abliefern passiert automatisch.</p>
  <button id="go">▶ Los geht's</button><button class="s" id="reset">Neu anfangen</button></div>
 <script>
@@ -40,7 +46,7 @@ let W,H,D,Z;function rs(){D=Math.min(devicePixelRatio||1,2);W=innerWidth;H=inner
 const store={get:(k,d)=>{try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set:(k,v)=>{try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y),clamp=(v,a,b)=>v<a?a:v>b?b:v;
 /* ================= Spielstand ================= */
-const DEF={money:30,un:{},cap:4,spd:0,ovenLv:0,price:0,stars:1,served:0,deliv:0,vipN:0,goal:0,earned:0};
+const DEF={money:30,un:{},cap:4,spd:0,ovenLv:0,price:0,stars:1,served:0,deliv:0,vipN:0,goal:0,earned:0,spinAt:0,rushN:0,drinks:0};
 let SV=Object.assign({},DEF,store.get('pz_save',{}));SV.un=SV.un||{};
 let saveT=0;const save=()=>store.set('pz_save',SV);
 /* ================= Welt ================= */
@@ -90,23 +96,33 @@ const PADS=[
  {id:'price3',n:'Trüffel-Pizza (+Preis)',cost:6000,x:-340,y:1170,after:'woodoven',up:()=>SV.price+=3},
  {id:'cap3',n:'Mega-Tablett',cost:5000,x:120,y:140,after:'spd2',up:()=>SV.cap+=5},
  {id:'spd3',n:'Turbo-Sneaker',cost:7000,x:200,y:110,after:'cap3',up:()=>SV.spd+=1},
- {id:'oven2',n:'Profi-Öfen',cost:8000,x:700,y:110,after:'price3',up:()=>SV.ovenLv+=1}];
+ {id:'oven2',n:'Profi-Öfen',cost:8000,x:700,y:110,after:'price3',up:()=>SV.ovenLv+=1},
+ // ---- Erweiterung 3.0 ----
+ {id:'drinks',n:'Getränke-Automat 🥤',cost:3500,x:770,y:600,after:'drive'},
+ {id:'plants',n:'Pflanzen & Deko 🌿',cost:1500,x:330,y:1060,after:'t2'},
+ {id:'music',n:'Musikbox 🎵',cost:2000,x:140,y:1060,after:'terrace'},
+ {id:'cashier2',n:'Drive-in-Kassierer',cost:2500,x:730,y:390,after:'drive',worker:1},
+ {id:'training',n:'Team-Training 💪',cost:3000,x:500,y:360,after:'helper2'},
+ {id:'neon',n:'Leuchtschild ✨',cost:4000,x:560,y:1000,after:'music'},
+ {id:'scooter3',n:'3. Roller',cost:5000,x:580,y:1270,after:'ebike'},
+ {id:'lounge',n:'VIP-Lounge 🛋️',cost:9000,x:-220,y:1240,after:'vip'},
+ {id:'gold',n:'Goldene Pizza (+Preis)',cost:15000,x:600,y:110,after:'oven2',up:()=>SV.price+=4}];
 PADS.forEach(p=>p.paid=SV.un[p.id+'$']||0);
 const has=id=>!id||!!SV.un[id];
 const OBST=()=>{const L=[{x0:COUNTER.x-COUNTER.w/2,y0:COUNTER.y-COUNTER.h/2,x1:COUNTER.x+COUNTER.w/2,y1:COUNTER.y+COUNTER.h/2},{x0:120,y0:COUNTER.y-COUNTER.h/2,x1:COUNTER.x-COUNTER.w/2-70,y1:COUNTER.y+COUNTER.h/2}];
  for(const o of OVENS)if(has(o.need))L.push({x0:o.x-55,y0:o.y-50,x1:o.x+55,y1:o.y+40});for(const t of TABLES)if(has(t.need))L.push({x0:t.x-48,y0:t.y-30,x1:t.x+48,y1:t.y+30});
- L.push({x0:BIN.x-22,y0:BIN.y-22,x1:BIN.x+22,y1:BIN.y+22});if(has('drive'))L.push({x0:800,y0:200,x1:860,y1:320});if(has('delivery'))L.push({x0:DELIV.x-40,y0:DELIV.y-14,x1:DELIV.x+40,y1:DELIV.y+18});return L};
+ L.push({x0:BIN.x-22,y0:BIN.y-22,x1:BIN.x+22,y1:BIN.y+22});if(has('drive'))L.push({x0:800,y0:200,x1:860,y1:320});if(has('drinks'))L.push({x0:805,y0:480,x1:855,y1:570});if(has('lounge'))L.push({x0:-400,y0:1150,x1:-40,y1:1230});if(has('delivery'))L.push({x0:DELIV.x-40,y0:DELIV.y-14,x1:DELIV.x+40,y1:DELIV.y+18});return L};
 let obst=OBST();
 /* ================= Figuren ================= */
 const me={x:450,y:330,r:18,carry:[],kind:'pz',dir:0,walk:0,isMe:1};// carry: Anzahl, kind: 'pz' oder 'trash'
 let workers=[],custs=[],cars=[],flyers=[],pops=[];
 function mkWorker(role){return{role,x:450,y:330,r:16,carry:[],kind:'pz',t:0,tgt:null,walk:0,dir:0}}
-function syncWorkers(){const old=workers;workers=[];if(has('cashier'))workers.push(mkWorker('cashier'));if(has('helper'))workers.push(mkWorker('helper'));if(has('helper2'))workers.push(mkWorker('helper'));if(has('helper3'))workers.push(mkWorker('helper'));if(has('cleaner'))workers.push(mkWorker('cleaner'));if(has('cleaner2'))workers.push(mkWorker('cleaner'));workers.forEach((w,i)=>{const o=old[i];if(o&&o.role===w.role){w.x=o.x;w.y=o.y;w.carry=o.carry;w.kind=o.kind}})}
-let scooters=[];function syncScooters(){const n=has('delivery')?(has('scooter2')?2:1):0;while(scooters.length<n){const i=scooters.length;scooters.push({i,x:740+i*60,y:1265,st:'park',load:0,t:0,dir:0})}}syncScooters();
+function syncWorkers(){const old=workers;workers=[];if(has('cashier'))workers.push(mkWorker('cashier'));if(has('helper'))workers.push(mkWorker('helper'));if(has('helper2'))workers.push(mkWorker('helper'));if(has('helper3'))workers.push(mkWorker('helper'));if(has('cleaner'))workers.push(mkWorker('cleaner'));if(has('cashier2'))workers.push(mkWorker('cashier2'));if(has('cleaner2'))workers.push(mkWorker('cleaner'));workers.forEach((w,i)=>{const o=old[i];if(o&&o.role===w.role){w.x=o.x;w.y=o.y;w.carry=o.carry;w.kind=o.kind}})}
+let scooters=[];function syncScooters(){const n=has('delivery')?(has('scooter3')?3:has('scooter2')?2:1):0;while(scooters.length<n){const i=scooters.length;scooters.push({i,x:680+i*60,y:1265,st:'park',load:0,t:0,dir:0})}}syncScooters();
 syncWorkers();
 const price=()=>5+SV.price*3;
 const SKIN=['#f1c27d','#c68642','#8d5524','#ffdbac','#e0ac69'],SHIRT=['#e74c3c','#3498db','#2ecc71','#9b59b6','#f1c40f','#1abc9c','#e67e22'];
-function spawnCust(){const n=custs.filter(c=>c.st!=='leave').length;if(n>=(has('terrace')?12:9))return;const wantsTable=TABLES.some(t=>has(t.need))&&Math.random()<(has('terrace')?.55:.45);const vip=has('vip')&&Math.random()<.12;
+function spawnCust(){const n=custs.filter(c=>c.st!=='leave').length;if(n>=(has('terrace')?12:9)+(rush>0?4:0))return;const wantsTable=TABLES.some(t=>has(t.need))&&Math.random()<(has('terrace')?.55:.45);const vip=has('vip')&&Math.random()<.12;
  custs.push({x:450+(Math.random()-.5)*40,y:1180,r:16,want:vip?3+Math.floor(Math.random()*3):1+Math.floor(Math.random()*(SV.stars>2?3:2)),got:0,st:'in',sk:SKIN[Math.random()*5|0],sh:vip?'#d4a017':SHIRT[Math.random()*7|0],dine:wantsTable||vip,vip,walk:0,mood:1,wait:0})}
 function spawnCar(){if(!has('drive')||cars.length>=4)return;cars.push({x:940,y:1250,want:3+Math.floor(Math.random()*4),got:0,st:'in',c:SHIRT[Math.random()*7|0],wait:0})}
 /* ================= Bewegung ================= */
@@ -118,15 +134,29 @@ function walk(e){const A=areas(e.r);let best=null,bd=1e9;for(const a of A){if(e.
 /* Waypoint-Navigation für Mitarbeiter: Küche <-> Gastraum über die Lücke links */
 const GAP={x:COUNTER.x-COUNTER.w/2-35,y:COUNTER.y};
 const zoneOf=(X,Y)=>X<40?'t':Y<COUNTER.y?'k':'d';
-function nav(e,tx,ty,sp,dt){const ze=zoneOf(e.x,e.y),zt=zoneOf(tx,ty);
- if(ze==='t'&&zt!=='t'){if(dist(e,DOOR_OUT)>8&&e.x<0){moveTo(e,DOOR_OUT.x,DOOR_OUT.y,sp,dt);return false}moveTo(e,DOOR_IN.x,DOOR_IN.y,sp,dt);return false}
- if(ze!=='t'&&zt==='t'){if(ze==='k')return navKD(e,DOOR_IN.x,DOOR_IN.y,sp,dt)&&false;if(e.x>260&&e.y>560&&e.y<1060&&Math.abs(e.x-300)>8){moveTo(e,300,800,sp,dt);return false}if(dist(e,DOOR_IN)>8&&e.x>45){moveTo(e,DOOR_IN.x,DOOR_IN.y,sp,dt);return false}moveTo(e,DOOR_OUT.x-10,DOOR_OUT.y,sp,dt);return false}
- if(ze==='d'&&zt!=='k'&&has('terrace')){const L=e.x<260,RT=tx<260;if(L!==RT&&e.y>560&&e.y<1060&&Math.abs(e.x-300)>8){moveTo(e,300,800,sp,dt);return false}}
- return navKD(e,tx,ty,sp,dt)}
+/* Wegfindung: Raster über alle begehbaren Flächen, Breitensuche um Hindernisse herum */
+const PGC=20,PGX0=-460,PGY0=40,PGNX=68,PGNY=66,PGN=PGNX*PGNY;let pgrid=null,pgObst=null;const pgPrev=new Int32Array(PGN),pgQ=new Int32Array(PGN);
+function buildPG(){if(pgrid&&pgObst===obst)return;pgObst=obst;pgrid=new Uint8Array(PGN);const r=12,A=areas(r);for(let j=0;j<PGNY;j++)for(let i=0;i<PGNX;i++){const x=PGX0+(i+.5)*PGC,y=PGY0+(j+.5)*PGC;let ok=A.some(a=>x>=a.x0-2&&x<=a.x1+2&&y>=a.y0-2&&y<=a.y1+2);if(ok)for(const b of obst){if(x>b.x0-r&&x<b.x1+r&&y>b.y0-r&&y<b.y1+r){ok=false;break}}pgrid[j*PGNX+i]=ok?1:0}}
+function pgCell(x,y){const i=clamp(Math.floor((x-PGX0)/PGC),0,PGNX-1),j=clamp(Math.floor((y-PGY0)/PGC),0,PGNY-1);return j*PGNX+i}
+function pgNear(c,x,y){if(pgrid[c])return c;let best=-1,bd=1e9;const ci=c%PGNX,cj=c/PGNX|0;for(let r=1;r<8&&best<0;r++)for(let j=cj-r;j<=cj+r;j++)for(let i=ci-r;i<=ci+r;i++){if(i<0||j<0||i>=PGNX||j>=PGNY)continue;const k=j*PGNX+i;if(!pgrid[k])continue;const d=Math.hypot(PGX0+(i+.5)*PGC-x,PGY0+(j+.5)*PGC-y);if(d<bd){bd=d;best=k}}return best}
+function findPath(sx,sy,tx,ty){buildPG();const s0=pgNear(pgCell(sx,sy),sx,sy),t0=pgNear(pgCell(tx,ty),tx,ty);if(s0<0||t0<0)return null;pgPrev.fill(-1);let h=0,t=0;pgQ[t++]=s0;pgPrev[s0]=s0;
+ const D=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1]];
+ while(h<t){const c=pgQ[h++];if(c===t0)break;const ci=c%PGNX,cj=c/PGNX|0;for(const [dx,dy] of D){const i=ci+dx,j=cj+dy;if(i<0||j<0||i>=PGNX||j>=PGNY)continue;const k=j*PGNX+i;if(!pgrid[k]||pgPrev[k]>=0)continue;if(dx&&dy&&(!pgrid[cj*PGNX+i]||!pgrid[j*PGNX+ci]))continue;pgPrev[k]=c;pgQ[t++]=k}}
+ if(pgPrev[t0]<0)return null;const pts=[];let c=t0;while(c!==s0){pts.push([PGX0+(c%PGNX+.5)*PGC,PGY0+((c/PGNX|0)+.5)*PGC]);c=pgPrev[c]}pts.reverse();
+ // Pfad glätten: Punkte überspringen, solange die Gerade frei ist
+ const free=(ax,ay,bx,by)=>{const n=Math.ceil(Math.hypot(bx-ax,by-ay)/8);for(let k=1;k<n;k++){if(!pgrid[pgCell(ax+(bx-ax)*k/n,ay+(by-ay)*k/n)])return false}return true};
+ const out=[];let cx=sx,cy=sy,i=0;while(i<pts.length){let j=pts.length-1;while(j>i&&!free(cx,cy,pts[j][0],pts[j][1]))j--;out.push(pts[j]);cx=pts[j][0];cy=pts[j][1];i=j+1}
+ out.push([tx,ty]);return out}
+function nav(e,tx,ty,sp,dt){if(Math.hypot(tx-e.x,ty-e.y)<2)return true;const tk=(tx|0)+','+(ty|0);e.pT=(e.pT||0)-dt;
+ if(e.pk!==tk||!e.path||e.pT<=0){e.pk=tk;e.pT=2;e.path=findPath(e.x,e.y,tx,ty)}
+ if(!e.path||!e.path.length)return moveTo(e,tx,ty,sp,dt);
+ while(e.path.length>1&&Math.hypot(e.path[0][0]-e.x,e.path[0][1]-e.y)<5)e.path.shift();
+ const w=e.path[0],r=moveTo(e,w[0],w[1],sp,dt);if(r&&e.path.length===1){e.path=null;return true}return false}
 function navKD(e,tx,ty,sp,dt){const se=e.y<COUNTER.y,stt=ty<COUNTER.y;
  if(se!==stt){if(Math.abs(e.x-GAP.x)>6){moveTo(e,GAP.x,se?COUNTER.y-50:COUNTER.y+50,sp,dt);return false}moveTo(e,GAP.x,stt?COUNTER.y-50:COUNTER.y+50,sp,dt);return false}
  return moveTo(e,tx,ty,sp,dt)}
 /* ================= Logik ================= */
+let rush=0,rushCD=120;
 let tick={pick:0,drop:0,serve:0,pay:0,cust:3,car:6,pad:0,trash:0};
 function ovenTime(){return Math.max(.9,2.6-SV.ovenLv*.8)}
 function addPop(X,Y,t,c){pops.push({x:X,y:Y,t,c,l:1})}
@@ -154,36 +184,41 @@ function update(dt){
  // Kaufen-Felder
  for(const p of PADS){if(has(p.id)||!has(p.after))continue;if(dist(me,p)<46&&SV.money>0){tick.pad-=dt;if(tick.pad<=0){tick.pad=.03;const need=p.cost-p.paid,n=Math.min(need,SV.money,Math.max(1,Math.ceil(p.cost/40)));SV.money-=n;p.paid+=n;SV.un[p.id+'$']=p.paid;if(p.paid>=p.cost){SV.un[p.id]=1;if(p.up)p.up();sfx('unlock');addPop(p.x,p.y-30,'✨ '+p.n+'!','#ffd23f');obst=OBST();syncWorkers();syncScooters();SV.stars=1+Math.floor(Object.keys(SV.un).filter(k=>!k.endsWith('$')).length/3);save()}else if(Math.random()<.3)sfx('coin')}}}
  // Mitarbeiter
- for(const w of workers){const s=170;
+ for(const w of workers){const s=has('training')?235:170;
   if(w.role==='cashier'){nav(w,COUNTER.reg.x,COUNTER.reg.y,s,dt)}
+  else if(w.role==='cashier2'){nav(w,DRIVE.reg.x-10,DRIVE.reg.y+40,s,dt)}
   else if(w.role==='helper'){const ready=OVENS.some(o=>has(o.need)&&o.stack>0);
    if(w.carry.length>=4||(w.carry.length&&!ready)){let tg=COUNTER.reg,bs=COUNTER.stack;if(has('drive')&&DRIVE.stack<bs){tg=DRIVE.reg;bs=DRIVE.stack}if(has('delivery')&&DELIV.stack+2<bs){tg=DELIV.reg;bs=DELIV.stack}nav(w,tg.x,tg.y,s,dt)}
    else{let best=null;for(const o of OVENS)if(has(o.need)&&o.stack>0&&(!best||o.stack-(o.wood?2:0)>best.stack-(best.wood?2:0)))best=o;if(best)nav(w,best.x,best.y+70,s,dt);else nav(w,300,280,s,dt)}interact(w,dt)}
   else if(w.role==='cleaner'){if(w.carry.length&&(w.carry.length>=4||!TABLES.some(t=>t.trash&&has(t.need)))){nav(w,BIN.x+40,BIN.y,s,dt)}else{const ci=workers.filter(q=>q.role==='cleaner').indexOf(w);const dirty=TABLES.filter(t=>t.trash>0&&has(t.need));const t=dirty[ci%Math.max(1,dirty.length)]&&dirty.length>ci?dirty[ci]:dirty[0];if(t)nav(w,t.x+60,t.y,s,dt);else nav(w,BIN.x+60,BIN.y+80,s,dt)}interact(w,dt)}}
  // Kunden
- tick.cust-=dt;if(tick.cust<=0){tick.cust=Math.max(1.6,4.5-SV.stars*.35)*(0.7+Math.random()*.6);spawnCust()}
+ tick.cust-=dt;if(tick.cust<=0){tick.cust=Math.max(1.6,4.5-SV.stars*.35)*(0.7+Math.random()*.6)*(has('music')?.85:1)*(has('neon')?.85:1)*(rush>0?.45:1);spawnCust()}
  const queue=custs.filter(c=>c.st==='queue'||c.st==='in');queue.sort((a,b)=>a.qi-b.qi);
  let qi=0;for(const c of custs){if(c.st==='in'||c.st==='queue'){c.qi=qi++}}
  const atReg=dist(me,COUNTER.reg)<50,srv=serving(atReg);
  for(const c of custs){const sp=110;
   if(c.st==='in'||c.st==='queue'){const tx=COUNTER.cust.x,ty=COUNTER.cust.y+c.qi*46;if(c.y>1080&&Math.abs(c.x-450)>4)moveTo(c,450,1080,sp,dt);else if(moveTo(c,tx,ty,sp,dt))c.st='queue';
    if(c.st==='queue'&&c.qi===0){c.wait+=dt;if(srv&&COUNTER.stack>0&&c.got<c.want){tick.serve-=dt;if(tick.serve<=0){tick.serve=.3;COUNTER.stack--;c.got++;sfx('pick')}}
-    if(c.got>=c.want){const pay=c.want*price()*(c.vip?3:1);if(c.vip){SV.vipN++;addPop(c.x,c.y-70,'👑 VIP!','#ffd23f')}if(c.dine){const free=TABLES.filter(t=>has(t.need)&&!t.busy&&!t.trash);const t=c.vip?free.find(t=>t.ter)||free[0]:free[Math.random()*free.length|0];if(t){t.busy=c;c.tbl=t;c.st='toTable';moneyPiles.c+=pay;continue}}moneyPiles.c+=pay;c.st='leave';SV.served++;sfx('cash')}}}
+    if(c.got>=c.want){const pay=Math.round(c.want*price()*(c.vip?3:1)*(rush>0?1.5:1)+(has('drinks')?3:0));if(has('drinks')){SV.drinks++;addPop(c.x+30,c.y-50,'🥤','#fff')}if(c.vip){SV.vipN++;addPop(c.x,c.y-70,'👑 VIP!','#ffd23f')}if(c.dine){const free=TABLES.filter(t=>has(t.need)&&!t.busy&&!t.trash);const t=c.vip?free.find(t=>t.ter)||free[0]:free[Math.random()*free.length|0];if(t){t.busy=c;c.tbl=t;c.st='toTable';moneyPiles.c+=pay;continue}}moneyPiles.c+=pay;c.st='leave';SV.served++;sfx('cash')}}}
   else if(c.st==='toTable'){const t=c.tbl;if(nav(c,t.x,t.y-50,sp,dt)&&zoneOf(c.x,c.y)===zoneOf(t.x,t.y)){c.st='eat';c.eatT=4+Math.random()*3}}
-  else if(c.st==='eat'){c.eatT-=dt;if(c.eatT<=0){const t=c.tbl;t.busy=null;t.trash=c.want;t.money=(t.money||0)+Math.ceil(c.want*price()*(c.vip?1.5:.5));c.st='leave';SV.served++;addPop(t.x,t.y-60,c.vip?'Exzellent! 👑':K_YUM[Math.random()*K_YUM.length|0],'#fff')}}
+  else if(c.st==='eat'){c.eatT-=dt;if(c.eatT<=0){const t=c.tbl;t.busy=null;t.trash=c.want;t.money=(t.money||0)+Math.ceil(c.want*price()*(c.vip?(has('lounge')?2.5:1.5):.5)*(has('plants')?1.3:1));c.st='leave';SV.served++;addPop(t.x,t.y-60,c.vip?'Exzellent! 👑':K_YUM[Math.random()*K_YUM.length|0],'#fff')}}
   else if(c.st==='leave'){if(zoneOf(c.x,c.y)==='t')nav(c,450,1080,sp,dt);else if(c.y<1078){moveTo(c,450,1080,sp,dt)}else if(moveTo(c,450,1250,sp,dt))c.gone=1}
   c.walk+=0}
  custs=custs.filter(c=>!c.gone);
  // Autos (Drive-in)
  if(has('drive')){tick.car-=dt;if(tick.car<=0){tick.car=6+Math.random()*5;spawnCar()}
   const atD=dist(me,DRIVE.reg)<50||workers.some(w=>w.role==='cashier'&&dist(w,COUNTER.reg)<20&&DRIVE.stack>0&&false);
-  cars.forEach((c,i)=>{const ty=DRIVE.y+i*120;if(c.st==='in'){if(c.y>ty)c.y=Math.max(ty,c.y-180*dt);if(i===0&&Math.abs(c.y-ty)<2){if((atD||has('cashier'))&&DRIVE.stack>0&&c.got<c.want){c.st2=(c.st2||0)-dt;if(c.st2<=0){c.st2=.3;DRIVE.stack--;c.got++;sfx('pick')}}if(c.got>=c.want){moneyPiles.d+=c.want*price()+5;c.st='out';sfx('cash')}}}
+  cars.forEach((c,i)=>{const ty=DRIVE.y+i*120;if(c.st==='in'){if(c.y>ty)c.y=Math.max(ty,c.y-180*dt);if(i===0&&Math.abs(c.y-ty)<2){if((atD||has('cashier'))&&DRIVE.stack>0&&c.got<c.want){c.st2=(c.st2||0)-dt;if(c.st2<=0){c.st2=has('cashier2')?.14:.3;DRIVE.stack--;c.got++;sfx('pick')}}if(c.got>=c.want){moneyPiles.d+=c.want*price()+5;c.st='out';sfx('cash')}}}
    else{c.y-=260*dt}});cars=cars.filter(c=>c.y>-200);
   // Autos in Reihenfolge halten
   for(let i=1;i<cars.length;i++)if(cars[i].st==='in'&&cars[i].y<cars[i-1].y+120&&cars[i-1].st==='in')cars[i].y=cars[i-1].y+120}
+ // Rush-Hour
+ rushCD-=dt;if(rushCD<=0&&rush<=0&&SV.served>40){rush=30;rushCD=170+Math.random()*80;SV.rushN++;sfx('unlock');addPop(me.x,me.y-90,'🔥 RUSH HOUR! Doppelt so viele Gäste, +50 % Geld','#ff9f1a')}
+ if(rush>0){rush-=dt;$('rush').style.display='block';$('rush').textContent='🔥 RUSH HOUR '+Math.ceil(rush)+'s';if(rush<=0)$('rush').style.display='none'}
+ spinUI();
  // Lieferdienst
  const wait=has('ebike')?3.5:6.5;
- for(const sc of scooters){const park={x:740+sc.i*60,y:1265},sp2=has('ebike')?320:230;
+ for(const sc of scooters){const park={x:680+sc.i*60,y:1265},sp2=has('ebike')?320:230;
   if(sc.st==='park'){if(DELIV.stack>0){sc.t-=dt;if(sc.t<=0){sc.t=.35;DELIV.stack--;sc.load++;sfx('pick');if(sc.load>=3||DELIV.stack===0){sc.t=.6;sc.st='wait0'}}}else if(sc.load>0){sc.t-=dt;if(sc.t<-1.5)sc.st='go'}}
   else if(sc.st==='wait0'){sc.t-=dt;if(sc.t<=0)sc.st='go'}
   else if(sc.st==='go'){const a=sc.y>1250&&sc.x<930;if(a){if(moveTo(sc,935,1265,sp2,dt))sc.st='away'}else sc.st='away'}
@@ -199,11 +234,19 @@ function update(dt){
  tipUpdate()}
 const K_YUM=['Lecker! 😋','Mmmh! 🍕','Super! ⭐','Danke! 💛','Wie in Italien! 🇮🇹'];
 /* ================= Aufträge ================= */
+const GOALS_EXTRA=[['Verkaufe 200 Getränke',()=>SV.drinks,200,2000],['Überstehe 5 Rush Hours',()=>SV.rushN,5,2500],['Liefere 300 Pizzas aus',()=>SV.deliv,300,4000],['Serviere 2.000 Kunden',()=>SV.served,2000,8000],['Verdiene 1 Million €',()=>SV.earned,1e6,25000]];
 const GOALS=[['Serviere 30 Kunden',()=>SV.served,30,150],['Verdiene 1.000 €',()=>SV.earned,1000,200],['Schalte 8 Dinge frei',()=>Object.keys(SV.un).filter(k=>!k.endsWith('$')).length,8,300],['Serviere 150 Kunden',()=>SV.served,150,500],['Verdiene 10.000 €',()=>SV.earned,10000,800],
  ['Öffne die Terrasse',()=>has('terrace')?1:0,1,600],['Liefere 50 Pizzas aus',()=>SV.deliv,50,900],['Bediene 10 VIP-Gäste',()=>SV.vipN,10,1200],['Serviere 500 Kunden',()=>SV.served,500,1500],['Schalte alles frei',()=>PADS.filter(p=>has(p.id)).length,PADS.length,5000],['Verdiene 100.000 €',()=>SV.earned,100000,5000]];
-let goalCheck=0;function goals(dt){goalCheck-=dt;if(goalCheck>0)return;goalCheck=.5;const g=GOALS[SV.goal];const el=$('goal');if(!g){el.style.display='none';return}const v=Math.min(g[2],g[1]());el.style.display='block';
+GOALS.push(...GOALS_EXTRA);let goalCheck=0;function goals(dt){goalCheck-=dt;if(goalCheck>0)return;goalCheck=.5;const g=GOALS[SV.goal];const el=$('goal');if(!g){el.style.display='none';return}const v=Math.min(g[2],g[1]());el.style.display='block';
  el.innerHTML=`<b>📋 Auftrag ${SV.goal+1}/${GOALS.length}</b><div>${g[0]}</div><i style="width:${v/g[2]*100}%"></i><small>${Math.floor(v)}/${g[2]} · Belohnung 💵 ${g[3]}</small>`;
  if(v>=g[2]){SV.goal++;SV.money+=g[3];addPop(me.x,me.y-80,'📋 Auftrag erfüllt! +'+g[3],'#7dff6a');sfx('unlock');save()}}
+/* ================= Glücksrad ================= */
+const WHEEL=[['💵 100',100],['💵 250',250],['💵 50',50],['💵 500',500],['💵 150',150],['💵 1000',1000],['💵 75',75],['🎰 ×2 Geld',-1]];let spinning=false;
+function spinReady(){return Date.now()-SV.spinAt>5*60*1000}
+function spinUI(){const b=$('spinBtn');const r=spinReady();b.style.display=running?'block':'none';b.classList.toggle('ready',r);b.textContent=r?'🎡 Glücksrad!':'🎡 '+Math.ceil((5*60*1000-(Date.now()-SV.spinAt))/60000)+' min'}
+function openSpin(){if(!spinReady()||spinning)return;$('wheelBox').style.display='flex';$('wheelRes').textContent='Tippe auf DREHEN!';$('wheelGo').disabled=false}
+function doSpin(){if(spinning||!spinReady())return;spinning=true;$('wheelGo').disabled=true;const k=Math.random()*WHEEL.length|0,mult=1+Math.floor(SV.stars/3);const deg=360*6+(360-(k*45+22.5));const w=$('wheel');w.style.transition='none';w.style.transform='rotate(0deg)';void w.offsetWidth;w.style.transition='transform 4s cubic-bezier(.15,.8,.2,1)';w.style.transform=`rotate(${deg}deg)`;sfx('unlock');
+ setTimeout(()=>{const [t,v]=WHEEL[k];const win=v<0?Math.min(20000,SV.money):v*mult;SV.money+=win;SV.earned+=win;SV.spinAt=Date.now();save();$('wheelRes').textContent='Gewonnen: '+t+(v>0&&mult>1?' ×'+mult:'')+' = 💵 '+win;sfx('cash');spinning=false;setTimeout(()=>$('wheelBox').style.display='none',2200)},4200)}
 /* ================= Tipps ================= */
 let lastTip='';function tipUpdate(){let t='';
  if(!SV.un.t1){if(SV.served<1&&COUNTER.stack===0&&!me.carry.length)t='🔥 Geh zum Ofen und nimm Pizzas!';else if(me.carry.length&&me.kind==='pz')t='➡️ Bring die Pizzas zur Theke (Kasse)';else if(moneyPiles.c>0)t='💵 Hol dir das Geld neben der Kasse!';else if(SV.money>=10)t='🟨 Stell dich aufs gelbe Feld: Tisch kaufen';}
@@ -264,6 +307,13 @@ function draw(){x.setTransform(D,0,0,D,0,0);x.fillStyle='#4c8a3a';x.fillRect(0,0
  const cash=(n,X,Y)=>{for(let i=0;i<Math.min(14,Math.ceil(n/5));i++){x.fillStyle='#3fa34d';x.fillRect(X-14+(i%2)*6,Y-i*4,26,10);x.fillStyle='#7dff6a';x.fillRect(X-10+(i%2)*6,Y-i*4+3,18,4)}};
  cash(moneyPiles.c,COUNTER.money.x,COUNTER.money.y);
  if(has('drive')){rr(DRIVE.x-20,DRIVE.y-50,40,100,6,'#a0522d');for(let i=0;i<DRIVE.stack;i++)box(DRIVE.x,DRIVE.y+40-i*7);cash(moneyPiles.d,DRIVE.money.x,DRIVE.money.y)}
+ // Erweiterung 3.0: Deko & Geräte
+ const T=performance.now()/1000;
+ if(has('drinks')){rr(805,480,48,90,8,'#d63031');rr(811,490,36,40,6,'#bfe4ff');for(let i=0;i<3;i++){x.fillStyle=['#e74c3c','#f1c40f','#2ecc71'][i];x.fillRect(814+i*11,496,8,28)}rr(815,540,28,18,4,'#333');x.font='16px sans-serif';x.fillText('🥤',829,560)}
+ if(has('plants'))for(const [px,py] of[[70,1090],[830,1090],[70,470],[830,470],[400,1090],[500,1090]]){x.fillStyle='#8d5524';x.fillRect(px-12,py-4,24,18);x.fillStyle='#2e8b3a';x.beginPath();x.arc(px,py-10,15,0,TAU);x.arc(px-9,py-2,10,0,TAU);x.arc(px+9,py-2,10,0,TAU);x.fill()}
+ if(has('music')){rr(55,1020,40,70,8,'#6c3483');rr(60,1028,30,22,10,'#f39c12');x.fillStyle='#ffd23f';x.font='18px sans-serif';for(let i=0;i<2;i++){const ph=(T*.8+i*.5)%1;x.globalAlpha=1-ph;x.fillText('🎵',75+Math.sin(ph*6+i)*14,1015-ph*50)}x.globalAlpha=1}
+ if(has('neon')){const g=.6+.4*Math.abs(Math.sin(T*2));x.save();x.shadowColor='#ff3fb4';x.shadowBlur=20*g;x.strokeStyle=`rgba(255,63,180,${g})`;x.lineWidth=4;x.strokeRect(370,1128,160,40);x.fillStyle=`rgba(255,240,250,${g})`;x.font='900 22px sans-serif';x.fillText('PIZZA ✦ 24/7',450,1156);x.restore()}
+ if(has('lounge')){rr(-400,1150,360,80,14,'#4a235a');for(let i=0;i<3;i++){rr(-380+i*115,1165,90,40,10,'#d4a017');rr(-380+i*115,1160,90,12,6,'#f1c40f')}x.fillStyle='#ffd23f';x.font='900 16px sans-serif';x.fillText('👑 VIP-LOUNGE',-220,1250)}
  // Mülleimer
  rr(BIN.x-20,BIN.y-24,40,46,8,'#2e7d32');x.fillStyle='#fff';x.font='18px sans-serif';x.fillText('♻️',BIN.x,BIN.y+6);
  if(has('delivery')){rr(DELIV.x-40,DELIV.y-14,80,32,6,'#a0522d');rr(DELIV.x-40,DELIV.y-14,80,8,4,'#c97c4a');for(let i=0;i<DELIV.stack;i++)box(DELIV.x-22+(i%3)*22,DELIV.y-4-Math.floor(i/3)*7);cash(moneyPiles.y,DELIV.money.x,DELIV.money.y)}
@@ -275,7 +325,7 @@ function draw(){x.setTransform(D,0,0,D,0,0);x.fillStyle='#4c8a3a';x.fillRect(0,0
   if(c.st==='in'){x.fillStyle='#fff';rr(c.x-58,c.y-70,50,24,8,'#fff');x.fillStyle='#333';x.font='800 13px sans-serif';x.fillText('🍕'+(c.want-c.got),c.x-33,c.y-53)}}
  // Figuren (nach y sortiert)
  const ppl=[...custs.map(c=>({e:c,f:()=>{if(c.vip){x.font='18px sans-serif';x.fillText('👑',c.x,c.y-44)}person(c,c.sk,c.sh,0,c.got&&c.st!=='eat'?Array(Math.min(c.got,4)).fill(1):null,'pz');if(c.st==='queue'&&c.qi===0||c.st==='queue'&&c.qi<4){rr(c.x+12,c.y-62,40,22,8,'#fff');x.fillStyle='#333';x.font='800 12px sans-serif';x.fillText('🍕'+(c.want-c.got),c.x+32,c.y-46)}}})),
-  ...workers.map(w=>({e:w,f:()=>person(w,'#f1c27d',w.role==='cashier'?'#2980b9':w.role==='cleaner'?'#16a085':'#e67e22',1,w.carry,w.kind)})),{e:me,f:()=>person(me,'#f1c27d','#c0392b',1,me.carry,me.kind)}];
+  ...workers.map(w=>({e:w,f:()=>person(w,'#f1c27d',w.role==='cashier'||w.role==='cashier2'?'#2980b9':w.role==='cleaner'?'#16a085':'#e67e22',1,w.carry,w.kind)})),{e:me,f:()=>person(me,'#f1c27d','#c0392b',1,me.carry,me.kind)}];
  ppl.sort((a,b)=>a.e.y-b.e.y).forEach(p=>p.f());
  for(const sc of scooters){if(sc.st==='out')continue;x.save();x.translate(sc.x,sc.y);const moving=sc.st!=='park';x.rotate(sc.st==='away'?0:sc.st==='back'?PI:0);
   x.fillStyle='rgba(0,0,0,.2)';x.beginPath();x.ellipse(0,18,22,8,0,0,TAU);x.fill();x.fillStyle='#222';x.fillRect(-4,-30,8,12);x.fillRect(-4,14,8,12);rr(-12,-22,24,44,10,has('ebike')?'#18dcff':'#e74c3c');x.fillStyle='#ddd';x.fillRect(-14,-24,28,4);
@@ -305,7 +355,9 @@ function loop(n){requestAnimationFrame(loop);const dt=Math.min(.05,(n-last)/1000
 $('go').onclick=()=>{ac();$('start').style.display='none';running=true};
 $('reset').onclick=()=>{if(confirm('Wirklich alles löschen und neu anfangen?')){store.set('pz_save',{});location.reload()}};
 addEventListener('pagehide',save);document.addEventListener('visibilitychange',()=>{if(document.hidden)save()});
-window.PZ={me,get SV(){return SV},COUNTER,OVENS,get custs(){return custs},get workers(){return workers},PADS,moneyPiles,joy,keys};
+{const cols=['#e74c3c','#f39c12','#27ae60','#2980b9','#8e44ad','#16a085','#d35400','#c0392b'];$('wheel').style.background='conic-gradient('+cols.map((c,i)=>c+' '+(i*45)+'deg '+((i+1)*45)+'deg').join(',')+')';$('wheel').innerHTML=WHEEL.map((w,i)=>`<span style="transform:rotate(${i*45+22.5-90}deg) translate(38px,-8px)">${w[0]}</span>`).join('')}
+$('spinBtn').onclick=()=>{ac();openSpin()};$('wheelGo').onclick=doSpin;$('wheelX').onclick=()=>{if(!spinning)$('wheelBox').style.display='none'};
+window.PZ={TABLES,DELIV,me,get SV(){return SV},COUNTER,OVENS,get custs(){return custs},get workers(){return workers},PADS,moneyPiles,joy,keys};
 </script>
 </body>
 </html>
