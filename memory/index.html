@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/nozoom.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Memory</title>
+<link rel="stylesheet" href="../shared/kit.css">
+<style>:root{--a:#f59e0b;--b:#ec4899}</style>
+</head>
+<body>
+<script src="../shared/peerjs.min.js"></script>
+<script src="../shared/net.js"></script>
+<script src="../shared/kit.js"></script>
+<script>
+'use strict';
+/* MEMORY – Paare finden. Allein auf Zeit, gegen KI, zu mehreren an einem Gerät oder online. */
+const THEMES={tiere:{n:'🐼 Tiere',e:'🐶🐱🐭🐹🐰🦊🐻🐼🐨🐯🦁🐮🐷🐸🐵🐔🐧🦄🐙🦋'},essen:{n:'🍕 Essen',e:'🍕🍔🍟🌭🍿🍩🍪🎂🍦🍉🍓🍌🍇🍒🥨🧀🌮🍣🥞🍫'},sport:{n:'⚽ Sport',e:'⚽🏀🏈⚾🎾🏐🏉🎱🏓🏸🥊⛳🛹🏆🥇🎯🏹🛷🎳🤿'},fahr:{n:'🚀 Fahrzeuge',e:'🚗🚕🚌🚑🚒🚓🚜🚙🚲🛵🚂🛫🚀🚁⛵🚤🛸🚠🛶🚃'}};
+const SIZES={16:[4,4],20:[5,4],30:[6,5],36:[6,6]};
+let theme=K.store.get('mm_theme','tiere'),size=K.store.get('mm_size',20),nBots=K.store.get('mm_bots',1),diff=K.store.get('mm_diff',1),root=null,curV=null,lastSnd='',lastWin='',timerI=null;
+const emojis=t=>typeof Intl.Segmenter==='function'?Array.from(new Intl.Segmenter('de',{granularity:'grapheme'}).segment(THEMES[t].e),s=>s.segment):Array.from(THEMES[t].e);
+const E=K.TG({game:'memory',max:4,
+ setup(ps,o){const n=o.size||20,ems=K.shuffle(emojis(o.theme||'tiere')).slice(0,n/2);const cards=K.shuffle([...ems,...ems].map((e,i)=>({e,id:i})));
+  return{pl:ps.map(p=>({id:p.id,name:p.name,bot:!!p.bot,pts:0})),cards,state:cards.map(()=>0),open:[],turn:0,moves:0,t0:Date.now(),tEnd:0,local:!!o.local,solo:ps.length===1,mem:{},size:n,theme:o.theme,last:null,lock:0}},
+ actors:G=>G.lock||done(G)?[]:[G.pl[G.turn].id],over:G=>done(G),
+ view(G,pid){let me=G.pl.findIndex(p=>p.id===pid);if(G.local)me=G.turn;return{me,cards:G.cards.map((c,i)=>G.state[i]||G.open.includes(i)?c.e:null),state:G.state,open:G.open,turn:G.turn,pl:G.pl.map(p=>({name:p.name,pts:p.pts,bot:p.bot})),moves:G.moves,t0:G.t0,tEnd:G.tEnd,done:done(G),solo:G.solo,local:G.local,size:G.size,last:G.last,lock:G.lock}},
+ act(G,pid,a){const i=G.pl.findIndex(p=>p.id===pid);if(G.lock||done(G))return false;if(!G.local&&i!==G.turn)return false;const c=a.c|0;if(c<0||c>=G.cards.length||G.state[c]||G.open.includes(c)||G.open.length>=2)return false;
+  G.open.push(c);for(const p of G.pl)if(p.bot)rememberFor(G,c);if(G.open.length===2){G.moves++;const [a1,b1]=G.open;if(G.cards[a1].e===G.cards[b1].e){G.state[a1]=G.state[b1]=G.turn+1;G.pl[G.turn].pts++;G.last='match';G.lock=1;E.later(650,()=>{G.open=[];G.lock=0;if(done(G))G.tEnd=Date.now()})}
+   else{G.last='miss';G.lock=1;E.later(1100,()=>{G.open=[];G.lock=0;G.turn=(G.turn+1)%G.pl.length})}}else G.last='flip';return true},
+ bot(G,pid){const known=G.mem;const hidden=G.cards.map((c,i)=>i).filter(i=>!G.state[i]&&!G.open.includes(i));if(!hidden.length)return null;
+  if(G.open.length===1){const f=G.open[0],e=G.cards[f].e;const m=hidden.find(i=>known[i]===e&&Math.random()<[.5,.8,.97][diff]);if(m!=null)return{c:m};const un=hidden.filter(i=>known[i]==null);return{c:K.pick(un.length?un:hidden)}}
+  const byE={};for(const i of hidden)if(known[i]){(byE[known[i]]=byE[known[i]]||[]).push(i)}const pair=Object.values(byE).find(L=>L.length>=2);if(pair&&Math.random()<[.45,.75,.95][diff])return{c:pair[0]};
+  const un=hidden.filter(i=>known[i]==null);return{c:K.pick(un.length?un:hidden)}},
+ botDelay:()=>650+Math.random()*400,render});
+function rememberFor(G,c){if(Math.random()<[.55,.8,.97][diff])G.mem[c]=G.cards[c].e;// Vergessen
+ for(const k in G.mem)if(Math.random()<[.08,.03,0][diff])delete G.mem[k]}
+function done(G){return G.state.every(s=>s)}
+function fmtT(ms){const s=Math.floor(ms/1000);return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
+function render(v,send){if(!root){root=document.createElement('div');root.className='tg mm';document.body.appendChild(root)}root.style.display='flex';curV=v;
+ const key=v.moves+':'+v.open.length+':'+v.last;if(key!==lastSnd){lastSnd=key;if(v.open.length===1||v.last==='flip')K.sfx('card');if(v.open.length===2)setTimeout(()=>K.sfx(v.last==='match'?'good':'bad'),250)}
+ const [cols,rows]=SIZES[v.size];const myTurn=(v.local||v.me===v.turn)&&!v.lock&&!v.done;
+ const cw=`min(${(92/cols).toFixed(2)}vw,${(66/rows).toFixed(2)}vh,110px)`;
+ if(!root.querySelector('.mgrid')||root.dataset.n!=v.cards.length){root.dataset.n=v.cards.length;root.innerHTML=`<div class="top"><a href="#" id="mB">← Menü</a><b>🧠 MEMORY</b><span id="mR"></span></div><div class="mpl" id="mP"></div><div class="mgrid" style="grid-template-columns:repeat(${cols},${cw});grid-auto-rows:calc(${cw}*1.25)">${v.cards.map((_,i)=>`<div class="mc" data-i="${i}"><div class="mi"><div class="mf mback"></div><div class="mf mfront"></div></div></div>`).join('')}</div><div class="msg" id="mS"></div><div class="bar" id="mBar"></div>`;
+  K.$('mB').onclick=e=>{e.preventDefault();E.stop();clearInterval(timerI);root.style.display='none';menu()};root.querySelector('.mgrid').onclick=e=>{const c=e.target.closest('.mc');if(c&&curV&&(curV.local||curV.me===curV.turn)&&!curV.lock&&!curV.done)send({c:+c.dataset.i})}}
+ root.querySelectorAll('.mc').forEach((el,i)=>{const up=!!v.cards[i];el.classList.toggle('up',up);el.classList.toggle('won',!!v.state[i]);el.classList.toggle('miss',v.open.includes(i)&&v.last==='miss'&&v.open.length===2);el.classList.toggle('can',myTurn&&!up);if(up)el.querySelector('.mfront').textContent=v.cards[i];if(v.state[i])el.style.setProperty('--pc',['#3b82f6','#ef4444','#22c55e','#f59e0b'][v.state[i]-1])});
+ K.$('mR').textContent=E.room?'Raum '+E.room.code:'';
+ K.$('mP').innerHTML=v.pl.map((p,i)=>`<div class="mp ${i===v.turn&&!v.done?'on':''}" style="--pc:${['#3b82f6','#ef4444','#22c55e','#f59e0b'][i]}"><b>${p.bot?'🤖 ':''}${K.esc(p.name)}${i===v.me&&!v.local&&!v.solo?' (du)':''}</b><em>${p.pts}</em></div>`).join('')+(v.solo?`<div class="mp on"><b>⏱ <span id="mT">${fmtT((v.tEnd||Date.now())-v.t0)}</span> · Züge ${v.moves}</b></div>`:'');
+ clearInterval(timerI);if(v.solo&&!v.done)timerI=setInterval(()=>{const t=K.$('mT');if(t)t.textContent=fmtT(Date.now()-v.t0)},500);
+ let st='';if(v.done){if(v.solo){const t=(v.tEnd||Date.now())-v.t0,k='mm_best_'+v.size,b=K.store.get(k,null);const rec=!b||v.moves<b.m||(v.moves===b.m&&t<b.t);if(rec&&lastWin!==key){K.store.set(k,{m:v.moves,t})}st=`🎉 Geschafft in ${v.moves} Zügen und ${fmtT(t)}!`+(rec?' Neuer Rekord!':` Rekord: ${b.m} Züge`)}else{const mx=Math.max(...v.pl.map(p=>p.pts)),w=v.pl.filter(p=>p.pts===mx);st=w.length>1?'🤝 Unentschieden!':'🏆 '+K.esc(w[0].name)+' gewinnt!'}if(lastWin!==key){lastWin=key;setTimeout(()=>K.sfx(v.solo||v.pl[v.me]&&v.pl[v.me].pts===Math.max(...v.pl.map(p=>p.pts))?'win':'lose'),400)}}
+ else st=v.last==='match'?'✨ Paar gefunden – nochmal!':v.solo?'Finde alle Paare!':myTurn?(v.local?K.esc(v.pl[v.turn].name)+' ist dran':'Du bist dran – deck 2 Karten auf'):'⏳ '+K.esc(v.pl[v.turn].name)+' ist dran …';
+ K.$('mS').innerHTML=st;K.$('mBar').innerHTML=v.done&&E.host?'<button class="pri k-big" id="mA">🔁 Nochmal</button>':'';if(K.$('mA'))K.$('mA').onclick=()=>start(mode)}
+const st=document.createElement('style');st.textContent=`.tg.mm{background:radial-gradient(1000px 700px at 50% 20%,#4c1d95,#1e1b4b 60%,#0f0a24);gap:10px}
+.mpl{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}.mp{display:flex;gap:10px;align-items:center;background:rgba(0,0,0,.35);border-radius:14px;padding:7px 14px;border:2px solid transparent;border-left:6px solid var(--pc,#a78bfa)}.mp.on{border-color:#ffd23f;border-left-color:var(--pc,#a78bfa)}.mp em{font-style:normal;font-weight:900;font-size:22px}
+.mgrid{display:grid;gap:8px;justify-content:center;perspective:900px}
+.mc{cursor:pointer;position:relative}.mi{position:absolute;inset:0;transition:transform .45s cubic-bezier(.3,1.4,.5,1);transform-style:preserve-3d}.mc.up .mi{transform:rotateY(180deg)}
+.mf{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;-webkit-backface-visibility:hidden;display:grid;place-items:center;box-shadow:0 5px 0 rgba(0,0,0,.35),0 8px 16px rgba(0,0,0,.3)}
+.mback{background:repeating-linear-gradient(45deg,#f59e0b 0 8px,#fbbf24 8px 16px);border:4px solid #fff7ed}.mback:after{content:"?";font-size:min(7vw,5vh,44px);font-weight:900;color:rgba(255,255,255,.85);text-shadow:0 2px 0 rgba(0,0,0,.25)}
+.mfront{background:linear-gradient(160deg,#fff,#f1f5f9);transform:rotateY(180deg);font-size:min(9vw,6vh,58px)}
+.mc.can:hover .mi{transform:translateY(-4px)}.mc.won .mfront{box-shadow:0 0 0 4px var(--pc),0 5px 0 rgba(0,0,0,.35);animation:mwin .5s}.mc.won{cursor:default}.mc.miss .mfront{animation:mshake .4s}
+@keyframes mwin{50%{transform:rotateY(180deg) scale(1.15)}}@keyframes mshake{25%{transform:rotateY(180deg) translateX(-6px)}75%{transform:rotateY(180deg) translateX(6px)}}`;document.head.appendChild(st);
+let mode='solo';
+function start(m){mode=m;lastSnd='';lastWin='';if(root){root.dataset.n=''}const o={theme,size};if(m==='solo')E.solo(0,o);else if(m==='ai')E.solo(nBots,o);else if(m==='local'){E.host=true;E.room=null;const n=K.store.get('mm_local',2);E.start([...Array(n)].map((_,i)=>({id:K.uid()+'#'+i,name:'Spieler '+(i+1)})),Object.assign({local:true},o))}}
+function menu(){if(root)root.style.display='none';K.menu({title:'MEMORY',emoji:'🧠',sub:'Deck zwei Karten auf und finde die Paare. Wer sich am meisten merkt, gewinnt!',
+ body:`<div class="k-box"><div class="k-set"><span>🎨 Motiv</span>${K.chips('mT',Object.entries(THEMES).map(([k,t])=>[k,t.n]),theme,v=>{theme=v;K.store.set('mm_theme',v)})}</div><div class="k-set"><span>🃏 Karten</span>${K.chips('mZ',[[16,'16'],[20,'20'],[30,'30'],[36,'36']],size,v=>{size=v;K.store.set('mm_size',v)})}</div>
+ <div class="k-set"><span>🤖 Gegner</span>${K.chips('mN',[[1,'1'],[2,'2'],[3,'3']],nBots,v=>{nBots=v;K.store.set('mm_bots',v)})}</div><div class="k-set"><span>🧠 KI</span>${K.chips('mD',[[0,'Vergesslich'],[1,'Gut'],[2,'Genie']],diff,v=>{diff=v;K.store.set('mm_diff',v)})}</div>
+ <div class="k-set"><span>👥 Am Gerät</span>${K.chips('mL',[[2,'2'],[3,'3'],[4,'4']],K.store.get('mm_local',2),v=>K.store.set('mm_local',v))}</div></div>`,
+ solo:[{t:'⏱ Allein auf Zeit',f:()=>start('solo')},{t:'🤖 Gegen KI',f:()=>start('ai')},{t:'👥 Zusammen an einem Gerät',f:()=>start('local')}],online:{game:'memory',max:4,onStart:r=>{mode='online';lastSnd='';lastWin='';if(root)root.dataset.n='';E.hostStart(r,0,{theme,size})},botsNote:'2–4 Spieler. Motiv und Kartenzahl bestimmt der Gastgeber.'},
+ help:'Findest du ein Paar, bekommst du einen Punkt und darfst nochmal. Sonst ist der Nächste dran.'})}
+menu();window.MM={get v(){return curV},E};
+</script>
+</body>
+</html>

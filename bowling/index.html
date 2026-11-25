@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/nozoom.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Bowling 3D</title>
+<link rel="stylesheet" href="../shared/kit.css">
+<style>:root{--a:#a855f7;--b:#22d3ee}
+#cv3{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+#card{position:fixed;left:50%;transform:translateX(-50%);top:max(8px,env(safe-area-inset-top));z-index:5;display:none;background:rgba(8,10,24,.85);border-radius:12px;padding:6px;font-size:12px;max-width:98vw;overflow-x:auto;box-shadow:0 6px 18px rgba(0,0,0,.5)}
+#card table{border-collapse:collapse}#card td{border:1px solid #334;min-width:30px;text-align:center;padding:2px 3px;font-weight:700;white-space:nowrap}#card tr.on td:first-child{color:#facc15}#card td.f{font-size:11px;color:#9aa4c4}#card td.n{text-align:left;max-width:90px;overflow:hidden}
+#bigB{position:fixed;left:0;right:0;top:36%;text-align:center;font-size:clamp(44px,11vw,100px);font-weight:900;font-style:italic;z-index:6;pointer-events:none;opacity:0;transform:scale(.6);transition:.3s;background:linear-gradient(90deg,#f0abfc,#22d3ee);-webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 5px 0 rgba(0,0,0,.5))}#bigB.on{opacity:1;transform:none}
+#hint{position:fixed;left:0;right:0;bottom:calc(max(14px,env(safe-area-inset-bottom)) + 4px);text-align:center;z-index:5;font-weight:800;text-shadow:0 2px 3px #000;display:none;pointer-events:none}
+#bMenu{left:max(10px,env(safe-area-inset-left));bottom:max(10px,env(safe-area-inset-bottom));display:none}
+</style>
+</head>
+<body>
+<canvas id="cv3"></canvas><div id="card"></div><div id="bigB"></div><div id="hint"></div><button class="k-btn-float" id="bMenu">☰</button>
+<script src="../shared/three.min.js"></script>
+<script src="../shared/peerjs.min.js"></script>
+<script src="../shared/net.js"></script>
+<script src="../shared/kit.js"></script>
+<script>
+'use strict';
+/* BOWLING 3D – Wischen zum Werfen, Effet durch Bogen beim Wischen, echte Zählweise mit Strikes und Spares. */
+const $=K.$,PI=Math.PI,TAU=PI*2,clamp=K.clamp;
+const LW=.53,GUT=.75,PZ=-18.3,BR=.11,PR=.061,PH=.38,SP=.305;
+let nBots=K.store.get('bw_bots',1),nLocal=K.store.get('bw_local',1),ballCol=K.store.get('bw_col',0);
+const BCOL=[0x7c3aed,0x2563eb,0xdc2626,0x16a34a,0xf59e0b,0xec4899,0x111827];
+/* ---------- Szene ---------- */
+const renderer=new THREE.WebGLRenderer({canvas:$('cv3'),antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x0a0618);scene.fog=new THREE.Fog(0x0a0618,18,40);
+const cam=new THREE.PerspectiveCamera(55,1,.05,100);function resize(){renderer.setSize(innerWidth,innerHeight);cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix()}addEventListener('resize',resize);resize();
+scene.add(new THREE.HemisphereLight(0xc7d2fe,0x2a1a3a,.65));
+for(const z of[-4,-12,-18]){const l=new THREE.SpotLight(0xffffff,.9,30,.6,.5);l.position.set(0,6,z+2);l.target.position.set(0,0,z-1);l.castShadow=z===-18;l.shadow.mapSize.set(1024,1024);scene.add(l,l.target)}
+function ctex(w,h,f){const c=document.createElement('canvas');c.width=w;c.height=h;f(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.anisotropy=8;return t}
+const laneTex=ctex(256,2048,(x,w,h)=>{const n=39;for(let i=0;i<n;i++){const v=200+Math.random()*30|0;x.fillStyle=`rgb(${v},${v*.72|0},${v*.45|0})`;x.fillRect(i*w/n,0,w/n+1,h);x.fillStyle='rgba(0,0,0,.12)';x.fillRect(i*w/n,0,1,h)}
+ for(let k=0;k<2;k++)for(let y=0;y<h;y+=Math.random()*300+200){x.fillStyle='rgba(0,0,0,.06)';x.fillRect(0,y,w,2)}
+ x.fillStyle='#1f2937';const pz=z=>h*(1-(-z)/18.6);for(let i=0;i<7;i++){const X=w/2+(i-3)*w/8,Y=pz(-4.6)-Math.abs(i-3)*14;x.beginPath();x.moveTo(X,Y-18);x.lineTo(X-7,Y+8);x.lineTo(X+7,Y+8);x.fill()}for(let i=0;i<10;i++){x.beginPath();x.arc(w/2+(i-4.5)*w/10,pz(-2.1),4,0,TAU);x.fill()}x.fillStyle='#111';x.fillRect(0,pz(0)-3,w,6)});
+const lane=new THREE.Mesh(new THREE.PlaneGeometry(LW*2,18.6+2),new THREE.MeshStandardMaterial({map:laneTex,roughness:.25,metalness:.05}));lane.rotation.x=-PI/2;lane.position.set(0,0,-9.3+1);lane.receiveShadow=true;scene.add(lane);
+const appr=new THREE.Mesh(new THREE.PlaneGeometry(3,5),new THREE.MeshStandardMaterial({map:laneTex,roughness:.3}));appr.rotation.x=-PI/2;appr.position.set(0,-.001,3.4);scene.add(appr);
+const gutM=new THREE.MeshStandardMaterial({color:0x374151,metalness:.6,roughness:.35,side:THREE.DoubleSide});
+for(const s of[-1,1]){const g=new THREE.Mesh(new THREE.CylinderGeometry(.11,.11,20.6,12,1,true,0,PI),gutM);g.rotation.set(PI/2,0,PI/2*0);g.rotation.z=PI;g.position.set(s*(LW+.11),0,-9.3+1);g.rotation.order='ZXY';scene.add(g);
+ const wall=new THREE.Mesh(new THREE.BoxGeometry(.06,.5,22),new THREE.MeshStandardMaterial({color:0x1e1b4b}));wall.position.set(s*(GUT+.05),.15,-9);scene.add(wall);
+ for(let k=1;k<=3;k++){const nl=new THREE.Mesh(new THREE.PlaneGeometry(2.2,22),new THREE.MeshStandardMaterial({map:laneTex,color:0x9a8a7a,roughness:.3}));nl.rotation.x=-PI/2;nl.position.set(s*(GUT+.1+k*2.25-1.05),-.002,-9);scene.add(nl)}}
+const pit=new THREE.Mesh(new THREE.BoxGeometry(3,1.2,1.4),new THREE.MeshStandardMaterial({color:0x050505}));pit.position.set(0,.2,PZ-2.2);scene.add(pit);
+const mask=new THREE.Mesh(new THREE.PlaneGeometry(6,1.4),new THREE.MeshBasicMaterial({map:ctex(1024,240,(x,w,h)=>{const g=x.createLinearGradient(0,0,w,0);g.addColorStop(0,'#7c3aed');g.addColorStop(.5,'#ec4899');g.addColorStop(1,'#22d3ee');x.fillStyle=g;x.fillRect(0,0,w,h);x.fillStyle='rgba(255,255,255,.9)';x.font='900 110px sans-serif';x.textAlign='center';x.fillText('★ STRIKE ZONE ★',w/2,160)})}));mask.position.set(0,1.75,PZ-1.3);scene.add(mask);
+for(let i=0;i<14;i++){const n=new THREE.Mesh(new THREE.BoxGeometry(.06,.06,24),new THREE.MeshBasicMaterial({color:[0xec4899,0x22d3ee,0xa855f7][i%3]}));n.position.set(i%2?-5:5,.6+(i>>1)*.5,-9);scene.add(n)}
+// Kegel
+const pinProfile=[[0,0],[.03,0],[.043,.02],[.05,.07],[.061,.13],[.055,.19],[.035,.25],[.026,.28],[.03,.31],[.034,.34],[.03,.37],[.015,.38],[0,.381]].map(([r,y])=>new THREE.Vector2(r,y));
+const pinTex=ctex(64,256,(x,w,h)=>{x.fillStyle='#fafafa';x.fillRect(0,0,w,h);x.fillStyle='#dc2626';const yy=v=>h*(1-v/.38);x.fillRect(0,yy(.3),w,7);x.fillRect(0,yy(.285),w,5)});
+const pinGeo=new THREE.LatheGeometry(pinProfile,18),pinMat=new THREE.MeshStandardMaterial({map:pinTex,roughness:.25});
+const pinsM=[];for(let i=0;i<10;i++){const m=new THREE.Mesh(pinGeo,pinMat);m.castShadow=true;scene.add(m);pinsM.push(m)}
+const ballTex=ctex(256,128,(x,w,h)=>{x.fillStyle='#fff';x.fillRect(0,0,w,h);for(let i=0;i<40;i++){x.strokeStyle=`rgba(255,255,255,${Math.random()*.3})`;x.lineWidth=4+Math.random()*10;x.beginPath();x.moveTo(Math.random()*w,Math.random()*h);x.bezierCurveTo(Math.random()*w,Math.random()*h,Math.random()*w,Math.random()*h,Math.random()*w,Math.random()*h);x.stroke()}x.fillStyle='#111';for(const [a,b] of[[118,40],[138,40],[128,70]]){x.beginPath();x.arc(a,b,6,0,TAU);x.fill()}});
+const ballMat=new THREE.MeshStandardMaterial({map:ballTex,color:BCOL[ballCol],roughness:.12,metalness:.2});const ballM=new THREE.Mesh(new THREE.SphereGeometry(BR,32,20),ballMat);ballM.castShadow=true;scene.add(ballM);
+const aimLine=new THREE.Mesh(new THREE.PlaneGeometry(.03,6),new THREE.MeshBasicMaterial({color:0xfacc15,transparent:true,opacity:.6}));aimLine.rotation.x=-PI/2;scene.add(aimLine);
+/* ---------- Physik ---------- */
+const PINPOS=[];for(let r=0;r<4;r++)for(let i=0;i<=r;i++)PINPOS.push([(i-r/2)*SP,PZ-r*SP*.866]);
+let pins=[],ball=null,phase='menu',settleT=0,throwT=0;
+function setPins(keep){pins=PINPOS.map((p,i)=>({x:p[0],z:p[1],vx:0,vz:0,up:keep?keep[i]:true,tilt:0,ax:1,az:0,gone:keep?!keep[i]:false,rot:Math.random()*TAU,y:0}))}
+function newBall(){ball={x:0,z:1.2,vx:0,vz:0,spin:0,rot:0,gutter:false,y:BR,live:false,dist:0}}
+function throwBall(x,speed,ang,spin){ball.x=clamp(x,-LW+BR,LW-BR);ball.z=0;ball.vx=Math.sin(ang)*speed;ball.vz=-Math.cos(ang)*speed;ball.spin=clamp(spin,-1,1);ball.live=true;phase='roll';throwT=0;K.noise(.3,.2,600)}
+function stepPhys(dt){const b=ball;throwT+=dt;
+ if(b.live){const sp=Math.hypot(b.vx,b.vz);b.dist+=sp*dt;
+  if(!b.gutter){// Haken nach dem Ölbild (ab ca. 11 m)
+   if(-b.z>10&&sp>.5)b.vx+=b.spin*2.4*dt*Math.min(1,(-b.z-10)/4);if(Math.abs(b.x)>LW&&b.z>PZ+.5){b.gutter=true;b.x=Math.sign(b.x)*(LW+.11);b.vx=0;K.noise(.6,.15,300)}}
+  b.x+=b.vx*dt;b.z+=b.vz*dt;const f=Math.pow(.985,dt);b.vx*=f;b.vz*=f;b.rot+=sp*dt/BR;if(b.z<PZ-1.6){b.live=false;b.z=PZ-1.6}
+  // Kugel ↔ Kegel
+  if(!b.gutter||b.z<PZ+.3)for(const p of pins){if(p.gone)continue;const dx=p.x-b.x,dz=p.z-b.z,d=Math.hypot(dx,dz),R=BR+PR;if(d<R&&d>0){const nx=dx/d,nz=dz/d,rv=(b.vx-p.vx)*nx+(b.vz-p.vz)*nz;if(rv>0){const m1=7,m2=1.5,j=2*rv/(1/m1+1/m2)*.9;b.vx-=j/m1*nx;b.vz-=j/m1*nz;p.vx+=j/m2*nx;p.vz+=j/m2*nz;knock(p,rv);sfx('pin',rv)}const o=R-d;p.x+=nx*o;p.z+=nz*o}}}
+ // Kegel ↔ Kegel
+ for(let i=0;i<10;i++){const a=pins[i];if(a.gone)continue;for(let j=i+1;j<10;j++){const c=pins[j];if(c.gone)continue;const dx=c.x-a.x,dz=c.z-a.z,d=Math.hypot(dx,dz),R=a.up&&c.up?PR*2:PR*2+.08;if(d<R&&d>0){const nx=dx/d,nz=dz/d,rv=(a.vx-c.vx)*nx+(a.vz-c.vz)*nz;if(rv>0){const j2=rv*.85;a.vx-=j2*nx;a.vz-=j2*nz;c.vx+=j2*nx;c.vz+=j2*nz;if(rv>.25){knock(a,rv);knock(c,rv);sfx('pin',rv*.7)}}const o=(R-d)/2;a.x-=nx*o;a.z-=nz*o;c.x+=nx*o;c.z+=nz*o}}}
+ let moving=b.live;for(const p of pins){if(p.gone)continue;p.x+=p.vx*dt;p.z+=p.vz*dt;const f=Math.pow(p.up?.02:.12,dt);p.vx*=f;p.vz*=f;if(!p.up&&p.tilt<PI/2){p.tilt=Math.min(PI/2,p.tilt+dt*6);p.y=0}
+  if(p.up&&Math.hypot(p.vx,p.vz)>.18)knock(p,.6);if(Math.abs(p.x)>GUT||p.z<PZ-1.2){p.gone=true;p.up=false}if(Math.hypot(p.vx,p.vz)>.05)moving=true}
+ if(!b.live&&!moving)settleT+=dt;else settleT=0;
+ if((settleT>.8&&throwT>2)||throwT>9)endThrow()}
+function knock(p,v){if(!p.up)return;if(v<.35&&Math.random()<.5)return;p.up=false;const a=Math.atan2(p.vz,p.vx)||-PI/2;p.ax=Math.cos(a);p.az=Math.sin(a)}
+/* ---------- Spielstand ---------- */
+let G=null;
+function rollsScore(R){let s=0,i=0;const fr=[];for(let f=0;f<10;f++){if(i>=R.length)break;if(R[i]===10){if(R[i+2]==null){fr.push(null);break}s+=10+R[i+1]+R[i+2];fr.push(s);i+=1}else{if(R[i+1]==null){fr.push(null);break}if(R[i]+R[i+1]===10){if(R[i+2]==null){fr.push(null);break}s+=10+R[i+2]}else s+=R[i]+R[i+1];fr.push(s);i+=2}}return fr}
+function frameMarks(R){const out=[];let i=0;for(let f=0;f<10;f++){const m=[];if(f<9){if(R[i]==null)break;if(R[i]===10){m.push('','X');i++}else{m.push(R[i]===0?'–':R[i]);if(R[i+1]!=null)m.push(R[i]+R[i+1]===10?'/':R[i+1]===0?'–':R[i+1]);i+=2}}else{let prev=null;for(let k=0;k<3&&R[i+k]!=null;k++){const v=R[i+k];let c=v===10?'X':v===0?'–':v;if(prev!=null&&prev!==10&&prev+v===10&&k>0&&!(k===2&&R[i]+R[i+1]!==10&&R[i]!==10))c='/';m.push(c);prev=(prev!=null&&prev!==10&&prev+v===10)?10:v}i+=3}out.push(m)}return out}
+function newGame(){const pl=[];for(let i=0;i<nLocal;i++)pl.push({name:nLocal>1?'Spieler '+(i+1):K.name(),rolls:[],bot:false,frame:0});for(let i=0;i<nBots;i++)pl.push({name:K.BOTS[i]+' 🤖',rolls:[],bot:true,skill:.55+Math.random()*.4,frame:0});
+ G={pl,cur:0,frame:0,roll:0,standing:null,done:false};startFrame()}
+function startFrame(){const p=G.pl[G.cur];setPins();G.roll=0;newBall();phase='aim';showHint(p);updateCard();if(p.bot)setTimeout(botThrow,1100+Math.random()*600)}
+function showHint(p){$('hint').style.display='block';$('hint').textContent=p.bot?'⏳ '+p.name+' wirft …':(G.pl.length>1?p.name+': ':'')+(K.touch?'Kugel seitlich schieben, dann nach oben wischen – im Bogen wischen = Effet':'Maus ziehen: seitlich = Position, nach oben = Wurf (im Bogen = Effet) · ←/→ + Leertaste')}
+function endThrow(){if(phase!=='roll')return;phase='wait';const p=G.pl[G.cur];const before=G.roll===0?10:G.standingN;const standing=pins.map(q=>q.up&&!q.gone);const now=standing.filter(Boolean).length;const knocked=before-now;p.rolls.push(knocked);
+ const tenth=G.frame===9,first=G.roll===0;let msg='';
+ if(first&&now===0){msg='STRIKE!';sfx('strike')}else if(!first&&now===0&&!(tenth&&G.roll===2)){msg='SPARE!';sfx('spare')}else if(ball.gutter&&knocked===0)msg='Rinne 😬';else msg=knocked+(knocked===1?' Kegel':' Kegel');
+ big(msg,1.3);updateCard();
+ setTimeout(()=>{// nächster Wurf / Frame
+  if(tenth){const r=p.rolls.slice(p.frameStart),n=r.length;let more=false,reset=false;
+   if(n===1){more=true;reset=r[0]===10}else if(n===2){if(r[0]===10){more=true;reset=r[1]===10}else if(r[0]+r[1]===10){more=true;reset=true}}
+   if(more){G.roll=n;if(reset){setPins();G.standingN=10}else{setPins(standing);G.standingN=now}newBall();phase='aim';if(p.bot)setTimeout(botThrow,900);return}}
+  else if(first&&now>0){G.roll=1;G.standingN=now;setPins(standing);newBall();phase='aim';if(p.bot)setTimeout(botThrow,900);return}
+  nextPlayer()},1500)}
+function nextPlayer(){G.cur++;if(G.cur>=G.pl.length){G.cur=0;G.frame++}if(G.frame>=10){finish();return}const p=G.pl[G.cur];if(G.frame===9)p.frameStart=p.rolls.length;startFrame()}
+function finish(){G.done=true;phase='end';const res=G.pl.map(p=>({n:p.name,s:(rollsScore(p.rolls).filter(v=>v!=null).pop()||0)})).sort((a,b)=>b.s-a.s);const best=K.store.get('bw_best',0),mine=res.find(r=>r.n===K.name());if(mine&&mine.s>best)K.store.set('bw_best',mine.s);
+ K.sfx(res[0].n===K.name()||nBots===0?'win':'lose');K.result('🎳 ENDE',`<table class="k-table">${res.map((r,i)=>`<tr><td>${['🥇','🥈','🥉','4.','5.'][i]} ${K.esc(r.n)}</td><td><b>${r.s}</b></td></tr>`).join('')}</table><p class="k-mut">Dein Rekord: ${Math.max(best,mine?mine.s:0)}</p>`,[{t:'🔁 Nochmal',f:()=>{K.hideAll();newGame()}},{t:'Menü',f:toMenu}])}
+function updateCard(){const c=$('card');c.style.display='block';let h='<table><tr><td class="f"></td>'+[...Array(10)].map((_,i)=>`<td class="f" colspan="${i<9?2:3}">${i+1}</td>`).join('')+'<td class="f">Σ</td></tr>';
+ for(const [k,p] of G.pl.entries()){const M=frameMarks(p.rolls),S=rollsScore(p.rolls);h+=`<tr class="${k===G.cur?'on':''}"><td class="n" rowspan="2">${k===G.cur?'▶ ':''}${K.esc(p.name)}</td>`;for(let f=0;f<10;f++){const m=M[f]||[];const n=f<9?2:3;for(let j=0;j<n;j++)h+=`<td>${m[j]??''}</td>`}h+=`<td rowspan="2"><b>${S.filter(v=>v!=null).pop()||0}</b></td></tr><tr>`;for(let f=0;f<10;f++)h+=`<td colspan="${f<9?2:3}">${S[f]??''}</td>`;h+='</tr>'}c.innerHTML=h+'</table>'}
+let bigT=0;function big(t,s){const b=$('bigB');b.textContent=t;b.classList.add('on');clearTimeout(bigT);bigT=setTimeout(()=>b.classList.remove('on'),s*1000)}
+function predictX(x,speed,ang,spin){let bx=x,bz=0,vx=Math.sin(ang)*speed,vz=-Math.cos(ang)*speed;const dt=1/120;for(let i=0;i<2000&&bz>PZ;i++){if(-bz>10)vx+=spin*2.4*dt*Math.min(1,(-bz-10)/4);bx+=vx*dt;bz+=vz*dt;const f=Math.pow(.985,dt);vx*=f;vz*=f;if(Math.abs(bx)>LW)return 9}return bx}
+function botThrow(){const p=G.pl[G.cur];if(!p||!p.bot||phase!=='aim')return;const sk=p.skill;let tx=.06;if(G.roll>0){const st=pins.filter(q=>q.up&&!q.gone);if(st.length)tx=st.reduce((a,q)=>a+q.x,0)/st.length}
+ const spin=-(.25+Math.random()*.25),speed=7.2+Math.random()*1.5,x=clamp(.18+(Math.random()-.5)*.1,-.4,.4);let lo=-.06,hi=.06;for(let k=0;k<30;k++){const m=(lo+hi)/2;if(predictX(x,speed,m,spin)<tx)lo=m;else hi=m}
+ const ang=(lo+hi)/2+(Math.random()-.5)*(1-sk)*.012;ball.x=x;throwBall(x,speed,ang,spin)}
+/* ---------- Eingabe: Wischen ---------- */
+let pts=null;
+$('cv3').addEventListener('pointerdown',e=>{if(phase!=='aim'||G.pl[G.cur].bot||K.cur)return;K.ac();pts=[{x:e.clientX,y:e.clientY,t:performance.now()}];$('cv3').setPointerCapture(e.pointerId)});
+$('cv3').addEventListener('pointermove',e=>{if(!pts)return;const q={x:e.clientX,y:e.clientY,t:performance.now()};const p0=pts[pts.length-1];pts.push(q);const up=pts[0].y-q.y;if(up<25){ball.x=clamp(ball.x+(q.x-p0.x)/innerWidth*1.3,-LW+BR,LW-BR)}});
+$('cv3').addEventListener('pointerup',e=>{if(!pts)return;const P=pts;pts=null;const a=P[0],z=P[P.length-1],up=a.y-z.y;if(up<50)return;
+ const tail=P.filter(q=>z.t-q.t<160),q0=tail[0]||a;const dtm=Math.max(30,z.t-q0.t),vy=(q0.y-z.y)/dtm;const speed=clamp(4.5+vy*3.6,5,11);
+ const ang=clamp(Math.atan2(z.x-a.x,up)*.12,-.09,.09);// Bogen: Abweichung der Mitte von der Geraden
+ const mid=P[P.length>>1],lx=a.x+(z.x-a.x)*((a.y-mid.y)/up),curve=(mid.x-lx)/Math.max(60,up);const spin=clamp(-curve*3.2,-1,1);throwBall(ball.x,speed,ang,spin)});
+let kPow=null;addEventListener('keydown',e=>{if(phase!=='aim'||!G||G.pl[G.cur].bot)return;if(e.key==='ArrowLeft')ball.x=clamp(ball.x-.03,-LW+BR,LW-BR);if(e.key==='ArrowRight')ball.x=clamp(ball.x+.03,-LW+BR,LW-BR);if(e.key==='a'||e.key==='A')kSpin=clamp(kSpin-.2,-1,1);if(e.key==='d'||e.key==='D')kSpin=clamp(kSpin+.2,-1,1);if(e.code==='Space'&&kPow==null){kPow=performance.now();e.preventDefault()}});
+let kSpin=0;addEventListener('keyup',e=>{if(e.code==='Space'&&kPow!=null&&phase==='aim'){const p=Math.min(1,(performance.now()-kPow)/1200);kPow=null;throwBall(ball.x,5+p*6,0,kSpin)}});
+/* ---------- Schleife ---------- */
+const camPos=new THREE.Vector3(0,1.4,3),camLook=new THREE.Vector3(0,.2,-10);
+K.loop((dt,t)=>{if(phase==='roll'){const n=4;for(let i=0;i<n;i++)stepPhys(dt/n)}
+ if(ball){ballM.position.set(ball.x,ball.gutter?.02:BR,ball.z);ballM.rotation.x=-ball.rot;ballM.rotation.z=ball.spin*t*2;ballM.visible=ball.z>PZ-1.55}
+ pins.forEach((p,i)=>{const m=pinsM[i];m.visible=!p.gone||p.z>PZ-1.5;m.position.set(p.x,0,p.z);m.rotation.set(0,0,0);if(p.tilt>0){const ax=new THREE.Vector3(p.az,0,-p.ax).normalize();m.quaternion.setFromAxisAngle(ax,p.tilt);m.position.y=Math.sin(p.tilt)*PR}});
+ aimLine.visible=phase==='aim'&&G&&!G.pl[G.cur].bot;if(ball){aimLine.position.set(ball.x,.004,ball.z-3.2)}
+ let tp,tl;if(phase==='roll'&&ball&&ball.z<-1){const z=Math.max(ball.z,PZ+5);tp=new THREE.Vector3(ball.x*.5,1.1,z+2.6);tl=new THREE.Vector3(ball.x*.3,.1,z-6)}else if(phase==='wait'){tp=new THREE.Vector3(0,1.5,PZ+3.2);tl=new THREE.Vector3(0,.1,PZ-.5)}else{tp=new THREE.Vector3(ball?ball.x*.4:0,1.35,2.9);tl=new THREE.Vector3(0,.1,-12)}
+ camPos.lerp(tp,Math.min(1,dt*3));camLook.lerp(tl,Math.min(1,dt*3));cam.position.copy(camPos);cam.lookAt(camLook);renderer.render(scene,cam)});
+function sfx(k,v){if(k==='pin'){K.tone(320+Math.random()*200,.08,Math.min(.2,v*.12),'triangle');K.noise(.12,Math.min(.3,v*.15),2600)}else if(k==='strike'){K.noise(.8,.4,3000);setTimeout(()=>K.sfx('win'),300)}else if(k==='spare')K.sfx('level')}
+function start(){K.hideAll();phase='aim';$('bMenu').style.display='';newGame()}
+function toMenu(){phase='menu';G=null;$('card').style.display='none';$('hint').style.display='none';$('bMenu').style.display='none';setPins();newBall();menu()}
+$('bMenu').onclick=()=>{if(confirm('Spiel verlassen?'))toMenu()};
+setPins();newBall();
+function menu(){K.menu({title:'BOWLING 3D',emoji:'🎳',sub:'Wisch die Kugel über die Bahn – im Bogen gewischt bekommt sie Effet. Strike!',noName:false,
+ body:`<div class="k-box"><div class="k-set"><span>🎳 Kugel</span><div class="k-chips" id="bC">${BCOL.map((c,i)=>`<button data-v="${i}" style="background:#${c.toString(16).padStart(6,'0')};min-width:34px;height:34px;border:3px solid ${i===ballCol?'#fff':'transparent'}"></button>`).join('')}</div></div>
+ <div class="k-set"><span>🤖 Bots</span>${K.chips('bN',[[0,'0'],[1,'1'],[2,'2'],[3,'3']],nBots,v=>{nBots=v;K.store.set('bw_bots',v)})}</div><div class="k-set"><span>👥 Am Gerät</span>${K.chips('bL',[[1,'1'],[2,'2'],[3,'3'],[4,'4']],nLocal,v=>{nLocal=v;K.store.set('bw_local',v)})}</div><div class="k-mut">Rekord: <b>${K.store.get('bw_best',0)}</b> Punkte</div></div>`,
+ solo:[{t:'▶ Spielen',f:start}],help:'10 Durchgänge mit je 2 Würfen. Strike (alle 10 im ersten Wurf) = 10 + die nächsten 2 Würfe, Spare (alle 10 mit 2 Würfen) = 10 + der nächste Wurf.'});
+ K.$('bC').onclick=e=>{const b=e.target.closest('button');if(!b)return;ballCol=+b.dataset.v;K.store.set('bw_col',ballCol);ballMat.color.setHex(BCOL[ballCol]);menu()}}
+menu();window.BW={get G(){return G},get pins(){return pins},get ball(){return ball},throwBall,get phase(){return phase},rollsScore};
+</script>
+</body>
+</html>

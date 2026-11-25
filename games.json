@@ -18,6 +18,60 @@
   "badge": ""
  },
  {
+  "id": "fussball3d",
+  "title": "Fußball 3D",
+  "emoji": "⚽",
+  "path": "fussball3d/",
+  "desc": "Arcade-Fußball im großen 3D-Stadion: passen, dribbeln, Schuss aufladen, grätschen. 3 gegen 3 bis 7 gegen 7 – gegen die KI oder online 1 gegen 1.",
+  "players": "1–2 Spieler",
+  "tags": [
+   "Online",
+   "Sport",
+   "3D"
+  ],
+  "colors": [
+   "#16a34a",
+   "#1d4ed8"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "bowling",
+  "title": "Bowling 3D",
+  "emoji": "🎳",
+  "path": "bowling/",
+  "desc": "Wisch die Kugel über die Bahn, gib ihr Effet und räum alle zehn Kegel ab. Echte Zählweise mit Strikes und Spares, gegen Bots oder zu viert an einem Gerät.",
+  "players": "1–4 Spieler",
+  "tags": [
+   "Sport",
+   "3D",
+   "Party"
+  ],
+  "colors": [
+   "#7c3aed",
+   "#22d3ee"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "memory",
+  "title": "Memory",
+  "emoji": "🧠",
+  "path": "memory/",
+  "desc": "Finde die Paare! 4 Motive, bis zu 36 Karten. Allein auf Zeit, gegen eine KI mit Gedächtnis, zu mehreren am Gerät oder online.",
+  "players": "1–4 Spieler",
+  "tags": [
+   "Online",
+   "Denken",
+   "Familie"
+  ],
+  "colors": [
+   "#f59e0b",
+   "#ec4899"
+  ],
+  "badge": "Neu"
+ },
+ {
   "id": "tictactoe",
   "title": "Tic Tac Toe",
   "emoji": "❌",
@@ -537,7 +591,7 @@
   "title": "Pizza Profi",
   "emoji": "🍕",
   "path": "pizza-profi/",
-  "desc": "Back Pizzas, bediene Kunden, kassier ab und bau dein Restaurant aus – mit Mitarbeitern, Tischen und Drive-in. NEU: Terrasse, Lieferdienst, VIP-Gäste und Aufträge!",
+  "desc": "Back Pizzas, bediene Gäste und bau dein Restaurant aus – mit Terrasse, Lieferdienst, VIP-Lounge, Rush Hour und Glücksrad.",
   "players": "1 Spieler",
   "tags": [
    "Idle",
