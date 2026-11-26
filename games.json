@@ -18,6 +18,60 @@
   "badge": ""
  },
  {
+  "id": "turbolauf",
+  "title": "Turbo-Lauf",
+  "emoji": "🏃",
+  "path": "turbolauf/",
+  "desc": "3D-Endlos-Runner: Wechsle die Spuren, spring über Hindernisse, sammle Münzen und Power-ups und schalte neue Läufer frei.",
+  "players": "1 Spieler",
+  "tags": [
+   "3D",
+   "Action",
+   "Runner"
+  ],
+  "colors": [
+   "#ff9f1a",
+   "#ff4757"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "verlies",
+  "title": "Verlies der Relikte",
+  "emoji": "🗡️",
+  "path": "verlies/",
+  "desc": "Roguelike-Abenteuer: Kämpf dich Raum für Raum durch das Verlies, finde mächtige Relikte und besiege die Bosse.",
+  "players": "1 Spieler",
+  "tags": [
+   "Action",
+   "Abenteuer",
+   "Roguelike"
+  ],
+  "colors": [
+   "#7d5fff",
+   "#2d1b69"
+  ],
+  "badge": "Neu"
+ },
+ {
+  "id": "stuntbike",
+  "title": "Stunt-Bike",
+  "emoji": "🏍️",
+  "path": "stuntbike/",
+  "desc": "Physik-Motorrad: Gib Gas, halte die Balance, mach Saltos und hol in 20 Levels alle Sterne.",
+  "players": "1 Spieler",
+  "tags": [
+   "Physik",
+   "Rennen",
+   "Geschick"
+  ],
+  "colors": [
+   "#2ed573",
+   "#1e90ff"
+  ],
+  "badge": "Neu"
+ },
+ {
   "id": "fussball3d",
   "title": "Fußball 3D",
   "emoji": "⚽",
@@ -322,7 +376,7 @@
   "title": "Montagsmaler",
   "emoji": "🎨",
   "path": "montagsmaler/",
-  "desc": "Einer malt, alle raten im Chat. Je schneller du das Wort errätst, desto mehr Punkte!",
+  "desc": "Einer malt, die anderen raten – online mit Freunden oder gegen die KI, die deine Bilder erkennt (und selbst malt)!",
   "players": "2–10 Spieler",
   "tags": [
    "Online",
@@ -333,7 +387,7 @@
    "#ff9f1a",
    "#7d5fff"
   ],
-  "badge": "Neu"
+  "badge": "KI"
  },
  {
   "id": "quiz",

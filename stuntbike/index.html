@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/nozoom.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Stunt-Bike</title>
+<link rel="stylesheet" href="../shared/kit.css">
+<style>:root{--a:#f97316;--b:#facc15}
+.sb{position:fixed;z-index:6;display:none;width:84px;height:84px;border-radius:50%;background:rgba(15,23,42,.55);border:2px solid rgba(255,255,255,.4);color:#fff;font-size:30px;font-weight:900;align-items:center;justify-content:center;flex-direction:column;touch-action:none;user-select:none}
+.sb small{font-size:10px}.sb.on{background:rgba(255,255,255,.35)}
+#sGas{right:max(18px,env(safe-area-inset-right));bottom:calc(max(18px,env(safe-area-inset-bottom)) + 4px);width:100px;height:100px;border-color:#22c55e}
+#sBrk{right:max(130px,env(safe-area-inset-right));bottom:calc(max(18px,env(safe-area-inset-bottom)) + 4px)}
+#sBack{left:max(18px,env(safe-area-inset-left));bottom:calc(max(18px,env(safe-area-inset-bottom)) + 4px)}
+#sFwd{left:max(118px,env(safe-area-inset-left));bottom:calc(max(18px,env(safe-area-inset-bottom)) + 4px)}
+</style>
+</head>
+<body>
+<div class="sb" id="sBack">↺<small>ZURÜCK</small></div><div class="sb" id="sFwd">↻<small>VOR</small></div><div class="sb" id="sBrk">⏹<small>BREMSE</small></div><div class="sb" id="sGas">⏵<small>GAS</small></div>
+<script src="../shared/kit.js"></script>
+<script>
+'use strict';
+/* STUNT-BIKE – Motorrad-Physik: Gas, Bremse, Gewicht verlagern, Saltos für Bonus-Sekunden. */
+const C=K.canvas(1,1,{fill:true}),x=C.x,TAU=Math.PI*2,PI=Math.PI;
+const NL=20;const SAVE=Object.assign({best:{},stars:{},unlocked:1,bike:0},K.store.get('sb_save',{}));const save=()=>K.store.set('sb_save',SAVE);
+const BIKES=[{n:'Crossrad',c:'#f97316',pow:1,need:0},{n:'Blitz',c:'#3b82f6',pow:1.12,need:12},{n:'Feuerstuhl',c:'#ef4444',pow:1.25,need:30},{n:'Goldjet',c:'#facc15',pow:1.38,need:50}];
+/* ---------- Strecken ---------- */
+function makeLevel(n){const r=K.rng(n*7919+13);const segs=[];let X=-400,Y=0;const pts=[[X,Y]];const add=(dx,dy)=>{X+=dx;Y+=dy;pts.push([X,Y])};const gap=w=>{segs.push(pts.splice(0));X+=w;pts.push([X,Y])};
+ add(600,0);const L=2600+n*420,diff=Math.min(1,n/NL);
+ while(X<L){const t=r();
+  if(t<.18){// Hügel
+   const h=60+r()*140*(.6+diff),w=300+r()*300;for(let i=1;i<=10;i++)add(w/10,-(Math.sin(i/10*PI)-Math.sin((i-1)/10*PI))*h)}
+  else if(t<.34){// Rampe mit Sprung über Lücke
+   const h=50+r()*70+diff*60;add(160,-h);add(30,-10);if(n>2&&r()<.5+diff*.3)gap(90+r()*80+diff*120);else add(200,0);add(120,h*.6)}
+  else if(t<.48){// Buckelpiste
+   for(let i=0;i<6;i++){add(45,-22-diff*14);add(45,22+diff*14)}}
+  else if(t<.6){// Treppe hoch
+   const s=3+(r()*3|0);for(let i=0;i<s;i++){add(26,-14-diff*6);add(70,0)}}
+  else if(t<.72){// Tal / Abfahrt
+   const d=100+r()*160;add(220,d);add(160,0);add(220,-d*.8)}
+  else if(t<.82&&n>4){// steile Rampe
+   add(140,-120-diff*80);add(60,-20);add(140,0);add(220,140+diff*80)}
+  else add(160+r()*200,(r()-.5)*60)}
+ add(300,0);const fin=X-150;add(800,0);segs.push(pts.splice(0));
+ const S=[];for(const p of segs)for(let i=0;i<p.length-1;i++)S.push([p[i][0],p[i][1],p[i+1][0],p[i+1][1]]);S.sort((a,b)=>a[0]-b[0]);
+ const stars=[(L/420)*.85|0,(L/360)|0,(L/300)|0].map(v=>v+4);return{segs:S,finish:fin,par:stars,len:L}}
+/* ---------- Physik ---------- */
+let LV=null,B=null,state='menu',lvN=1,time=0,flips=0,bonus=0,crashT=0,ctrl={gas:0,brk:0,lean:0},msg='',msgT=0;
+const R=17;
+function newBike(x0,y0){const P=(px,py)=>({x:px,y:py,px,py});const A=P(x0-32,y0-R),Bw=P(x0+32,y0-R),Hd=P(x0-6,y0-R-62),Bd=P(x0+4,y0-R-30);
+ return{A,Bw,H:Hd,M:Bd,pts:[A,Bw,Hd,Bd],cons:[[A,Bw,64],[A,Hd,0],[Bw,Hd,0],[A,Bd,0],[Bw,Bd,0],[Hd,Bd,0]].map(c=>{c[2]=Math.hypot(c[0].x-c[1].x,c[0].y-c[1].y);return c}),rotA:0,rotB:0,ang:0,air:0,airRot:0,crashed:false}}
+function groundNear(px,rad){const out=[];for(const s of LV.segs){if(s[2]<px-rad-2)continue;if(s[0]>px+rad+2)break;out.push(s)}return out}
+function collideWheel(w,isRear,dt,drive){let touch=false,nx0=0,ny0=0;for(const s of groundNear(w.x,R)){const ex=s[2]-s[0],ey=s[3]-s[1],L2=ex*ex+ey*ey;let t=((w.x-s[0])*ex+(w.y-s[1])*ey)/L2;t=Math.max(0,Math.min(1,t));const qx=s[0]+ex*t,qy=s[1]+ey*t,dx=w.x-qx,dy=w.y-qy,d=Math.hypot(dx,dy);
+  if(d<R+1.5&&d>1e-6){const nx=dx/d,ny=dy/d;if(d<R){w.x=qx+nx*R;w.y=qy+ny*R}let vx=w.x-w.px,vy=w.y-w.py;const vn=vx*nx+vy*ny;if(vn<0){vx-=vn*nx*1.15;vy-=vn*ny*1.15}
+   const tx=-ny,ty=nx;let vt=vx*tx+vy*ty;// Tangente (Fahrtrichtung bei flachem Boden: tx>0)
+   const dir=tx>=0?1:-1;
+   if(drive){if(isRear&&ctrl.gas){const target=8*BIKES[SAVE.bike].pow*dir;vt+=Math.max(-.07,Math.min(.07,target-vt))}if(ctrl.brk)vt*=.9;else vt*=.999}
+   const vnn=vx*nx+vy*ny;vx=vt*tx+vnn*nx;vy=vt*ty+vnn*ny;w.px=w.x-vx;w.py=w.y-vy;touch=true;nx0=nx;ny0=ny}}
+ return touch}
+function step(dt){const b=B;if(b.crashed){crashT-=dt;for(const p of b.pts){const vx=p.x-p.px,vy=p.y-p.py;p.px=p.x;p.py=p.y;p.x+=vx*.98;p.y+=vy*.98+900*dt*dt}for(const p of [b.A,b.Bw])collideWheel(p,false,dt);if(crashT<=0)restart();return}
+ time+=dt;const g=900*dt*dt;
+ for(const p of b.pts){const vx=(p.x-p.px)*.999,vy=(p.y-p.py)*.999;p.px=p.x;p.py=p.y;p.x+=vx;p.y+=vy+g}
+ // Gewicht verlagern: Drehimpuls um den Schwerpunkt
+ const lean=ctrl.lean,cx=(b.A.x+b.Bw.x)/2,cy=(b.A.y+b.Bw.y)/2;const k=(b.air?.9:.55)*dt*60*.045;
+ if(lean)for(const p of b.pts){const rx=p.x-cx,ry=p.y-cy;p.x+=-ry*k*lean*.05;p.y+=rx*k*lean*.05}
+ for(let it=0;it<8;it++){for(const [a,c,L] of b.cons){const dx=c.x-a.x,dy=c.y-a.y,d=Math.hypot(dx,dy)||1,df=(d-L)/d*.5;a.x+=dx*df;a.y+=dy*df;c.x-=dx*df;c.y-=dy*df}
+  const ta=collideWheel(b.A,true,dt,it===7),tb=collideWheel(b.Bw,false,dt,it===7);if(it===7){b.onA=ta;b.onB=tb}}
+ b.air=!(b.onA||b.onB);
+ const ang=Math.atan2(b.Bw.y-b.A.y,b.Bw.x-b.A.x);let da=ang-b.ang;da=Math.atan2(Math.sin(da),Math.cos(da));b.ang=ang;
+ if(b.air){b.airRot+=da;}else{const f=Math.floor(Math.abs(b.airRot)/(TAU*.92));if(f>0){flips+=f;bonus+=f*2;msgShow((b.airRot<0?'🔄 Rückwärtssalto':'🔃 Salto')+(f>1?' ×'+f:'')+'! −'+f*2+' s');K.sfx('level')}b.airRot=0}
+ b.rotA+=(b.A.x-b.A.px)/R;b.rotB+=(b.Bw.x-b.Bw.px)/R;
+ // Sturz: Kopf berührt den Boden oder ins Loch gefallen
+ for(const s of groundNear(b.H.x,14)){const ex=s[2]-s[0],ey=s[3]-s[1],L2=ex*ex+ey*ey;let t=Math.max(0,Math.min(1,((b.H.x-s[0])*ex+(b.H.y-s[1])*ey)/L2));if(Math.hypot(b.H.x-(s[0]+ex*t),b.H.y-(s[1]+ey*t))<13){crash();return}}
+ if(b.A.y>1500)crash();
+ if(b.A.x>LV.finish&&!b.done){b.done=true;finish()}}
+function crash(){if(B.crashed||B.done)return;B.crashed=true;crashT=1.3;K.sfx('boom',.6);navigator.vibrate&&navigator.vibrate(100);msgShow('💥 Autsch!');for(let i=0;i<25;i++)parts.push({x:B.H.x,y:B.H.y,vx:K.rnd(-200,200),vy:K.rnd(-300,0),l:.8,c:'#a16207'})}
+function msgShow(t){msg=t;msgT=1.6}
+function restart(){B=newBike(0,groundY(0));time=0;flips=0;bonus=0;cam.x=0;state='play'}
+function groundY(px){for(const s of LV.segs)if(px>=s[0]&&px<=s[2])return s[1]+(s[3]-s[1])*(px-s[0])/(s[2]-s[0]);return 0}
+function finish(){const T=Math.max(0,time-bonus);state='done';const st=T<=LV.par[0]?3:T<=LV.par[1]?2:T<=LV.par[2]?1:1;const old=SAVE.stars[lvN]||0;SAVE.stars[lvN]=Math.max(old,st);const ob=SAVE.best[lvN];if(!ob||T<ob)SAVE.best[lvN]=+T.toFixed(2);if(lvN>=SAVE.unlocked)SAVE.unlocked=Math.min(NL,lvN+1);save();K.sfx('win');
+ const total=Object.values(SAVE.stars).reduce((a,b)=>a+b,0);const nb=BIKES.find(bk=>bk.need<=total&&BIKES.indexOf(bk)>0&&!SAVE['b'+BIKES.indexOf(bk)]);if(nb){SAVE['b'+BIKES.indexOf(nb)]=1;save()}
+ setTimeout(()=>K.result('🏁 ZIEL!',`<div style="font-size:44px;text-align:center">${'⭐'.repeat(st)}${'☆'.repeat(3-st)}</div><table class="k-table"><tr><td>Zeit</td><td><b>${T.toFixed(2)} s</b></td></tr><tr><td>Saltos</td><td>${flips} (−${bonus} s)</td></tr><tr><td>Bestzeit</td><td>${SAVE.best[lvN]} s</td></tr><tr><td>3 Sterne unter</td><td>${LV.par[0]} s</td></tr></table>${nb?`<p style="text-align:center;color:#facc15;font-weight:900">🎉 Neues Motorrad freigeschaltet: ${nb.n}!</p>`:''}`,[...(lvN<NL?[{t:'▶ Nächstes Level',f:()=>play(lvN+1)}]:[]),{t:'↻ Nochmal',f:()=>play(lvN)},{t:'Levels',f:levels}]),700)}
+/* ---------- Zeichnen ---------- */
+const cam={x:0,y:0,z:1};let parts=[];
+function draw(dt,t){const W=innerWidth,H=innerHeight;x.setTransform(C.D,0,0,C.D,0,0);const g=x.createLinearGradient(0,0,0,H);g.addColorStop(0,'#38bdf8');g.addColorStop(.6,'#bae6fd');g.addColorStop(1,'#fef3c7');x.fillStyle=g;x.fillRect(0,0,W,H);if(!B)return;
+ // Parallax-Berge & Wolken
+ for(const [f,col,h] of[[.15,'#a5b4fc',.55],[.3,'#818cf8',.68]]){x.fillStyle=col;x.beginPath();x.moveTo(0,H);for(let sx=0;sx<=W+40;sx+=40){const wx=sx+cam.x*f;x.lineTo(sx,H*h-Math.abs(Math.sin(wx*.004)*80+Math.sin(wx*.011)*30))}x.lineTo(W,H);x.fill()}
+ x.fillStyle='rgba(255,255,255,.8)';for(let i=0;i<6;i++){const cxp=((i*330-cam.x*.08)%(W+300)+W+300)%(W+300)-150;x.beginPath();x.arc(cxp,60+i%3*40,26,0,TAU);x.arc(cxp+28,55+i%3*40,32,0,TAU);x.arc(cxp+60,62+i%3*40,24,0,TAU);x.fill()}
+ const z=Math.min(W,H)/620;const tx=B.A.x+220/z*.4,ty=(B.A.y+B.Bw.y)/2-40;cam.x+=(tx-cam.x)*Math.min(1,dt*4);cam.y+=(ty-cam.y)*Math.min(1,dt*3);
+ x.translate(W*.4,H*.58);x.scale(z,z);x.translate(-cam.x,-cam.y);
+ // Boden
+ const L=cam.x-W/z,Rr=cam.x+W/z;
+ for(const s of LV.segs){if(s[2]<L||s[0]>Rr)continue;x.fillStyle='#92400e';x.beginPath();x.moveTo(s[0],s[1]);x.lineTo(s[2],s[3]);x.lineTo(s[2],2000);x.lineTo(s[0],2000);x.fill();x.strokeStyle='#22c55e';x.lineWidth=12;x.lineCap='round';x.beginPath();x.moveTo(s[0],s[1]+4);x.lineTo(s[2],s[3]+4);x.stroke();x.strokeStyle='#15803d';x.lineWidth=3;x.beginPath();x.moveTo(s[0],s[1]+10);x.lineTo(s[2],s[3]+10);x.stroke()}
+ // Ziel
+ const fy=groundY(LV.finish);for(let i=0;i<8;i++)for(let j=0;j<2;j++){x.fillStyle=(i+j)%2?'#111':'#fff';x.fillRect(LV.finish+j*14,fy-140+i*14,14,14)}x.fillStyle='#64748b';x.fillRect(LV.finish-4,fy-140,4,140);
+ // Motorrad
+ const b=B,bk=BIKES[SAVE.bike];
+ const wheel=(w,rot)=>{x.save();x.translate(w.x,w.y);x.fillStyle='#111';x.beginPath();x.arc(0,0,R,0,TAU);x.fill();x.fillStyle='#9ca3af';x.beginPath();x.arc(0,0,R-5,0,TAU);x.fill();x.strokeStyle='#4b5563';x.lineWidth=2;for(let i=0;i<5;i++){const a=rot+i*TAU/5;x.beginPath();x.moveTo(0,0);x.lineTo(Math.cos(a)*(R-5),Math.sin(a)*(R-5));x.stroke()}x.fillStyle='#e5e7eb';x.beginPath();x.arc(0,0,4,0,TAU);x.fill();x.restore()};
+ wheel(b.A,b.rotA);wheel(b.Bw,b.rotB);
+ const ang=Math.atan2(b.Bw.y-b.A.y,b.Bw.x-b.A.x),mx=(b.A.x+b.Bw.x)/2,my=(b.A.y+b.Bw.y)/2;
+ x.save();x.translate(mx,my);x.rotate(ang);x.strokeStyle='#374151';x.lineWidth=5;x.beginPath();x.moveTo(-32,0);x.lineTo(-6,-22);x.lineTo(22,-22);x.lineTo(32,0);x.stroke();
+ x.fillStyle=bk.c;x.beginPath();x.moveTo(-22,-20);x.lineTo(14,-30);x.lineTo(30,-22);x.lineTo(20,-12);x.lineTo(-14,-10);x.fill();x.fillStyle='#111';x.fillRect(-20,-28,22,7);x.fillStyle='#d1d5db';x.fillRect(-30,-8,18,5);x.restore();
+ // Fahrer
+ const hx=b.H.x,hy=b.H.y,bx=b.M.x,by=b.M.y;x.strokeStyle='#1e3a8a';x.lineWidth=11;x.lineCap='round';x.beginPath();x.moveTo(bx,by);x.lineTo(hx,hy+12);x.stroke();
+ x.strokeStyle='#1e3a8a';x.lineWidth=7;const handX=mx+Math.cos(ang)*22-Math.sin(ang)*-26,handY=my+Math.sin(ang)*22+Math.cos(ang)*-26;x.beginPath();x.moveTo(hx+(bx-hx)*.2,hy+16);x.lineTo(handX,handY);x.stroke();
+ const footX=mx+Math.cos(ang)*-2-Math.sin(ang)*-6,footY=my+Math.sin(ang)*-2+Math.cos(ang)*-6;x.strokeStyle='#111827';x.beginPath();x.moveTo(bx,by);x.lineTo(footX,footY);x.stroke();
+ x.fillStyle=bk.c;x.beginPath();x.arc(hx,hy,11,0,TAU);x.fill();x.fillStyle='rgba(15,23,42,.85)';x.beginPath();x.arc(hx+Math.cos(ang)*4,hy+Math.sin(ang)*4-1,7,-.6+ang,1.2+ang);x.fill();
+ for(const p of parts){p.l-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=600*dt;x.globalAlpha=Math.max(0,p.l);x.fillStyle=p.c;x.fillRect(p.x-3,p.y-3,6,6)}parts=parts.filter(p=>p.l>0);x.globalAlpha=1;
+ // HUD
+ x.setTransform(C.D,0,0,C.D,0,0);x.fillStyle='rgba(15,23,42,.6)';K.rr(x,W/2-110,10,220,46,12);x.fill();x.fillStyle='#fff';x.font='900 22px system-ui';x.textAlign='center';x.fillText('⏱ '+Math.max(0,time-bonus).toFixed(1)+' s',W/2,41);
+ x.font='800 13px system-ui';x.textAlign='left';x.fillText('Level '+lvN+' · ⭐⭐⭐ unter '+LV.par[0]+' s',14,28);const prog=Math.min(1,Math.max(0,b.A.x/LV.finish));x.fillStyle='rgba(0,0,0,.35)';x.fillRect(14,38,160,8);x.fillStyle='#facc15';x.fillRect(14,38,160*prog,8);
+ if(msgT>0){msgT-=dt;x.globalAlpha=Math.min(1,msgT*2);x.font='900 30px system-ui';x.textAlign='center';x.lineWidth=6;x.strokeStyle='#7c2d12';x.strokeText(msg,W/2,H*.3);x.fillStyle='#facc15';x.fillText(msg,W/2,H*.3);x.globalAlpha=1}}
+/* ---------- Eingabe ---------- */
+const btns={sGas:'gas',sBrk:'brk',sBack:-1,sFwd:1};for(const [id,v] of Object.entries(btns)){const el=K.$(id);const on=e=>{e.preventDefault();K.ac();el.classList.add('on');if(typeof v==='number')ctrl.lean=v;else ctrl[v]=1};const off=()=>{el.classList.remove('on');if(typeof v==='number'){if(ctrl.lean===v)ctrl.lean=0}else ctrl[v]=0};el.addEventListener('pointerdown',on);el.addEventListener('pointerup',off);el.addEventListener('pointercancel',off);el.addEventListener('pointerleave',off)}
+function keyCtrl(){if(K.touch)return;const k=K.keys;ctrl.gas=k.arrowup||k.w?1:0;ctrl.brk=k.arrowdown||k.s?1:0;ctrl.lean=(k.arrowright||k.d?1:0)-(k.arrowleft||k.a?1:0)}
+addEventListener('keydown',e=>{if(e.key==='r'&&state==='play')restart()});
+let acc=0;K.loop((dt,t)=>{if(state==='play'||state==='done'){keyCtrl();acc+=dt;while(acc>1/120){step(1/120);acc-=1/120}if(ctrl.gas&&!B.crashed&&Math.random()<.3)K.tone(80+Math.hypot(B.A.x-B.A.px,0)*20,.05,.02,'sawtooth')}draw(dt,t)});
+function showBtns(v){for(const id in btns)K.$(id).style.display=v&&K.touch?'flex':'none';mb.style.display=v?'':'none'}
+const mb=document.createElement('button');mb.className='k-btn-float';mb.style.cssText='left:50%;transform:translateX(-50%);top:62px;display:none';mb.textContent='☰ Levels';mb.onclick=()=>levels();document.body.appendChild(mb);
+function play(n){lvN=n;LV=makeLevel(n);restart();K.hideAll();showBtns(true);msgShow('Level '+n+'!')}
+function levels(){state='menu';showBtns(false);const total=Object.values(SAVE.stars).reduce((a,b)=>a+b,0);
+ K.screen('lv',`<a class="k-back" href="../">← Alle Spiele</a><h1 class="k-title" style="font-size:44px">🏍️ STUNT-BIKE</h1><div class="k-box" style="text-align:center"><b>⭐ ${total} / ${NL*3} Sterne</b></div>
+ <div class="k-box"><h3>Level</h3><div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px">${[...Array(NL)].map((_,i)=>{const n=i+1,lock=n>SAVE.unlocked,s=SAVE.stars[n]||0;return`<button data-l="${n}" ${lock?'disabled':''} style="padding:10px 4px;font-size:18px">${lock?'🔒':n}<br><small style="font-size:11px">${lock?'':'⭐'.repeat(s)||'–'}</small></button>`}).join('')}</div></div>
+ <div class="k-box"><h3>Motorrad</h3><div class="k-chips">${BIKES.map((bk,i)=>{const own=i===0||SAVE['b'+i]||total>=bk.need;return`<button data-b="${i}" class="${SAVE.bike===i?'on':''}" ${own?'':'disabled'} style="border-left:8px solid ${bk.c}">${bk.n}<br><small>${own?'⚡ '+Math.round(bk.pow*100)+' %':'🔒 '+bk.need+' ⭐'}</small></button>`}).join('')}</div></div>
+ <p class="k-mut"><b>iPad:</b> ⏵ Gas, ⏹ Bremse, ↺ ↻ Gewicht nach hinten/vorne (in der Luft: drehen!). <b>PC:</b> ↑ Gas, ↓ Bremse, ← → kippen, R Neustart.<br>Landest du einen Salto, gibt es 2 Sekunden Bonus. Kopf auf den Boden = Sturz!</p>`);K.show('lv');
+ document.querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>play(+b.dataset.l));document.querySelectorAll('[data-b]').forEach(b=>b.onclick=()=>{SAVE.bike=+b.dataset.b;save();levels()})}
+LV=makeLevel(1);B=newBike(0,groundY(0));levels();window.SB={get B(){return B},ctrl,play,get state(){return state},get LV(){return LV},get time(){return time}};
+</script>
+</body>
+</html>

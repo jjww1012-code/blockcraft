@@ -13,6 +13,7 @@
 <script src="../shared/peerjs.min.js"></script>
 <script src="../shared/net.js"></script>
 <script src="../shared/kit.js"></script>
+<script src="ki.js"></script>
 <script>
 'use strict';
 /* MONTAGSMALER – einer zeichnet, alle raten. Online ab 2 Spielern. */
@@ -31,21 +32,21 @@ document.body.appendChild(ui);ui.style.display='none';
 const cv=K.$('mmC'),cx=cv.getContext('2d');
 function redraw(){cx.fillStyle='#fff';cx.fillRect(0,0,800,600);for(const s of strokes)drawStroke(s)}
 function drawStroke(s){cx.strokeStyle=s.c;cx.lineWidth=s.w;cx.lineCap='round';cx.lineJoin='round';cx.beginPath();const p=s.p;cx.moveTo(p[0],p[1]);if(p.length===2)cx.lineTo(p[0]+.1,p[1]);for(let i=2;i<p.length;i+=2)cx.lineTo(p[i],p[i+1]);cx.stroke()}
-const canDraw=()=>solo||(V.phase==='draw'&&V.drawer===me);
+const canDraw=()=>solo||(ai==='draw'&&A&&A.phase==='draw')||(V.phase==='draw'&&V.drawer===me);
 const pt=e=>{const r=cv.getBoundingClientRect();return[Math.round((e.clientX-r.left)/r.width*800),Math.round((e.clientY-r.top)/r.height*600)]};
 let sent=0;
 cv.addEventListener('pointerdown',e=>{if(!canDraw())return;cv.setPointerCapture(e.pointerId);cur={c:tool==='er'?'#ffffff':color,w:tool==='er'?28:size,p:pt(e)};strokes.push(cur);sent=0;drawStroke(cur)});
 cv.addEventListener('pointermove',e=>{if(!cur)return;const [a,b]=pt(e);const p=cur.p;if(Math.hypot(a-p[p.length-2],b-p[p.length-1])<3)return;p.push(a,b);cx.strokeStyle=cur.c;cx.lineWidth=cur.w;cx.lineCap='round';cx.beginPath();cx.moveTo(p[p.length-4],p[p.length-3]);cx.lineTo(a,b);cx.stroke();if(p.length-sent>16)flushStroke(false)});
-const endS=()=>{if(cur){flushStroke(true);cur=null}};cv.addEventListener('pointerup',endS);cv.addEventListener('pointercancel',endS);
+const endS=()=>{if(cur){flushStroke(true);cur=null;if(ai==='draw')aiThink(true)}};cv.addEventListener('pointerup',endS);cv.addEventListener('pointercancel',endS);
 function flushStroke(done){if(!room||solo)return;const msg={t:'ln',id:strokes.length-1,c:cur.c,w:cur.w,p:cur.p.slice(Math.max(0,sent-2)),s:sent===0?1:0};sent=cur.p.length;room.send(msg);if(isHost)G.strokes=strokes.slice()}
 ui.querySelectorAll('.mcol').forEach(b=>b.onclick=()=>{color=b.dataset.c;tool='pen';markTools()});ui.querySelectorAll('.msz').forEach(b=>b.onclick=()=>{size=+b.dataset.s;tool='pen';markTools()});
 K.$('mmEr').onclick=()=>{tool='er';markTools()};K.$('mmUndo').onclick=()=>{if(!canDraw())return;strokes.pop();redraw();if(room&&!solo)room.send({t:'undo'});syncHost()};K.$('mmClr').onclick=()=>{if(!canDraw())return;strokes=[];redraw();if(room&&!solo)room.send({t:'clr'});syncHost()};
 function syncHost(){if(isHost&&G)G.strokes=strokes.slice()}
 function markTools(){ui.querySelectorAll('.mcol').forEach(b=>b.classList.toggle('on',tool==='pen'&&b.dataset.c===color));ui.querySelectorAll('.msz').forEach(b=>b.classList.toggle('on',+b.dataset.s===size));K.$('mmEr').classList.toggle('on',tool==='er')}markTools();
-K.$('mmF').onsubmit=e=>{e.preventDefault();const t=K.$('mmIn').value.trim();K.$('mmIn').value='';if(!t)return;if(solo){chat({n:'Du',x:t});return}if(isHost)guess(me,t);else room.send({t:'g',x:t})};
-K.$('mmB').onclick=e=>{e.preventDefault();clearInterval(timer);K.leaveRoom();room=null;ui.style.display='none';solo=false;menu()};
+K.$('mmF').onsubmit=e=>{e.preventDefault();const t=K.$('mmIn').value.trim();K.$('mmIn').value='';if(!t)return;if(ai){aiGuess(t);return}if(solo){chat({n:'Du',x:t});return}if(isHost)guess(me,t);else room.send({t:'g',x:t})};
+K.$('mmB').onclick=e=>{e.preventDefault();clearInterval(timer);aiStop();K.leaveRoom();room=null;ui.style.display='none';solo=false;menu()};
 function chat(m){const d=document.createElement('div');d.className='cm'+(m.ok?' ok':m.close?' close':m.sys?' sys':'');d.innerHTML=m.sys?K.esc(m.t):`<b>${K.esc(m.n)}:</b> ${K.esc(m.x)}`;const c=K.$('mmChat');c.appendChild(d);c.scrollTop=1e9;if(m.ok)K.sfx('good')}
-function paint(){const dr=V.drawer===me;K.$('mmInfo').innerHTML=solo?'🎨 Freies Malen':V.phase==='draw'||V.phase==='choose'?`Runde ${V.round}/${V.maxR} · ✏️ ${K.esc(V.names[V.drawer]||'')} ${dr?'(du)':''} malt`:V.phase==='end'?'🏁 Spiel vorbei':'';
+function paint(){if(ai){aiPaint();return}const dr=V.drawer===me;K.$('mmInfo').innerHTML=solo?'🎨 Freies Malen':V.phase==='draw'||V.phase==='choose'?`Runde ${V.round}/${V.maxR} · ✏️ ${K.esc(V.names[V.drawer]||'')} ${dr?'(du)':''} malt`:V.phase==='end'?'🏁 Spiel vorbei':'';
  K.$('mmWord').innerHTML=solo?`Male: <b>${K.esc(myWord)}</b> <button id="mmNext" style="font-size:13px;padding:5px 10px">Neues Wort</button>`:V.phase==='draw'?(dr?`Male: <b>${K.esc(myWord)}</b>`:`<span class="hint">${K.esc(V.hint)}</span>`):V.phase==='reveal'?`Das Wort war: <b>${K.esc(V.word||'')}</b>`:'';
  if(K.$('mmNext'))K.$('mmNext').onclick=()=>{myWord=K.pick(WORDS);strokes=[];redraw();paint()};
  K.$('mmTools').style.visibility=canDraw()?'visible':'hidden';K.$('mmF').style.display=solo||dr&&V.phase==='draw'?'none':'flex';
@@ -90,12 +91,65 @@ const st=document.createElement('style');st.textContent=`.mm{position:fixed;inse
 .mtools{display:flex;gap:5px;flex-wrap:wrap;justify-content:center}.mtools button{width:36px;height:36px;padding:0;border-radius:50%;border:3px solid rgba(255,255,255,.4);background:rgba(0,0,0,.35);color:#fff;font-size:16px}.mtools button.on{border-color:#fff;transform:scale(1.15)}
 .mright{width:min(300px,34vw);display:flex;flex-direction:column;gap:6px;min-height:0}.mscores{background:rgba(0,0,0,.3);border-radius:12px;padding:6px}.mscores div{display:flex;justify-content:space-between;padding:4px 6px;border-radius:8px}.mscores .gd{background:rgba(46,213,115,.3)}.mscores .dr{background:rgba(255,210,63,.3)}
 .mchat{flex:1;overflow:auto;background:rgba(0,0,0,.3);border-radius:12px;padding:8px;font-size:14px;touch-action:pan-y}.cm{padding:3px 0}.cm.ok{color:#7dff9a;font-weight:800}.cm.close{color:#ffd23f}.cm.sys{color:#cfe;font-style:italic}
-.mform{display:flex;gap:6px}.mform input{flex:1}
+.mform{display:flex;gap:6px}.mscores .kibar{display:block;margin-top:6px;font-size:13px;padding:0}.kib{position:relative;display:flex!important;justify-content:space-between;padding:4px 8px!important;margin:3px 0;background:rgba(0,0,0,.3);overflow:hidden}.kib i{position:absolute;left:0;top:0;bottom:0;background:rgba(24,220,255,.35);z-index:0}.kib span,.kib b{position:relative;z-index:1}.kib.hit i{background:rgba(46,213,115,.55)}.mform input{flex:1}
 @media(max-width:700px){.mmain{flex-direction:column}.mright{width:100%;max-height:34vh}}`;document.head.appendChild(st);
+
+/* ---------- Gegen den Computer ---------- */
+let ai=null,A=null,aiT=null;const AIR=6;
+function aiStop(){clearInterval(aiT);aiT=null;ai=null;A=null}
+async function aiStart(mode){K.hideAll();ui.style.display='flex';ai=mode;solo=false;room=null;isHost=false;strokes=[];redraw();
+ A={mode,round:0,score:0,phase:'load',used:[],log:[]};K.$('mmChat').innerHTML='';paint();
+ const ok=await MMKI.load();if(ai!==mode)return;if(!ok){chat({sys:1,t:'Die KI konnte nicht geladen werden. Bitte Internet prüfen.'});return}
+ chat({sys:1,t:mode==='draw'?'🤖 Male das Wort – ich versuche es so schnell wie möglich zu erkennen!':'🤖 Ich male, du rätst! Tippe deine Antwort unten ein.'});
+ clearInterval(aiT);aiT=setInterval(aiTick,100);aiNext()}
+function aiNext(){A.round++;if(A.round>AIR){aiEnd();return}
+ const pool=MMKI.cats.filter(w=>!A.used.includes(w));A.word=K.pick(pool);A.used.push(A.word);strokes=[];redraw();
+ A.phase='draw';A.time=A.mode==='draw'?25:30;A.left=A.time;A.said=[];A.top=[];A.sig='';A.thinkT=0;A.reveal=[];
+ if(A.mode==='guess'){A.play=MMKI.drawing(A.word)||[];A.si=0;A.pi=0;const tot=A.play.reduce((a,p)=>a+p.length/2,0);A.speed=Math.max(1,tot/(A.time*.45*10));A.acc=0}
+ chat({sys:1,t:'Runde '+A.round+'/'+AIR});K.sfx('blip');paint()}
+function aiTick(){if(!A||A.phase!=='draw')return;A.left-=.1;
+ if(A.mode==='draw'){A.thinkT-=.1;if(A.thinkT<=0)aiThink(false)}
+ else{A.acc+=A.speed;while(A.acc>=1&&A.si<A.play.length){A.acc--;const src=A.play[A.si];
+   if(A.pi===0){strokes.push({c:'#111111',w:7,p:[src[0],src[1]]});A.pi=2}else{strokes[strokes.length-1].p.push(src[A.pi],src[A.pi+1]);A.pi+=2}
+   if(A.pi>=src.length){A.si++;A.pi=0}redraw()}
+  const want=Math.floor((A.time-A.left)/(A.time/Math.max(1,A.word.length-1)));
+  if(A.left<A.time*.55&&want>A.reveal.length&&A.reveal.length<A.word.length-2){const idx=K.shuffle([...A.word].map((c,i)=>i).filter(i=>!A.reveal.includes(i)&&A.word[i]!==' '))[0];if(idx!=null){A.reveal.push(idx);paint()}}}
+ K.$('mmTime').textContent='⏱ '+Math.ceil(A.left);
+ if(A.left<=5&&A.left>0&&Math.abs(A.left*10-Math.round(A.left)*10)<.5)K.sfx('tick');
+ if(A.left<=0)aiRoundEnd(false)}
+function aiThink(force){if(!A||A.phase!=='draw'||A.mode!=='draw')return;const sig=strokes.length+':'+strokes.reduce((a,s)=>a+s.p.length,0);
+ if(sig===A.sig&&!force)return;if(!force&&A.thinkT>0)return;A.sig=sig;A.thinkT=.7;A.top=MMKI.predict(strokes,3);paint();
+ const [w,p]=A.top[0]||[];if(!w)return;
+ if(w===A.word&&p>.22){aiRoundEnd(true);return}
+ if(p>.25&&!A.said.includes(w)){A.said.push(w);chat({n:'🤖 KI',x:K.pick(['Ist das ein ','Hmm … ','Ich sehe ','Vielleicht '])+w+'?'})}}
+function aiGuess(t){if(!A||A.phase!=='draw'||A.mode!=='guess'){chat({n:'Du',x:t});return}
+ if(norm(t)===norm(A.word)){aiRoundEnd(true);return}chat({n:'Du',x:t});
+ if(lev(norm(t),norm(A.word))===1)chat({n:'🔥',x:'„'+t+'“ ist ganz nah dran!',close:1})}
+function aiRoundEnd(ok){A.phase='done';const pts=ok?Math.round(100+400*Math.max(0,A.left)/A.time):0;A.score+=pts;A.log.push([A.word,ok]);
+ if(A.mode==='guess'&&A.play){strokes=A.play.map(p=>({c:'#111111',w:7,p:p.slice()}));redraw()}
+ if(A.mode==='draw')chat(ok?{n:'🤖 KI',x:'Ich hab\'s! Das ist: '+A.word+'! (+'+pts+')',ok:1}:{n:'🤖 KI',x:'Ich komme nicht drauf … Es war: '+A.word});
+ else chat(ok?{n:'Du',x:'hast es erraten: '+A.word+'! (+'+pts+')',ok:1}:{sys:1,t:'Zeit vorbei! Es war: '+A.word});
+ if(!ok)K.sfx('bad');A.ok=ok;A.pts=pts;paint();setTimeout(()=>{if(A&&A.phase==='done')aiNext()},2600)}
+function aiEnd(){A.phase='end';K.sfx('win');const key='mm_ki_'+A.mode,best=K.store.get(key,0);A.best=Math.max(best,A.score);A.rec=A.score>best;K.store.set(key,A.best);paint()}
+function aiPaint(){const dr=A.mode==='draw';
+ K.$('mmInfo').innerHTML=(dr?'🎨 Du malst · 🤖 KI rät':'🤖 KI malt · 🤔 Du rätst')+(A.round?' · Runde '+Math.min(A.round,AIR)+'/'+AIR:'');
+ const hint=A.word?[...A.word].map((c,i)=>c===' '?'  ':A.reveal&&A.reveal.includes(i)?c:'_').join(' '):'';
+ K.$('mmWord').innerHTML=A.phase==='load'?'🤖 KI wird geladen …':A.phase==='draw'?(dr?`Male: <b>${K.esc(A.word)}</b> <button id="mmSkip" style="font-size:13px;padding:5px 10px">Überspringen</button>`:`<span class="hint">${K.esc(hint)}</span> <button id="mmSkip" style="font-size:13px;padding:5px 10px">Aufgeben</button>`):A.phase==='done'?`Das Wort war: <b>${K.esc(A.word)}</b>`:'';
+ if(K.$('mmSkip'))K.$('mmSkip').onclick=()=>{if(A&&A.phase==='draw')aiRoundEnd(false)};
+ K.$('mmTools').style.visibility=dr&&A.phase==='draw'?'visible':'hidden';K.$('mmF').style.display=dr?'none':'flex';
+ const bars=dr&&A.top&&A.top.length?`<div class="kibar"><div style="margin-bottom:4px">🤖 Die KI denkt:</div>${A.top.map(([w,p])=>`<div class="kib ${w===A.word?'hit':''}"><span>${K.esc(w)}</span><i style="width:${Math.round(p*100)}%"></i><b>${Math.round(p*100)}%</b></div>`).join('')}</div>`:'';
+ K.$('mmScores').innerHTML=`<div><span>⭐ Punkte</span><b>${A.score}</b></div>`+bars;
+ const ov=K.$('mmOver');
+ if(A.phase==='end'){ov.style.display='flex';const n=A.log.filter(l=>l[1]).length;
+  ov.innerHTML=`<div><h2>🏁 ${A.score} Punkte${A.rec?' – Neuer Rekord!':''}</h2><div>${dr?'Die KI hat '+n+' von '+AIR+' Bildern erkannt.':'Du hast '+n+' von '+AIR+' Bildern erraten.'}</div><div style="margin:8px 0;opacity:.85">${A.log.map(l=>(l[1]?'✅ ':'❌ ')+K.esc(l[0])).join(' · ')}</div><div>Rekord: ${A.best}</div><br><div class="bar"><button class="pri" id="mmAgain">🔁 Nochmal</button><button id="mmMenu">Menü</button></div><div style="font-size:11px;opacity:.6;margin-top:10px">KI trainiert mit Zeichnungen aus Google „Quick, Draw!“ (CC BY 4.0)</div></div>`;
+  K.$('mmAgain').onclick=()=>aiStart(A.mode);K.$('mmMenu').onclick=()=>K.$('mmB').click()}
+ else if(A.phase==='done'){ov.style.display='flex';ov.style.background='rgba(10,12,24,.35)';ov.innerHTML=`<div style="background:rgba(10,12,24,.8);padding:14px 22px;border-radius:14px"><h2>${A.ok?'✅':'❌'} ${K.esc(A.word)}</h2>${A.ok?'+'+A.pts+' Punkte':''}</div>`}
+ else{ov.style.display='none'}
+ if(A.phase!=='done')ov.style.background=''}
 function soloStart(){solo=true;room=null;isHost=false;myWord=K.pick(WORDS);V={phase:'solo',drawer:me,sc:{},names:{},guessed:[]};K.hideAll();ui.style.display='flex';strokes=[];redraw();paint()}
 function menu(){K.menu({title:'MONTAGSMALER',emoji:'🎨',sub:'Einer malt, alle anderen raten im Chat. Je schneller du rätst, desto mehr Punkte!',
  body:`<div class="k-box"><div class="k-set"><span>🔁 Runden</span>${K.chips('mR',[[1,'1'],[2,'2'],[3,'3']],rounds,v=>rounds=v)}</div><div class="k-set"><span>⏱ Malzeit</span>${K.chips('mT',[[60,'60 s'],[80,'80 s'],[120,'120 s']],drawSecs,v=>drawSecs=v)}</div></div>`,
- solo:[{t:'🎨 Allein üben (Wörter zum Malen)',f:soloStart}],online:{game:'montagsmaler',max:10,min:2,onStart:hostStart,botsNote:'Ab 2 Spielern. Jeder malt pro Runde einmal.'},
+ solo:[{t:'🤖 Du malst – die KI rät',f:()=>aiStart('draw')},{t:'🤖 KI malt – du rätst',f:()=>aiStart('guess')},{t:'🎨 Allein üben (Wörter zum Malen)',f:soloStart}],online:{game:'montagsmaler',max:10,min:2,onStart:hostStart,botsNote:'Ab 2 Spielern. Jeder malt pro Runde einmal.'},
  help:'Tipp: Mit der Zeit werden Buchstaben aufgedeckt. „Ganz nah dran“ bekommst du, wenn nur ein Buchstabe falsch ist.'})}
 menu();
 
