@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<script src="../shared/nozoom.js"></script>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>KI-Labor</title>
+<link rel="stylesheet" href="../shared/kit.css">
+<style>
+:root{--a:#18dcff;--b:#7d5fff;--ok:#2ed573;--bad:#ff4757}
+#app{position:fixed;inset:0;display:flex;flex-direction:column;background:radial-gradient(1000px 600px at 15% -10%,rgba(24,220,255,.18),transparent 60%),radial-gradient(900px 600px at 100% 110%,rgba(125,95,255,.25),transparent 60%),var(--bg)}
+header{display:flex;align-items:center;gap:10px;padding:max(8px,env(safe-area-inset-top)) 12px 6px}
+header .back{color:#fff;text-decoration:none;background:rgba(255,255,255,.1);padding:7px 12px;border-radius:10px;font-weight:800}
+header .ttl{font-weight:900;font-size:20px;white-space:nowrap}
+#projBtn{padding:7px 10px;font-size:13px;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#lvl{margin-left:auto;text-align:right;font-size:13px;font-weight:800;min-width:110px}
+.xpbar{height:7px;border-radius:5px;background:rgba(255,255,255,.12);margin-top:3px;overflow:hidden}.xpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--a),var(--b));border-radius:5px;transition:width .4s}
+nav{display:flex;gap:6px;padding:0 12px 8px}nav button{flex:1;padding:10px 6px;font-size:15px;background:rgba(255,255,255,.07)}nav button.on{background:linear-gradient(135deg,var(--a),var(--b));color:#06121a}
+nav button .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#ffd23f;margin-left:5px;box-shadow:0 0 8px #ffd23f;vertical-align:middle}
+main{flex:1;min-height:0;overflow:auto;touch-action:pan-y;padding:0 12px max(14px,env(safe-area-inset-bottom))}
+section{display:none;gap:12px}section.on{display:flex}
+.col{display:flex;flex-direction:column;gap:10px;min-width:0}.pcol{flex:0 0 auto;width:min(52vh,46vw);max-width:560px}.side{flex:1}
+.padwrap{position:relative;width:100%;aspect-ratio:1;border-radius:16px;overflow:hidden;box-shadow:0 8px 28px rgba(0,0,0,.45);background:#fff}
+.padwrap canvas{width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+.padhint{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#b6bccb;font-weight:800;font-size:18px;pointer-events:none;text-align:center;padding:20px}
+.tools{display:flex;flex-wrap:wrap;gap:5px;justify-content:center}
+.tools button,.tools label{width:36px;height:36px;padding:0;border-radius:50%;border:3px solid rgba(255,255,255,.25);font-size:16px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.08);color:#fff;cursor:pointer}
+.tools button.on{border-color:#fff;transform:scale(1.13)}.tools .sep{width:6px}
+.tools input[type=color]{position:absolute;opacity:0;width:0;height:0;padding:0;border:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px}
+.card h3{margin:0 0 8px;font-size:16px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sp{justify-content:space-between}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.chip{padding:6px 11px;border-radius:20px;font-size:14px;background:rgba(255,255,255,.09);font-weight:700}.chip.on{background:var(--a);color:#06121a}
+label.btn{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:15px;border-radius:12px;padding:11px 14px;background:var(--line);cursor:pointer}
+.mut{color:var(--mut);font-size:13px}
+.cls{border-top:1px solid var(--line);padding:8px 0}.cls:first-child{border-top:0}
+.cls .hd{display:flex;align-items:center;gap:6px;font-weight:800}.cls .hd .n{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.cls .hd button{padding:4px 8px;font-size:13px;background:rgba(255,255,255,.07)}
+.thumbs{display:flex;gap:6px;overflow-x:auto;padding:6px 0 2px;touch-action:pan-x}
+.th{position:relative;flex:0 0 auto}.th img{width:54px;height:54px;border-radius:9px;background:#fff;display:block;object-fit:cover}
+.th b{position:absolute;top:-4px;right:-4px;width:20px;height:20px;border-radius:50%;background:var(--bad);font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+#trainBtn{font-size:19px;padding:15px}#trainBtn.glow{animation:glow 1.2s infinite alternate}
+@keyframes glow{from{box-shadow:0 5px 0 rgba(0,0,0,.35),0 0 10px rgba(24,220,255,.4)}to{box-shadow:0 5px 0 rgba(0,0,0,.35),0 0 34px rgba(24,220,255,.95)}}
+.big{font-size:22px;font-weight:900;line-height:1.25}
+.bars .b{position:relative;display:flex;justify-content:space-between;padding:6px 10px;margin:4px 0;border-radius:9px;background:rgba(255,255,255,.06);overflow:hidden;font-weight:700}
+.bars .b i{position:absolute;left:0;top:0;bottom:0;background:rgba(24,220,255,.35);transition:width .3s}.bars .b.top i{background:rgba(46,213,115,.5)}.bars .b span,.bars .b em{position:relative;font-style:normal}
+.sw{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:5px;border:1px solid rgba(255,255,255,.3)}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px}.stat{background:rgba(255,255,255,.06);border-radius:12px;padding:10px;text-align:center}.stat b{display:block;font-size:24px}
+.achs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}.ach{padding:8px;border-radius:10px;background:rgba(255,255,255,.05);font-size:13px;opacity:.45}.ach.got{opacity:1;background:rgba(46,213,115,.18)}.ach b{display:block;font-size:14px}
+#brainC{width:100%;height:auto;aspect-ratio:2/1;display:block;border-radius:16px;background:rgba(0,0,0,.25)}
+.ov{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;background:rgba(5,7,15,.82);backdrop-filter:blur(4px);padding:16px}.ov.show{display:flex}
+.ovp{width:min(620px,100%);background:var(--card);border:1px solid var(--line);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px;max-height:100%;overflow:auto}
+.prog{height:14px;border-radius:8px;background:rgba(255,255,255,.1);overflow:hidden}.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--a),var(--b))}
+#lossC{width:100%;height:110px;display:block;border-radius:10px;background:rgba(0,0,0,.3)}
+#trBrain{width:100%;aspect-ratio:2/1;display:block;border-radius:12px;background:rgba(0,0,0,.3)}
+.k-toast{z-index:50}
+@media(max-width:760px){section.on{flex-direction:column}.pcol{width:100%;max-width:none}#projBtn{display:none}}
+</style>
+</head>
+<body>
+<div id="app">
+ <header><a class="back" href="../">←</a><div class="ttl">🧠 KI-Labor</div><button id="projBtn"></button><div id="lvl"></div></header>
+ <nav><button data-t="bank" class="on">🧪 Werkbank</button><button data-t="test">🔍 Testen</button><button data-t="brain">🧠 Gehirn</button></nav>
+ <main>
+  <section id="t-bank" class="on">
+   <div class="col pcol"><div class="padwrap"><canvas id="padA"></canvas><div class="padhint" id="hintA">Male hier etwas<br>oder lade ein Bild hoch 📷</div></div><div class="tools" id="toolsA"></div></div>
+   <div class="col side">
+    <div class="card"><h3>1️⃣ Was ist das?</h3><input id="lab" maxlength="24" placeholder="z. B. Löwe, Rot, Kreis …" autocomplete="off"><div class="chips" id="labChips"></div>
+     <div class="row" style="margin-top:10px"><button class="pri" id="addBtn">➕ Der KI zeigen</button><label class="btn">📷 Bilder hochladen<input type="file" id="upA" accept="image/*" multiple hidden></label></div>
+     <div class="mut" style="margin-top:6px">Tipp: Zeig der KI von jedem Ding mehrere Beispiele (mindestens 3–5). Mehrere Bilder auf einmal hochladen = alle bekommen den Namen oben.</div></div>
+    <button class="pri" id="trainBtn">🧠 2️⃣ KI trainieren</button>
+    <div class="card"><div class="row sp"><h3>📚 Was die KI kennt</h3><span class="mut" id="cnt"></span></div><div id="classes"></div></div>
+   </div>
+  </section>
+  <section id="t-test">
+   <div class="col pcol"><div class="padwrap"><canvas id="padB"></canvas><div class="padhint" id="hintB">Male etwas – die KI rät sofort mit!</div></div><div class="tools" id="toolsB"></div></div>
+   <div class="col side">
+    <div class="card" id="ans"></div>
+    <div class="card" id="why"></div>
+    <div class="card" id="fb"></div>
+    <div class="card" id="score"></div>
+   </div>
+  </section>
+  <section id="t-brain" style="flex-direction:column">
+   <canvas id="brainC" width="900" height="450"></canvas>
+   <div class="card"><div class="stats" id="stats"></div></div>
+   <div class="card"><h3>👀 Worauf soll die KI achten?</h3><div class="chips" id="focus"></div><div class="mut" style="margin-top:6px">„Farbe“ ist gut für Farben-Spiele, „Form“ für Zeichnungen von Tieren & Dingen. „Beides“ schaut auf alles.</div></div>
+   <div class="card"><h3>📦 Starthilfe-Pakete</h3><div class="row"><button id="pkCol">🎨 Farben (6 Farben)</button><button id="pkShape">🔷 Formen (Kreis, Quadrat …)</button><button id="pkSmile">🙂 Gesichter (froh / traurig)</button></div><div class="mut" style="margin-top:6px">Die Pakete malen automatisch Beispiele. Danach: trainieren und testen!</div></div>
+   <div class="card"><h3>🏅 Erfolge</h3><div class="achs" id="achs"></div></div>
+   <div class="card"><h3>📁 Meine KIs</h3><div id="projs"></div><div class="row" style="margin-top:8px"><button id="pNew">➕ Neue KI</button><button id="pExp">💾 Exportieren</button><label class="btn">📂 Importieren<input type="file" id="pImp" accept=".json,application/json" hidden></label></div></div>
+   <div class="mut" style="text-align:center;padding:8px">Die Form-Erkennung nutzt ein kleines neuronales Netz, vortrainiert mit Zeichnungen aus Google „Quick, Draw!“ (CC BY 4.0). Alles läuft nur auf deinem Gerät – deine Bilder werden nirgends hochgeladen.</div>
+  </section>
+ </main>
+</div>
+<div class="ov" id="trainOv"><div class="ovp">
+ <div class="big" id="trTitle">🧠 Training läuft …</div>
+ <canvas id="trBrain" width="600" height="300"></canvas>
+ <div class="prog"><i id="trProg"></i></div>
+ <div class="row sp"><span id="trEp" class="mut"></span><span id="trAcc" class="mut"></span></div>
+ <canvas id="lossC" width="600" height="110"></canvas>
+ <div class="mut">Die Linie zeigt den „Fehler“ der KI. Je tiefer sie fällt, desto besser hat sie gelernt.</div>
+ <button class="pri" id="trDone" style="display:none">🎉 Super! Weiter</button>
+</div></div>
+<div class="ov" id="dlg"><div class="ovp" id="dlgP"></div></div>
+<script src="../shared/kit.js"></script>
+<script>
+'use strict';
+/* KI-LABOR – bring deiner eigenen KI bei, Dinge zu erkennen.
+   Merkmale: Form (Faltungsnetz aus Montagsmaler, vortrainiert) + Farben (Farb-Histogramm).
+   Darauf lernt ein eigener Klassifikator (Softmax) + Nachbar-Vergleich. Alles lokal. */
+const $=id=>document.getElementById(id);
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,9);
+const SKEY='kil_v1';
+function newProject(name){return{id:uid(),name,focus:'both',classes:[],stats:{tests:0,right:0,trains:0,uploads:0,fixes:0,packs:0},ach:[],xp:0,model:null,dirty:false}}
+let DB=K.store.get(SKEY,null);if(!DB||!DB.projects||!DB.projects.length)DB={cur:0,projects:[newProject('Meine KI')]};
+const P=()=>DB.projects[DB.cur]||DB.projects[0];
+function save(){try{localStorage.setItem(SKEY,JSON.stringify(DB));return true}catch(e){K.toast('⚠️ Speicher voll! Lösche ein paar Bilder oder eine KI.',3500);return false}}
+
+/* ---------- Form-Netz (Gewichte aus Montagsmaler) ---------- */
+let NET=null;
+function f16(b64){const bin=atob(b64),n=bin.length/2,out=new Float32Array(n);for(let i=0;i<n;i++){const h=bin.charCodeAt(2*i)|(bin.charCodeAt(2*i+1)<<8);const s=h&0x8000?-1:1,e=(h>>10)&31,m=h&1023;out[i]=e===0?s*m*Math.pow(2,-24):e===31?0:s*(1+m/1024)*Math.pow(2,e-15)}return out}
+async function loadNet(){try{const m=await fetch('../montagsmaler/ki-modell.json').then(r=>r.json());NET={};for(const k of ['w1','b1','w2','b2','w3','b3'])NET[k]=f16(m[k].d);MEAN=MEAN0}catch(e){NET=null}}
+function conv(x,C,H,Wd,w,b,O){const out=new Float32Array(O*H*Wd);for(let o=0;o<O;o++){const ob=o*H*Wd;for(let i=0;i<H*Wd;i++)out[ob+i]=b[o];for(let c=0;c<C;c++){const xb=c*H*Wd,wb=(o*C+c)*9;for(let ky=0;ky<3;ky++)for(let kx=0;kx<3;kx++){const wv=w[wb+ky*3+kx];for(let y=0;y<H;y++){const yy=y+ky-1;if(yy<0||yy>=H)continue;const xr=xb+yy*Wd,orow=ob+y*Wd;for(let xx=0;xx<Wd;xx++){const sx=xx+kx-1;if(sx<0||sx>=Wd)continue;out[orow+xx]+=wv*x[xr+sx]}}}}}for(let i=0;i<out.length;i++)if(out[i]<0)out[i]=0;return out}
+function pool(x,C,H,Wd){const h=H/2,w2=Wd/2,out=new Float32Array(C*h*w2);for(let c=0;c<C;c++)for(let y=0;y<h;y++)for(let x0=0;x0<w2;x0++){const b=c*H*Wd+2*y*Wd+2*x0;out[c*h*w2+y*w2+x0]=Math.max(x[b],x[b+1],x[b+Wd],x[b+Wd+1])}return out}
+function hidden(img){let a=conv(img,1,28,28,NET.w1,NET.b1,16);a=pool(a,16,28,28);a=conv(a,16,14,14,NET.w2,NET.b2,32);a=pool(a,32,14,14);const m=128,out=new Float32Array(NET.b3);for(let i=0;i<1568;i++){const v=a[i];if(!v)continue;const r=i*m;for(let j=0;j<m;j++)out[j]+=v*NET.w3[r+j]}for(let j=0;j<m;j++)if(out[j]<0)out[j]=0;return out}
+function l2(v){let s=0;for(const x of v)s+=x*x;s=Math.sqrt(s);if(s>1e-8)for(let i=0;i<v.length;i++)v[i]/=s;return v}
+
+/* ---------- Bild vorbereiten & Merkmale ---------- */
+const FS=96;
+const COLS=[['Rot','#e53935'],['Orange','#fb8c00'],['Gelb','#fdd835'],['Grün','#43a047'],['Türkis','#00bfa5'],['Blau','#1e88e5'],['Lila','#8e24aa'],['Pink','#ec407a'],['Braun','#795548'],['Schwarz','#111'],['Grau','#9e9e9e'],['Weiß','#fff']];
+function colorIdx(r,g,b){const mx=Math.max(r,g,b),mn=Math.min(r,g,b),v=mx/255,s=mx?(mx-mn)/mx:0;if(v<.2)return 9;if(s<.18||mx-mn<22)return v>.84?11:v<.3?9:10;
+ let h;const d=mx-mn;if(mx===r)h=((g-b)/d)%6;else if(mx===g)h=(b-r)/d+2;else h=(r-g)/d+4;h*=60;if(h<0)h+=360;
+ if(h<14||h>=343)return v<.45?8:0;if(h<42)return v<.62?8:1;if(h<68)return v<.5?8:2;if(h<160)return 3;if(h<195)return 4;if(h<255)return 5;if(h<290)return 6;return 7}
+function borderBg(d,W,H){const rs=[],gs=[],bs=[];const add=i=>{rs.push(d[i]);gs.push(d[i+1]);bs.push(d[i+2])};for(let x=0;x<W;x+=2){add(x*4);add(((H-1)*W+x)*4)}for(let y=0;y<H;y+=2){add(y*W*4);add((y*W+W-1)*4)}const med=a=>a.sort((p,q)=>p-q)[a.length>>1];return[med(rs),med(gs),med(bs)]}
+function inkMap(d,W,H,bg){const ink=new Float32Array(W*H);for(let i=0;i<W*H;i++){const dr=d[i*4]-bg[0],dg=d[i*4+1]-bg[1],db=d[i*4+2]-bg[2];ink[i]=Math.min(1,Math.max(0,(Math.sqrt(dr*dr+dg*dg+db*db)-25)/70))}return ink}
+function bbox(ink,W,H,t=.35){let x0=W,y0=H,x1=-1,y1=-1;for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(ink[y*W+x]>t){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y}return x1<0?null:[x0,y0,x1,y1]}
+// Quelle (Canvas/Bild) -> 96x96-Canvas, auf das Motiv zugeschnitten
+function prep(src){const sw=src.naturalWidth||src.width,sh=src.naturalHeight||src.height;const t=document.createElement('canvas');t.width=t.height=128;const tc=t.getContext('2d',{willReadFrequently:true});
+ tc.fillStyle='#fff';tc.fillRect(0,0,128,128);const sc=Math.min(128/sw,128/sh),dw=sw*sc,dh=sh*sc,ox=(128-dw)/2,oy=(128-dh)/2;tc.drawImage(src,ox,oy,dw,dh);
+ const d=tc.getImageData(0,0,128,128).data;const ink=inkMap(d,128,128,borderBg(d,128,128));let bb=bbox(ink,128,128);
+ const o=document.createElement('canvas');o.width=o.height=FS;const oc=o.getContext('2d');oc.fillStyle='#fff';oc.fillRect(0,0,FS,FS);oc.imageSmoothingQuality='high';
+ if(!bb||(bb[2]-bb[0])*(bb[3]-bb[1])>128*128*.8){oc.drawImage(src,(FS-sw*Math.min(FS/sw,FS/sh))/2,(FS-sh*Math.min(FS/sw,FS/sh))/2,sw*Math.min(FS/sw,FS/sh),sh*Math.min(FS/sw,FS/sh));return o}
+ // Ausschnitt in Quellkoordinaten
+ let cx=((bb[0]+bb[2])/2-ox)/sc,cy=((bb[1]+bb[3])/2-oy)/sc,side=Math.max(bb[2]-bb[0],bb[3]-bb[1],6)/sc*1.18;
+ oc.drawImage(src,cx-side/2,cy-side/2,side,side,0,0,FS,FS);return o}
+const m96=document.createElement('canvas');m96.width=m96.height=FS;const m96c=m96.getContext('2d',{willReadFrequently:true});
+const m28=document.createElement('canvas');m28.width=m28.height=28;const m28c=m28.getContext('2d',{willReadFrequently:true});m28c.imageSmoothingQuality='high';
+function features(cv){const d=cv.getContext('2d',{willReadFrequently:true}).getImageData(0,0,FS,FS).data;const bg=borderBg(d,FS,FS);const ink=inkMap(d,FS,FS,bg);const bb=bbox(ink,FS,FS);
+ const hist=new Float32Array(12);let n=0;for(let i=0;i<FS*FS;i++)if(!bb||ink[i]>.35){hist[colorIdx(d[i*4],d[i*4+1],d[i*4+2])]++;n++}
+ for(let i=0;i<12;i++)hist[i]/=Math.max(1,n);const color=l2(hist.map(Math.sqrt));
+ let shape;
+ if(!bb){shape=new Float32Array(NET?128:196)}else{
+  let fill=0,cnt=0;for(let y=bb[1];y<=bb[3];y++)for(let x=bb[0];x<=bb[2];x++){fill+=ink[y*FS+x];cnt++}fill/=cnt;
+  let map=ink;if(fill>.4){map=new Float32Array(FS*FS);for(let y=1;y<FS-1;y++)for(let x=1;x<FS-1;x++){const i=y*FS+x;map[i]=Math.min(1,1.6*Math.max(Math.abs(ink[i+1]-ink[i-1]),Math.abs(ink[i+FS]-ink[i-FS])))}}
+  const id=m96c.createImageData(FS,FS);for(let i=0;i<FS*FS;i++){const v=map[i]*255;id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=v;id.data[i*4+3]=255}m96c.putImageData(id,0,0);
+  const bw=bb[2]-bb[0]+1,bh=bb[3]-bb[1]+1,s=24/Math.max(bw,bh);m28c.fillStyle='#000';m28c.fillRect(0,0,28,28);m28c.drawImage(m96,bb[0],bb[1],bw,bh,(28-bw*s)/2,(28-bh*s)/2,bw*s,bh*s);
+  const dd=m28c.getImageData(0,0,28,28).data,img=new Float32Array(784);let mx=0;for(let i=0;i<784;i++){img[i]=dd[i*4]/255;mx=Math.max(mx,img[i])}if(mx>0)for(let i=0;i<784;i++)img[i]=Math.min(1,img[i]/mx*1.1);
+  if(NET){shape=l2(hidden(img));if(MEAN){for(let i=0;i<128;i++)shape[i]-=MEAN[i]*.8;l2(shape)}}else{shape=new Float32Array(196);for(let y=0;y<14;y++)for(let x=0;x<14;x++)shape[y*14+x]=(img[(2*y)*28+2*x]+img[(2*y)*28+2*x+1]+img[(2*y+1)*28+2*x]+img[(2*y+1)*28+2*x+1])/4;l2(shape)}}
+ const top=[...hist].map((v,i)=>[i,v]).filter(a=>a[1]>.04).sort((a,b)=>b[1]-a[1]).slice(0,4);
+ return{shape,color,top,empty:!bb&&n===0}}
+let MEAN=null;const MEAN0=[0,0,0.024,0.0221,0.0303,0.1472,0.0912,0.1424,0.0757,0.0234,0.0137,0.056,0.0687,0.0358,0.0238,0.0731,0,0,0.0234,0,0.0338,0.0208,0.0827,0.0512,0.1637,0,0.0528,0,0.0199,0.0163,0.1258,0.059,0,0.0527,0.032,0,0.1299,0.026,0.0284,0,0,0,0,0.0292,0.0121,0.0171,0.0361,0.0317,0.0442,0,0.0313,0,0.0621,0.0506,0.0343,0,0.0314,0,0.0449,0,0,0.0324,0.0509,0.083,0,0.0306,0.014,0,0,0.0502,0.039,0.0083,0.1108,0,0.1447,0,0,0.027,0,0,0,0,0.0402,0,0,0.0297,0,0,0,0.1169,0.0314,0.0114,0.0586,0.0137,0.0086,0,0,0,0.0506,0.098,0,0.0225,0.0131,0.0404,0.0916,0.0562,0,0.0233,0.0686,0.0115,0.092,0.1415,0.0172,0,0,0.1894,0,0.0371,0.0273,0,0,0.1066,0.1553,0,0,0.0756,0,0];
+const FC=new Map();// Merkmal-Cache pro Beispiel
+function loadImg(src){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=src})}
+async function featOf(it){if(FC.has(it.id))return FC.get(it.id);try{const im=await loadImg(it.src);const c=document.createElement('canvas');c.width=c.height=FS;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,FS,FS);x.drawImage(im,0,0,FS,FS);const f=features(c);FC.set(it.id,f);return f}catch(e){return null}}
+
+/* ---------- Lernen ---------- */
+const FW={both:[1,1],form:[1,.12],color:[.15,1.4]};
+function vec(f,focus){const [ws,wc]=FW[focus]||FW.both,S=f.shape.length,v=new Float32Array(S+12);for(let i=0;i<S;i++)v[i]=f.shape[i]*ws;for(let j=0;j<12;j++)v[S+j]=f.color[j]*wc;return v}
+async function dataset(){const p=P(),X=[],Y=[],names=[];for(const c of p.classes){if(!c.items.length)continue;const ci=names.length;names.push(c.name);for(const it of c.items){const f=await featOf(it);if(f){X.push(vec(f,p.focus));Y.push(ci)}}}return{X,Y,names}}
+function softmax(o){let m=-1e9;for(const v of o)m=Math.max(m,v);let s=0;const e=o.map(v=>{const x=Math.exp(v-m);s+=x;return x});return e.map(v=>v/s)}
+// Softmax-Klassifikator mit Adam; step(ep,loss,acc) für Animation
+async function train(epochs,perFrame,step){const {X,Y,names}=await dataset();const C=names.length;if(C<2)return null;const D=X[0].length,N=X.length;
+ const W=new Float32Array(D*C).map(()=>(Math.random()-.5)*.01),b=new Float32Array(C);const mW=new Float32Array(D*C),vW=new Float32Array(D*C),mb=new Float32Array(C),vb=new Float32Array(C);
+ const cnt=new Float32Array(C);for(const y of Y)cnt[y]++;const sw=Y.map(y=>N/(C*cnt[y]));let t=0,loss=0,acc=0;
+ for(let ep=0;ep<epochs;ep++){const gW=new Float32Array(D*C),gb=new Float32Array(C);loss=0;acc=0;
+  for(let n=0;n<N;n++){const x=X[n],o=new Float32Array(C);for(let c=0;c<C;c++){let s=b[c];for(let d=0;d<D;d++)s+=x[d]*W[d*C+c];o[c]=s}const p=softmax(o);loss-=Math.log(p[Y[n]]+1e-9)*sw[n];let am=0;for(let c=1;c<C;c++)if(p[c]>p[am])am=c;if(am===Y[n])acc++;
+   for(let c=0;c<C;c++){const g=(p[c]-(c===Y[n]?1:0))*sw[n]/N;gb[c]+=g;if(g)for(let d=0;d<D;d++)gW[d*C+c]+=g*x[d]}}
+  loss/=N;acc/=N;t++;const lr=.08;
+  for(let i=0;i<W.length;i++){const g=gW[i]+2e-4*W[i];mW[i]=.9*mW[i]+.1*g;vW[i]=.999*vW[i]+.001*g*g;W[i]-=lr*(mW[i]/(1-.9**t))/(Math.sqrt(vW[i]/(1-.999**t))+1e-8)}
+  for(let c=0;c<C;c++){const g=gb[c];mb[c]=.9*mb[c]+.1*g;vb[c]=.999*vb[c]+.001*g*g;b[c]-=lr*(mb[c]/(1-.9**t))/(Math.sqrt(vb[c]/(1-.999**t))+1e-8)}
+  if(step&&(ep+1)%perFrame===0){step(ep+1,loss,acc);await new Promise(r=>requestAnimationFrame(r))}}
+ return{names,W:Array.from(W,v=>Math.round(v*1e4)/1e4),b:Array.from(b,v=>Math.round(v*1e4)/1e4),D,focus:P().focus,acc,loss}}
+const UNK={both:.68,form:.55,color:.8};
+async function predict(f){const p=P();const v=vec(f,p.focus);const out={};const m=p.model;
+ if(m&&m.D===v.length&&m.focus===p.focus){const C=m.names.length,o=new Float32Array(C);for(let c=0;c<C;c++){let s=m.b[c];for(let d=0;d<m.D;d++)s+=v[d]*m.W[d*C+c];o[c]=s}const sp=softmax(o);m.names.forEach((n,i)=>out[n]={soft:sp[i]})}
+ // Nachbar-Vergleich (wirkt sofort, auch ohne Training)
+ let best=-1;const sims={},shapeS={},colS={};
+ for(const c of p.classes){if(!c.items.length)continue;let s=-1,ss=-1,cs=-1;for(const it of c.items){const g=FC.get(it.id);if(!g)continue;const w=vec(g,p.focus);let dot=0,na=0,nb=0;for(let i=0;i<v.length;i++){dot+=v[i]*w[i];na+=v[i]*v[i];nb+=w[i]*w[i]}s=Math.max(s,dot/Math.sqrt(na*nb+1e-9));
+   let d1=0;for(let i=0;i<f.shape.length;i++)d1+=f.shape[i]*g.shape[i];ss=Math.max(ss,d1);let d2=0;for(let i=0;i<12;i++)d2+=f.color[i]*g.color[i];cs=Math.max(cs,d2)}
+  sims[c.name]=s;shapeS[c.name]=ss;colS[c.name]=cs;best=Math.max(best,s)}
+ const names=Object.keys(sims);if(!names.length)return null;const kp=softmax(names.map(n=>sims[n]*14));
+ const hasSoft=Object.keys(out).length>0;const res=names.map((n,i)=>[n,hasSoft?.55*(out[n]?out[n].soft:0)+.45*kp[i]:kp[i]]).sort((a,b)=>b[1]-a[1]);
+ const top=(o)=>Object.entries(o).sort((a,b)=>b[1]-a[1])[0];
+ return{res,best,unknown:best<(UNK[p.focus]||.68)&&res[0][1]<.6,stale:!hasSoft||p.dirty,byShape:top(shapeS),byColor:top(colS)}}
+
+/* ---------- Malfläche ---------- */
+const PAL=['#111111','#ffffff','#e53935','#fb8c00','#fdd835','#43a047','#00bfa5','#1e88e5','#8e24aa','#ec407a','#795548','#9e9e9e'];
+function Pad(cv,tools,hint,onChange){const S=384;cv.width=cv.height=S;const c=cv.getContext('2d',{willReadFrequently:true});let color='#111111',size=10,tool='pen',hist=[],down=false,lx=0,ly=0;const api={dirty:false};
+ function clear(){c.fillStyle='#fff';c.fillRect(0,0,S,S);api.dirty=false;hint.style.display=''}
+ function snap(){hist.push(c.getImageData(0,0,S,S));if(hist.length>20)hist.shift()}
+ const pt=e=>{const r=cv.getBoundingClientRect();return[(e.clientX-r.left)/r.width*S,(e.clientY-r.top)/r.height*S]};
+ function mark(){api.dirty=true;hint.style.display='none'}
+ cv.addEventListener('pointerdown',e=>{e.preventDefault();const [x,y]=pt(e);snap();if(tool==='fill'){flood(Math.floor(x),Math.floor(y));mark();onChange&&onChange(true);return}
+  cv.setPointerCapture(e.pointerId);down=true;lx=x;ly=y;c.strokeStyle=c.fillStyle=tool==='er'?'#ffffff':color;const w=tool==='er'?28:size;c.lineWidth=w;c.lineCap=c.lineJoin='round';c.beginPath();c.arc(x,y,w/2,0,7);c.fill();mark();onChange&&onChange(false)});
+ cv.addEventListener('pointermove',e=>{if(!down)return;const [x,y]=pt(e);c.beginPath();c.moveTo(lx,ly);c.lineTo(x,y);c.stroke();lx=x;ly=y;onChange&&onChange(false)});
+ const up=()=>{if(down){down=false;onChange&&onChange(true)}};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+ function hex(h){h=h.replace('#','');return[parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]}
+ function flood(x,y){const id=c.getImageData(0,0,S,S),d=id.data,i0=(y*S+x)*4,t=[d[i0],d[i0+1],d[i0+2]],f=hex(color);if(Math.abs(t[0]-f[0])+Math.abs(t[1]-f[1])+Math.abs(t[2]-f[2])<10)return;
+  const same=i=>Math.abs(d[i]-t[0])+Math.abs(d[i+1]-t[1])+Math.abs(d[i+2]-t[2])<110;const seen=new Uint8Array(S*S),st=[x,y],fillPx=[];
+  while(st.length){const yy=st.pop(),xx=st.pop();let l=xx;while(l>=0&&!seen[yy*S+l]&&same((yy*S+l)*4))l--;l++;let r=xx;while(r<S&&!seen[yy*S+r]&&same((yy*S+r)*4))r++;
+   for(let k=l;k<r;k++){seen[yy*S+k]=1;fillPx.push(yy*S+k);if(yy>0&&!seen[(yy-1)*S+k]&&same(((yy-1)*S+k)*4))st.push(k,yy-1);if(yy<S-1&&!seen[(yy+1)*S+k]&&same(((yy+1)*S+k)*4))st.push(k,yy+1)}}
+  // 1 Pixel aufweiten, damit keine hellen Ränder an Linien bleiben
+  const grow=new Uint8Array(seen);for(const p of fillPx){const px=p%S;if(px>0)grow[p-1]=1;if(px<S-1)grow[p+1]=1;if(p>=S)grow[p-S]=1;if(p<S*S-S)grow[p+S]=1}
+  for(let p=0;p<S*S;p++)if(grow[p]){const i=p*4;if(seen[p]||Math.abs(d[i]-t[0])+Math.abs(d[i+1]-t[1])+Math.abs(d[i+2]-t[2])<260){d[i]=f[0];d[i+1]=f[1];d[i+2]=f[2]}}c.putImageData(id,0,0)}
+ tools.innerHTML=PAL.map(p=>`<button data-c="${p}" style="background:${p}"></button>`).join('')+`<label title="Eigene Farbe" style="background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)">🎨<input type="color"></label><span class="sep"></span><button data-s="4">•</button><button data-s="10">●</button><button data-s="22">⬤</button><button data-t="fill" title="Füllen">🪣</button><button data-t="er" title="Radierer">🧽</button><button data-a="undo">↶</button><button data-a="clr">🗑</button>`;
+ function mk(){tools.querySelectorAll('[data-c]').forEach(b=>b.classList.toggle('on',tool!=='er'&&b.dataset.c===color));tools.querySelectorAll('[data-s]').forEach(b=>b.classList.toggle('on',+b.dataset.s===size&&tool==='pen'));tools.querySelectorAll('[data-t]').forEach(b=>b.classList.toggle('on',b.dataset.t===tool))}
+ tools.onclick=e=>{const b=e.target.closest('button');if(!b)return;K.sfx('click');if(b.dataset.c){color=b.dataset.c;if(tool==='er')tool='pen'}else if(b.dataset.s){size=+b.dataset.s;tool='pen'}else if(b.dataset.t){tool=tool===b.dataset.t?'pen':b.dataset.t}else if(b.dataset.a==='undo'){if(hist.length){c.putImageData(hist.pop(),0,0);if(!hist.length)clear();onChange&&onChange(true)}}else if(b.dataset.a==='clr'){snap();clear();onChange&&onChange(true)}mk()};
+ tools.querySelector('input[type=color]').oninput=e=>{color=e.target.value;if(tool==='er')tool='pen';mk()};
+ api.clear=()=>{hist=[];clear()};api.cv=cv;api.ctx=c;
+ api.image=im=>{snap();c.fillStyle='#fff';c.fillRect(0,0,S,S);const sc=Math.min(S/im.naturalWidth,S/im.naturalHeight),w=im.naturalWidth*sc,h=im.naturalHeight*sc;c.drawImage(im,(S-w)/2,(S-h)/2,w,h);mark();onChange&&onChange(true)};
+ clear();mk();return api}
+
+/* ---------- Spielstand: XP, Level, Erfolge ---------- */
+const LV=[0,30,80,160,300,500,800,1200,1800,2600,3600,5000],TIT=['Baby-KI','Mini-KI','Lern-KI','Schlaue KI','Kluge KI','Super-KI','Profi-KI','Genie-KI','Mega-Gehirn','Ultra-Gehirn','Galaxie-Gehirn','Universum-Gehirn'];
+const lvOf=xp=>{let l=0;while(l<LV.length-1&&xp>=LV[l+1])l++;return l};
+function xp(n){const p=P(),before=lvOf(p.xp);p.xp+=n;const after=lvOf(p.xp);if(after>before){K.sfx('level');K.toast('⬆️ Level '+(after+1)+': '+TIT[after]+'! Das Gehirn wächst!',3000);burst()}hud()}
+const ACH=[['first','👶 Erstes Beispiel','Zeig der KI das erste Bild',p=>nItems(p)>=1],['two','✌️ Zwei Dinge','Die KI kennt 2 Dinge',p=>nCls(p)>=2],['five','🖐️ Fünf Dinge','Die KI kennt 5 Dinge',p=>nCls(p)>=5],['ten','🔟 Zehn Dinge','Die KI kennt 10 Dinge',p=>nCls(p)>=10],
+ ['ex50','📚 Bücherwurm','50 Beispiele gezeigt',p=>nItems(p)>=50],['ex200','🏛️ Bibliothek','200 Beispiele gezeigt',p=>nItems(p)>=200],['train1','🧠 Erstes Training','Die KI zum ersten Mal trainiert',p=>p.stats.trains>=1],['train10','🏋️ Fleißig','10-mal trainiert',p=>p.stats.trains>=10],
+ ['right1','🎯 Erster Treffer','Die KI hat richtig geraten',p=>p.stats.right>=1],['right25','🏹 Treffsicher','25 richtige Antworten',p=>p.stats.right>=25],['upload','📷 Foto-Lehrer','Ein Bild hochgeladen',p=>p.stats.uploads>=1],['fix','🧑‍🏫 Nachhilfe','Die KI verbessert',p=>p.stats.fixes>=1],
+ ['pack','📦 Starthilfe','Ein Starthilfe-Paket benutzt',p=>p.stats.packs>=1],['acc','🏆 Superhirn','Mind. 10 Tests mit 90 % Treffern',p=>p.stats.tests>=10&&p.stats.right/p.stats.tests>=.9]];
+const nItems=p=>p.classes.reduce((a,c)=>a+c.items.length,0),nCls=p=>p.classes.filter(c=>c.items.length).length;
+function checkAch(){const p=P();for(const [id,t,,f] of ACH)if(!p.ach.includes(id)&&f(p)){p.ach.push(id);K.sfx('win');K.toast('🏅 Erfolg: '+t,3000);p.xp+=15}save();hud()}
+function hud(){const p=P(),l=lvOf(p.xp),a=LV[l],b=LV[l+1]||a+1000;$('lvl').innerHTML=`Lv ${l+1} · ${TIT[l]}<div class="xpbar"><i style="width:${Math.min(100,(p.xp-a)/(b-a)*100)}%"></i></div>`;$('projBtn').textContent='📁 '+p.name;
+ $('trainBtn').classList.toggle('glow',!!p.dirty&&nCls(p)>=2);$('trainBtn').textContent=p.dirty&&nCls(p)>=2?'🧠 2️⃣ KI trainieren – es gibt Neues!':'🧠 2️⃣ KI trainieren';
+ document.querySelector('[data-t=bank]').innerHTML='🧪 Werkbank'+(p.dirty&&nCls(p)>=2?'<span class="dot"></span>':'')}
+
+/* ---------- Werkbank ---------- */
+const padA=Pad($('padA'),$('toolsA'),$('hintA'));
+function cap(s){s=s.trim().replace(/\s+/g,' ');return s.charAt(0).toUpperCase()+s.slice(1)}
+function findCls(name){return P().classes.find(c=>c.name.toLowerCase()===name.toLowerCase())}
+async function addExample(src,name,quiet){const p=P();name=cap(name);let c=findCls(name);const isNew=!c;if(!c){c={name,items:[]};p.classes.push(c)}
+ const cv=prep(src);const it={id:uid(),src:cv.toDataURL('image/jpeg',.82)};FC.set(it.id,features(cv));c.items.push(it);p.dirty=true;
+ if(!save()){c.items.pop();if(!c.items.length)p.classes.splice(p.classes.indexOf(c),1);return false}
+ if(!quiet){if(isNew){K.sfx('level');K.toast('✨ Neues Wissen: „'+name+'“! Das Gehirn bekommt ein neues Neuron.',2600)}else K.sfx('coin');xp(isNew?10:4);renderBank();checkAch()}return true}
+function labelVal(){return $('lab').value.trim()}
+$('addBtn').onclick=async()=>{const n=labelVal();if(!padA.dirty){K.toast('✏️ Male zuerst etwas oder lade ein Bild hoch');K.sfx('bad');return}if(!n){K.toast('🏷️ Schreib oben hin, was das ist!');$('lab').focus();K.sfx('bad');return}
+ if(await addExample(padA.cv,n)){padA.clear();flyThumb()}};
+$('lab').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('addBtn').click()}});
+$('upA').onchange=async e=>{const fs=[...e.target.files].filter(f=>f.type.startsWith('image/'));e.target.value='';if(!fs.length)return;const p=P();
+ if(fs.length===1){try{const im=await loadImg(URL.createObjectURL(fs[0]));padA.image(im);p.stats.uploads++;checkAch();K.toast(labelVal()?'📷 Bild geladen – tippe „Der KI zeigen“':'📷 Bild geladen – schreib hin, was es ist!')}catch(er){K.toast('Bild konnte nicht geladen werden')}return}
+ const n=labelVal();if(!n){K.toast('🏷️ Schreib zuerst einen Namen – dann bekommen alle Bilder diesen Namen',3200);$('lab').focus();return}
+ let ok=0;for(const f of fs){try{const im=await loadImg(URL.createObjectURL(f));if(await addExample(im,n,true))ok++;else break}catch(er){}}
+ p.stats.uploads+=ok;K.sfx('coin');K.toast('📷 '+ok+' Bilder als „'+cap(n)+'“ gelernt');xp(ok*4);renderBank();checkAch()};
+function flyThumb(){const el=$('classes');el.animate([{transform:'scale(1.03)'},{transform:'scale(1)'}],{duration:300})}
+function renderBank(){const p=P(),cl=p.classes;$('cnt').textContent=nCls(p)+' Dinge · '+nItems(p)+' Bilder';
+ $('labChips').innerHTML=cl.map((c,i)=>`<button class="chip ${labelVal().toLowerCase()===c.name.toLowerCase()?'on':''}" data-i="${i}">${K.esc(c.name)} <span class="mut">${c.items.length}</span></button>`).join('');
+ $('labChips').querySelectorAll('[data-i]').forEach(b=>b.onclick=()=>{$('lab').value=cl[+b.dataset.i].name;renderBank()});
+ $('classes').innerHTML=cl.length?cl.map((c,i)=>`<div class="cls"><div class="hd"><span class="n">${K.esc(c.name)}</span><span class="mut">${c.items.length} ${c.items.length<3?'· mehr Beispiele!':''}</span><button data-r="${i}">✏️</button><button data-d="${i}">🗑</button></div><div class="thumbs">${c.items.slice().reverse().map(it=>`<div class="th"><img src="${it.src}" alt=""><b data-x="${i}|${it.id}">✕</b></div>`).join('')}</div></div>`).join(''):'<div class="mut">Noch nichts. Male etwas, gib ihm einen Namen und tippe „Der KI zeigen“. Oder nimm ein Starthilfe-Paket im Gehirn-Tab!</div>';
+ $('classes').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{const [i,id]=b.dataset.x.split('|');const c=cl[+i];c.items=c.items.filter(x=>x.id!==id);FC.delete(id);if(!c.items.length)cl.splice(+i,1);p.dirty=true;save();renderBank();hud()});
+ $('classes').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{const c=cl[+b.dataset.d];ask(`<div class="big">🗑 „${K.esc(c.name)}“ vergessen?</div><div class="mut">Alle ${c.items.length} Bilder davon werden gelöscht.</div>`,[['Abbrechen'],['Vergessen',()=>{cl.splice(cl.indexOf(c),1);p.dirty=true;save();renderBank();hud()},1]])});
+ $('classes').querySelectorAll('[data-r]').forEach(b=>b.onclick=()=>{const c=cl[+b.dataset.r];ask(`<div class="big">✏️ Umbenennen</div><input id="rnIn" maxlength="24" value="${K.esc(c.name)}">`,[['Abbrechen'],['Speichern',()=>{const v=cap($('rnIn').value);if(!v)return;const o=findCls(v);if(o&&o!==c){o.items.push(...c.items);cl.splice(cl.indexOf(c),1)}else c.name=v;p.dirty=true;save();renderBank();hud()},1]])});
+ hud()}
+$('lab').addEventListener('input',()=>renderBank());
+
+/* ---------- Training mit Animation ---------- */
+let training=false;
+$('trainBtn').onclick=async()=>{const p=P();if(training)return;if(nCls(p)<2){K.sfx('bad');K.toast('🧠 Bring der KI mindestens 2 verschiedene Dinge bei!',2800);return}
+ training=true;$('trainOv').classList.add('show');$('trDone').style.display='none';$('trTitle').textContent='🧠 Training läuft …';const losses=[];const EP=160;K.sfx('whoosh');
+ const t0=performance.now();
+ const m=await train(EP,2,(ep,loss,acc)=>{losses.push(loss);$('trProg').style.width=(ep/EP*100)+'%';$('trEp').textContent='Runde '+ep+' / '+EP;$('trAcc').textContent='Treffer im Training: '+Math.round(acc*100)+' %';drawLoss(losses);brainFrame($('trBrain'),{pulse:true,t:ep})});
+ const wait=Math.max(0,1600-(performance.now()-t0));await new Promise(r=>setTimeout(r,wait));
+ training=false;if(!m){$('trainOv').classList.remove('show');return}
+ p.model=m;p.dirty=false;p.stats.trains++;save();K.sfx('win');$('trTitle').textContent=m.acc>.95?'🎉 Fertig gelernt! Die KI kennt jetzt '+m.names.length+' Dinge.':'✅ Gelernt! (Tipp: mehr Beispiele machen die KI noch besser)';$('trDone').style.display='';brainFrame($('trBrain'),{t:EP});xp(10);checkAch()};
+$('trDone').onclick=()=>{$('trainOv').classList.remove('show');showTab('test')};
+function drawLoss(L){const c=$('lossC'),x=c.getContext('2d'),W=c.width,H=c.height;x.clearRect(0,0,W,H);if(L.length<2)return;const mx=Math.max(...L,.01);x.strokeStyle='#18dcff';x.lineWidth=3;x.beginPath();L.forEach((v,i)=>{const px=i/(L.length-1)*(W-16)+8,py=H-8-(v/mx)*(H-16);i?x.lineTo(px,py):x.moveTo(px,py)});x.stroke()}
+
+/* ---------- Gehirn-Bild ---------- */
+let lastPred=null;
+function brainFrame(cv,o={}){const x=cv.getContext('2d'),W=cv.width,H=cv.height,p=P(),now=performance.now()/1000,t=o.t!=null?o.t*.25:now;x.clearRect(0,0,W,H);
+ const names=p.classes.filter(c=>c.items.length).map(c=>c.name);const nIn=8,nH=Math.min(4+Math.floor(nItems(p)/4),14),show=names.slice(0,12);
+ const col=(n,X,i)=>({x:X,y:H*(.12+.76*(n<2?.5:i/(n-1)))});
+ const L0=[...Array(nIn)].map((_,i)=>col(nIn,W*.1,i)),L1=[...Array(nH)].map((_,i)=>col(nH,W*.45,i)),L2=show.map((_,i)=>col(Math.max(show.length,1),W*.74,i));
+ const hi=lastPred&&o.pred?lastPred:null;
+ x.lineWidth=1;for(const a of L0)for(const b of L1){x.strokeStyle='rgba(24,220,255,.13)';x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);x.stroke()}
+ for(const a of L1)for(let j=0;j<L2.length;j++){const b=L2[j];const on=hi&&hi===show[j];x.strokeStyle=on?'rgba(46,213,115,.55)':'rgba(125,95,255,.18)';x.lineWidth=on?2:1;x.beginPath();x.moveTo(a.x,a.y);x.lineTo(b.x,b.y);x.stroke()}
+ if(o.pulse||hi){for(let k=0;k<14;k++){const a=L0[(k*3)%nIn],b=L1[(k*5)%nH],c=L2.length?L2[(k*7)%L2.length]:null;const ph=(t*1.3+k/14)%1;let px,py;if(ph<.5||!c){const q=Math.min(1,ph*2);px=a.x+(b.x-a.x)*q;py=a.y+(b.y-a.y)*q}else{const q=(ph-.5)*2;px=b.x+(c.x-b.x)*q;py=b.y+(c.y-b.y)*q}x.fillStyle='#fff';x.beginPath();x.arc(px,py,3,0,7);x.fill()}}
+ L0.forEach((a,i)=>{x.fillStyle=i<5?'#18dcff':COLS[(i*3)%12][1];x.beginPath();x.arc(a.x,a.y,9,0,7);x.fill()});
+ L1.forEach((a,i)=>{const g=.5+.5*Math.sin(t*2+i);x.fillStyle=`rgba(125,95,255,${.55+.45*g})`;x.beginPath();x.arc(a.x,a.y,10,0,7);x.fill()});
+ x.font='bold '+Math.round(H/22)+'px sans-serif';x.textBaseline='middle';
+ L2.forEach((a,i)=>{const on=hi===show[i];x.fillStyle=on?'#2ed573':'#ffd23f';x.beginPath();x.arc(a.x,a.y,on?13:10,0,7);x.fill();x.fillStyle=on?'#2ed573':'#f2f5ff';x.fillText(show[i]+(on?' ✓':''),a.x+18,a.y)});
+ if(names.length>12){x.fillStyle='#9aa4c4';x.fillText('+'+(names.length-12)+' weitere',W*.74,H*.97)}
+ x.fillStyle='#9aa4c4';x.font='bold '+Math.round(H/26)+'px sans-serif';x.textAlign='center';x.fillText('👁 Augen',W*.1,H*.04);x.fillText('🧠 Neuronen ('+nH+')',W*.45,H*.04);x.fillText('💡 Wissen',W*.74,H*.04);x.textAlign='left';
+ if(!names.length){x.fillStyle='#9aa4c4';x.textAlign='center';x.fillText('Noch leer – bring mir etwas bei!',W*.74,H*.5);x.textAlign='left'}}
+let raf=0;function loop(){if(cur==='brain')brainFrame($('brainC'),{pred:1});raf=requestAnimationFrame(loop)}
+
+/* ---------- Testen ---------- */
+let thinkT=0,lastF=null,answered=false;
+const padB=Pad($('padB'),$('toolsB'),$('hintB'),end=>{clearTimeout(thinkT);thinkT=setTimeout(think,end?150:700)});
+const upB=document.createElement('label');upB.innerHTML='📷<input type="file" accept="image/*" hidden>';upB.title='Bild testen';$('toolsB').appendChild(upB);
+upB.querySelector('input').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const im=await loadImg(URL.createObjectURL(f));padB.image(im);P().stats.uploads++;checkAch()}catch(er){K.toast('Bild konnte nicht geladen werden')}};
+async function think(){const p=P();answered=false;if(!padB.dirty){lastF=null;renderTest(null);return}const cv=prep(padB.cv);lastF={f:features(cv),cv};
+ if(!nCls(p)){renderTest(null);return}const r=await predict(lastF.f);lastPred=r&&!r.unknown?r.res[0][0]:null;renderTest(r)}
+function colorChips(f){return f.top.length?f.top.map(([i,v])=>`<span class="chip"><span class="sw" style="background:${COLS[i][1]}"></span>${COLS[i][0]} ${Math.round(v*100)}%</span>`).join(''):'<span class="mut">–</span>'}
+function renderTest(r){const p=P();
+ if(!lastF){$('ans').innerHTML=`<div class="big">🤖 Zeig mir etwas!</div><div class="mut">Male links etwas oder lade mit 📷 ein Bild hoch. Ich sage dir, was ich sehe.</div>`;$('why').innerHTML='<h3>🔎 Was ich erkenne</h3><div class="mut">Farben, Formen und welches gelernte Ding am ähnlichsten ist.</div>';$('fb').style.display='none';renderScore();return}
+ const f=lastF.f;
+ if(!nCls(p)){$('ans').innerHTML=`<div class="big">🤷 Ich kenne noch gar nichts!</div><div class="mut">Geh zur Werkbank und bring mir etwas bei.</div><button class="pri" onclick="showTab('bank')" style="margin-top:8px">🧪 Zur Werkbank</button>`;$('why').innerHTML=`<h3>🎨 Aber Farben sehe ich schon:</h3><div class="chips">${colorChips(f)}</div>`;$('fb').style.display='none';return}
+ const [n,pr]=r.res[0];const face=r.unknown?'❓':pr>.75?'😎':pr>.45?'🤔':'😵';
+ const head=r.unknown?`❓ Das kenne ich noch nicht!<div class="mut" style="font-size:14px;font-weight:600">Am ähnlichsten ist es „${K.esc(n)}“ – aber ich bin mir gar nicht sicher.</div>`:pr>.75?`${face} Das ist: ${K.esc(n)}!`:pr>.45?`${face} Ich glaube, das ist: ${K.esc(n)}`:`${face} Hmm … vielleicht ${K.esc(n)}?`;
+ $('ans').innerHTML=`<div class="big">${head}</div>${r.stale&&nCls(p)>=2?'<div class="mut" style="margin-top:4px">💡 Ich habe neue Beispiele noch nicht trainiert – trainier mich für bessere Antworten!</div>':''}<div class="bars" style="margin-top:8px">${r.res.slice(0,5).map(([k,v],i)=>`<div class="b ${i===0&&!r.unknown?'top':''}"><i style="width:${Math.round(v*100)}%"></i><span>${K.esc(k)}</span><em>${Math.round(v*100)} %</em></div>`).join('')}</div>`;
+ $('why').innerHTML=`<h3>🔎 Was ich erkenne</h3><div>🎨 Farben:</div><div class="chips">${colorChips(f)}</div><div style="margin-top:8px">✏️ Die <b>Form</b> erinnert mich an: <b>${K.esc(r.byShape[0])}</b> <span class="mut">(${Math.max(0,Math.round(r.byShape[1]*100))} % ähnlich)</span></div><div>🎨 Die <b>Farben</b> passen zu: <b>${K.esc(r.byColor[0])}</b> <span class="mut">(${Math.max(0,Math.round(r.byColor[1]*100))} % ähnlich)</span></div>`;
+ $('fb').style.display='';$('fb').innerHTML=r.unknown?`<h3>🧑‍🏫 Was ist das?</h3><div class="row"><input id="fbIn" maxlength="24" placeholder="Name eingeben …" style="flex:1"><button class="pri" id="fbNew">Lernen</button></div><div class="chips">${p.classes.map((c,i)=>`<button class="chip" data-k="${i}">${K.esc(c.name)}</button>`).join('')}</div>`
+  :`<h3>Hatte ich recht?</h3><div class="row"><button class="pri" id="fbYes" style="background:var(--ok)">✅ Ja!</button><button id="fbNo" style="background:var(--bad)">❌ Nein</button></div><div id="fbMore"></div>`;
+ const teach=async name=>{if(!name)return;if(answered)return;answered=true;p.stats.tests++;p.stats.fixes++;await addExample(lastF.cv,name,true);await quickTrain();K.sfx('good');K.toast('🧠 Danke! Jetzt weiß ich: das ist „'+cap(name)+'“.',2600);xp(8);checkAch();padB.clear();lastF=null;renderTest(null)};
+ if(r.unknown){$('fbNew').onclick=()=>teach($('fbIn').value.trim());$('fbIn').onkeydown=e=>{if(e.key==='Enter')teach($('fbIn').value.trim())};$('fb').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>teach(p.classes[+b.dataset.k].name))}
+ else{$('fbYes').onclick=async()=>{if(answered)return;answered=true;p.stats.tests++;p.stats.right++;await addExample(lastF.cv,n,true);p.dirty=true;K.sfx('win');burst();K.toast('🎯 Juhu! Ich merke mir das Bild auch noch.',2200);xp(6);checkAch();save();renderScore();$('fb').innerHTML='<div class="big">🎯 Richtig!</div><div class="mut">Male etwas Neues oder tippe 🗑.</div>'};
+  $('fbNo').onclick=()=>{$('fbMore').innerHTML=`<div class="mut" style="margin:8px 0 4px">Was ist es wirklich?</div><div class="chips">${p.classes.filter(c=>c.name!==n).map(c=>`<button class="chip" data-k="${K.esc(c.name)}">${K.esc(c.name)}</button>`).join('')}</div><div class="row" style="margin-top:6px"><input id="fbIn" maxlength="24" placeholder="… oder etwas Neues" style="flex:1"><button class="pri" id="fbNew">Lernen</button></div>`;
+   $('fbMore').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>teach(b.dataset.k));$('fbNew').onclick=()=>teach($('fbIn').value.trim());$('fbIn').onkeydown=e=>{if(e.key==='Enter')teach($('fbIn').value.trim())}}}
+ renderScore()}
+async function quickTrain(){const p=P();if(nCls(p)<2){save();return}const m=await train(160,0,null);if(m){p.model=m;p.dirty=false}save();hud()}
+function renderScore(){const s=P().stats;$('score').innerHTML=`<h3>📊 Zeugnis der KI</h3><div class="row sp"><span>Tests: <b>${s.tests}</b></span><span>Richtig: <b>${s.right}</b></span><span>Trefferquote: <b>${s.tests?Math.round(s.right/s.tests*100)+' %':'–'}</b></span></div>`}
+
+/* ---------- Gehirn-Tab ---------- */
+function renderBrain(){const p=P(),s=p.stats,l=lvOf(p.xp);
+ $('stats').innerHTML=[['Level',l+1+' · '+TIT[l]],['XP',p.xp],['Dinge',nCls(p)],['Beispiele',nItems(p)],['Trainings',s.trains],['Treffer',s.tests?Math.round(s.right/s.tests*100)+' %':'–']].map(([a,b])=>`<div class="stat"><b>${b}</b><span class="mut">${a}</span></div>`).join('');
+ $('focus').innerHTML=[['both','🎨+✏️ Beides'],['form','✏️ Form'],['color','🎨 Farbe']].map(([k,t])=>`<button class="chip ${p.focus===k?'on':''}" data-f="${k}">${t}</button>`).join('');
+ $('focus').querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{p.focus=b.dataset.f;p.dirty=true;save();renderBrain();hud();K.toast('👀 Neu eingestellt – trainier die KI nochmal!')});
+ $('achs').innerHTML=ACH.map(([id,t,d])=>`<div class="ach ${p.ach.includes(id)?'got':''}"><b>${t}</b>${d}</div>`).join('');
+ $('projs').innerHTML=DB.projects.map((q,i)=>`<div class="cls"><div class="hd"><span class="n">${i===DB.cur?'▶ ':''}${K.esc(q.name)}</span><span class="mut">${nCls(q)} Dinge · Lv ${lvOf(q.xp)+1}</span>${i!==DB.cur?`<button data-o="${i}">Öffnen</button>`:''}<button data-pr="${i}">✏️</button>${DB.projects.length>1?`<button data-pd="${i}">🗑</button>`:''}</div></div>`).join('');
+ $('projs').querySelectorAll('[data-o]').forEach(b=>b.onclick=()=>openProject(+b.dataset.o));
+ $('projs').querySelectorAll('[data-pr]').forEach(b=>b.onclick=()=>{const q=DB.projects[+b.dataset.pr];ask(`<div class="big">✏️ Name der KI</div><input id="rnIn" maxlength="24" value="${K.esc(q.name)}">`,[['Abbrechen'],['Speichern',()=>{q.name=$('rnIn').value.trim()||q.name;save();renderBrain();hud()},1]])});
+ $('projs').querySelectorAll('[data-pd]').forEach(b=>b.onclick=()=>{const i=+b.dataset.pd,q=DB.projects[i];ask(`<div class="big">🗑 „${K.esc(q.name)}“ löschen?</div><div class="mut">Die KI vergisst alles. Das kann man nicht rückgängig machen.</div>`,[['Abbrechen'],['Löschen',()=>{DB.projects.splice(i,1);if(DB.cur>=DB.projects.length)DB.cur=0;else if(i<DB.cur)DB.cur--;save();openProject(DB.cur)},1]])})}
+$('pNew').onclick=()=>ask(`<div class="big">➕ Neue KI</div><div class="mut">Jede KI hat ihr eigenes Wissen. Z. B. eine Tier-KI und eine Farben-KI.</div><input id="rnIn" maxlength="24" placeholder="Name, z. B. Tier-KI">`,[['Abbrechen'],['Erstellen',()=>{DB.projects.push(newProject($('rnIn').value.trim()||'KI '+(DB.projects.length+1)));save();openProject(DB.projects.length-1);showTab('bank')},1]]);
+$('projBtn').onclick=()=>showTab('brain');
+$('pExp').onclick=()=>{const p=P();const blob=new Blob([JSON.stringify({kiLabor:1,project:p})],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=(p.name||'ki').replace(/[^\wäöüÄÖÜß-]+/g,'_')+'.ki.json';document.body.appendChild(a);a.click();a.remove();K.toast('💾 KI gespeichert')};
+$('pImp').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const j=JSON.parse(await f.text());const q=j.project;if(!q||!Array.isArray(q.classes))throw 0;q.id=uid();q.stats=Object.assign(newProject('').stats,q.stats||{});q.ach=q.ach||[];q.xp=q.xp||0;q.focus=q.focus||'both';
+ for(const c of q.classes){c.name=String(c.name).slice(0,24);c.items=(c.items||[]).filter(it=>typeof it.src==='string'&&it.src.startsWith('data:image/')).map(it=>({id:uid(),src:it.src}))}
+ DB.projects.push(q);if(!save()){DB.projects.pop();return}openProject(DB.projects.length-1);K.toast('📂 KI „'+q.name+'“ geladen')}catch(er){K.toast('Diese Datei ist keine KI-Labor-Datei')}};
+
+/* ---------- Starthilfe-Pakete (prozedural gemalt) ---------- */
+const R=(a,b)=>a+Math.random()*(b-a);
+function hsl(h,s,l){return`hsl(${h},${s}%,${l}%)`}
+function wob(x,pts,close,w,col){x.strokeStyle=col;x.lineWidth=w;x.lineCap=x.lineJoin='round';x.beginPath();pts.forEach(([a,b],i)=>{a+=R(-4,4);b+=R(-4,4);i?x.lineTo(a,b):x.moveTo(a,b)});if(close)x.closePath();x.stroke()}
+function scratch(){const c=document.createElement('canvas');c.width=c.height=384;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,384,384);return[c,x]}
+async function pack(kind){const p=P();const items=[];
+ if(kind==='col'){const H=[['Rot',0,0],['Orange',28,0],['Gelb',54,0],['Grün',125,0],['Blau',215,0],['Lila',280,0]];
+  for(const [n,h] of H)for(let k=0;k<6;k++){const [c,x]=scratch();const hh=(h+R(-6,6)+360)%360,col=hsl(hh,R(70,95),R(40,58)*(n==='Gelb'?1.1:1));x.fillStyle=col;x.strokeStyle=col;
+   const t=k%3;if(t===0){x.beginPath();x.arc(R(150,234),R(150,234),R(60,120),0,7);x.fill()}else if(t===1){x.fillRect(R(40,120),R(40,120),R(140,220),R(140,220))}else{x.lineWidth=R(14,26);x.lineCap='round';x.beginPath();x.moveTo(R(40,100),R(40,340));for(let s=0;s<6;s++)x.lineTo(R(40,340),R(40,340));x.stroke()}items.push([c,n])}}
+ if(kind==='shape'){const dark=()=>hsl(R(0,360),R(30,70),R(15,40));
+  for(let k=0;k<6;k++){let [c,x]=scratch();const cx=R(150,234),cy=R(150,234),r=R(70,130),w=R(7,12);wob(x,[...Array(28)].map((_,i)=>[cx+Math.cos(i/28*6.283)*r,cy+Math.sin(i/28*6.283)*r]),1,w,dark());items.push([c,'Kreis']);
+   [c,x]=scratch();const s=R(130,250),a=R(-.2,.2),q=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([u,v])=>[192+(u*Math.cos(a)-v*Math.sin(a))*s/2,192+(u*Math.sin(a)+v*Math.cos(a))*s/2]);wob(x,q,1,w,dark());items.push([c,'Quadrat']);
+   [c,x]=scratch();const t=R(-.25,.25);wob(x,[0,1,2].map(i=>[192+Math.cos(t-1.5708+i*2.094)*r*1.15,205+Math.sin(t-1.5708+i*2.094)*r*1.15]),1,w,dark());items.push([c,'Dreieck']);
+   [c,x]=scratch();wob(x,[...Array(10)].map((_,i)=>{const rr=i%2?r*.45:r*1.1,an=-1.5708+i*.6283+t;return[192+Math.cos(an)*rr,192+Math.sin(an)*rr]}),1,w,dark());items.push([c,'Stern'])}}
+ if(kind==='smile'){for(let k=0;k<6;k++)for(const mood of ['Fröhlich','Traurig']){const [c,x]=scratch();const col=hsl(R(0,360),60,R(20,40)),r=R(110,150),w=R(7,11);
+   wob(x,[...Array(26)].map((_,i)=>[192+Math.cos(i/26*6.283)*r,192+Math.sin(i/26*6.283)*r]),1,w,col);x.fillStyle=col;[-1,1].forEach(s=>{x.beginPath();x.arc(192+s*r*.35,192-r*.25,w*1.2,0,7);x.fill()});
+   const my=192+r*.38;wob(x,[...Array(9)].map((_,i)=>{const u=(i/8-.5)*2;return[192+u*r*.45,my+(mood==='Fröhlich'?1-u*u:u*u-1)*r*.22]}),0,w,col);items.push([c,mood])}}
+ K.toast('📦 Paket wird gemalt …');for(const [c,n] of items)if(!await addExample(c,n,true))break;p.stats.packs++;K.sfx('level');xp(20);renderBank();checkAch();
+ if(kind==='col'&&p.focus!=='color'){p.focus='color';save();K.toast('📦 Fertig! Ich achte jetzt auf Farben. Jetzt trainieren!',3200)}else K.toast('📦 Fertig! Jetzt trainieren!',2600);renderBrain();showTab('bank')}
+$('pkCol').onclick=()=>pack('col');$('pkShape').onclick=()=>pack('shape');$('pkSmile').onclick=()=>pack('smile');
+
+/* ---------- Allgemein ---------- */
+function ask(html,btns){$('dlgP').innerHTML=html+`<div class="row" style="justify-content:flex-end;margin-top:6px">${btns.map((b,i)=>`<button class="${b[2]?'pri':''}" data-b="${i}">${b[0]}</button>`).join('')}</div>`;$('dlg').classList.add('show');
+ $('dlgP').querySelectorAll('[data-b]').forEach(el=>el.onclick=()=>{const b=btns[+el.dataset.b];$('dlg').classList.remove('show');b[1]&&b[1]()});const inp=$('dlgP').querySelector('input');if(inp)setTimeout(()=>inp.focus(),50)}
+function burst(){const c=document.createElement('div');c.textContent='✨';c.style.cssText='position:fixed;left:50%;top:40%;font-size:80px;z-index:60;pointer-events:none;transform:translate(-50%,-50%)';document.body.appendChild(c);c.animate([{opacity:1,transform:'translate(-50%,-50%) scale(.5)'},{opacity:0,transform:'translate(-50%,-90%) scale(1.8)'}],{duration:900}).onfinish=()=>c.remove()}
+let cur='bank';
+function showTab(t){cur=t;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('main section').forEach(s=>s.classList.toggle('on',s.id==='t-'+t));
+ if(t==='brain')renderBrain();if(t==='test'){if(padB.dirty)think();else renderTest(null)}if(t==='bank')renderBank();$('app').querySelector('main').scrollTop=0}
+window.showTab=showTab;
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{K.sfx('click');showTab(b.dataset.t)});
+async function openProject(i){DB.cur=i;save();lastPred=null;padB.clear();lastF=null;hud();renderBank();renderBrain();renderTest(null);
+ for(const c of P().classes)for(const it of c.items)await featOf(it);
+ const p=P(),v=nCls(p)&&p.classes.find(c=>c.items.length);if(p.model&&v){const f=FC.get(v.items[0].id);if(f&&vec(f,p.focus).length!==p.model.D){await quickTrain()}}}
+(async()=>{hud();renderBank();renderTest(null);await loadNet();
+ FC.clear();await openProject(DB.cur);loop()})();
+window.KL={P,DB,predict,features,prep,train,pack,addExample,padA:()=>padA,padB:()=>padB,think,quickTrain,FC,setMean:m=>{MEAN=m;FC.clear()}};
+</script>
+</body>
+</html>
