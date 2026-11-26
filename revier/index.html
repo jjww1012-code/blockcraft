@@ -26,9 +26,11 @@ const inArena=new Uint8Array(N*N);for(let j=0;j<N;j++)for(let i=0;i<N;i++){const
 function newWorld(){S={own:new Uint8Array(N*N),trail:new Uint8Array(N*N),pl:[],by:new Map(),chg:[],ev:[],t:0}}
 function setOwn(i,v){if(S.own[i]!==v){S.own[i]=v;S.chg.push(i,v);if(view)paintCell(i,v)}}
 function addPlayer(id,name,skin,bot){const p={slot:S.pl.length+1,id,name,skin:skin%COL.length,bot,alive:false,kills:0,x:0,y:0,a:0,ta:0,tr:[],sent:0,cell:-1,cnt:0,best:0,born:0,plan:[],think:0,wait:0,ag:bot?.3+Math.random()*.7:0};S.pl.push(p);S.by.set(id,p);spawn(p);return p}
-function spawn(p){let cx,cy;for(let k=0;k<300;k++){const a=Math.random()*TAU,r=Math.sqrt(Math.random())*(ARENA-80);cx=CX+Math.cos(a)*r;cy=CY+Math.sin(a)*r;let ok=true;const ci=cx/CS|0,cj=cy/CS|0;
-  for(let j=-12;j<=12&&ok;j++)for(let i=-12;i<=12;i++){const q=(cj+j)*N+ci+i;if(q<0||q>=N*N||S.own[q]||S.trail[q]){ok=false;break}}if(ok||k>250)break}
- const ci=cx/CS|0,cj=cy/CS|0;for(let j=-8;j<=8;j++)for(let i=-8;i<=8;i++){if(i*i+j*j>60)continue;const q=(cj+j)*N+ci+i;if(q>=0&&q<N*N&&inArena[q])setOwn(q,p.slot)}
+function spawn(p){// nie in fremdem Gebiet/fremder Spur spawnen – bester freier Platz gewinnt
+ let cx=CX,cy=CY,bs=1e9;for(let k=0;k<400&&bs>0;k++){const a=Math.random()*TAU,r=Math.sqrt(Math.random())*(ARENA-80),tx=CX+Math.cos(a)*r,ty=CY+Math.sin(a)*r,ci=tx/CS|0,cj=ty/CS|0;let sc=0;
+  for(let j=-12;j<=12;j++)for(let i=-12;i<=12;i++){const q=(cj+j)*N+ci+i;if(q<0||q>=N*N||!inArena[q]){sc++;continue}if((S.own[q]&&S.own[q]!==p.slot)||S.trail[q])sc+=(i*i+j*j<=16?1e5:1)}
+  if(sc<bs){bs=sc;cx=tx;cy=ty}}
+ const ci=cx/CS|0,cj=cy/CS|0;for(let j=-8;j<=8;j++)for(let i=-8;i<=8;i++){if(i*i+j*j>60)continue;const q=(cj+j)*N+ci+i;if(q>=0&&q<N*N&&inArena[q]&&!S.trail[q]&&(!S.own[q]||S.own[q]===p.slot||(i*i+j*j<=2)))setOwn(q,p.slot)}
  p.x=(ci+.5)*CS;p.y=(cj+.5)*CS;p.a=p.ta=Math.atan2(CY-p.y,CX-p.x)+(Math.random()-.5);p.tr=[];p.sent=0;p.cell=cj*N+ci;p.alive=true;p.wait=p.bot?0:1.2;p.plan=[];p.born=S.t;p.best=0;recount()}
 function kill(p,by){if(!p.alive)return;p.alive=false;for(const i of p.tr)if(S.trail[i]===p.slot)S.trail[i]=0;p.tr=[];p.sent=0;for(let i=0;i<N*N;i++)if(S.own[i]===p.slot)setOwn(i,0);
  S.ev.push(['die',Math.round(p.x),Math.round(p.y),p.skin,by?by.slot:0]);if(by&&by!==p)by.kills++;
@@ -45,12 +47,13 @@ function enterCell(p,c){const ox=p.cell%N,oy=p.cell/N|0,nx=c%N,ny=c/N|0;
  if(ox!==nx&&oy!==ny){// diagonal: Zwischenfeld, damit die Spur dicht ist
   const mid=oy*N+nx;if(!stepCell(p,mid))return}
  stepCell(p,c)}
-function stepCell(p,c){p.cell=c;if(!inArena[c]){kill(p,null);return false}
- const t=S.trail[c];if(t){const o=S.pl[t-1];if(o===p){kill(p,null);return false}if(o&&o.alive)kill(o,p)}
+function stepCell(p,c){if(!inArena[c])return false;p.cell=c;
+ const t=S.trail[c];if(t){const o=S.pl[t-1];if(o===p){if(p.tr.lastIndexOf(c)>=p.tr.length-4){p.cell=c;return true}/* Ruckler am Rand */kill(p,null);return false}if(o&&o.alive)kill(o,p)}
  if(S.own[c]===p.slot){if(p.tr.length)capture(p)}else{S.trail[c]=p.slot;p.tr.push(c)}return true}
 function stepPlayer(p,dt){if(!p.alive)return;if(p.wait>0){p.wait-=dt;return}if(p.bot)botThink(p,dt);
  let d=Math.atan2(Math.sin(p.ta-p.a),Math.cos(p.ta-p.a));const mt=TURN*dt;p.a+=K.clamp(d,-mt,mt);
- const sp=SPD*(S.own[p.cell]===p.slot?1:1.0);p.x+=Math.cos(p.a)*sp*dt;p.y+=Math.sin(p.a)*sp*dt;
+ const sp=SPD;p.x+=Math.cos(p.a)*sp*dt;p.y+=Math.sin(p.a)*sp*dt;
+ {const dx=p.x-CX,dy=p.y-CY,d=Math.hypot(dx,dy),R=ARENA-CS*2.5;if(d>R){p.x=CX+dx/d*R;p.y=CY+dy/d*R}}// Rand: entlanggleiten statt sterben
  const ci=K.clamp(p.x/CS|0,0,N-1),cj=K.clamp(p.y/CS|0,0,N-1),c=cj*N+ci;if(c!==p.cell)enterCell(p,c)}
 function headOn(){for(let i=0;i<S.pl.length;i++){const a=S.pl[i];if(!a.alive||a.wait>0)continue;for(let j=i+1;j<S.pl.length;j++){const b=S.pl[j];if(!b.alive||b.wait>0)continue;if(Math.hypot(a.x-b.x,a.y-b.y)<CS*2.2){
   const ai=S.own[a.cell]===a.slot,bi=S.own[b.cell]===b.slot;if(ai&&!bi)kill(b,a);else if(bi&&!ai)kill(a,b);else if(!ai&&!bi){if(a.tr.length>b.tr.length)kill(a,b);else kill(b,a)}}}}}
@@ -58,7 +61,7 @@ const cnt=new Map();function recount(){cnt.clear();for(let i=0;i<N*N;i++){const 
 let TOTAL=0;for(let i=0;i<N*N;i++)TOTAL+=inArena[i];
 /* ---------- Bots ---------- */
 function nearestOwn(p,maxR){const ci=p.x/CS|0,cj=p.y/CS|0;for(let r=1;r<maxR;r++){let best=null,bd=1e9;for(let j=-r;j<=r;j++)for(let i=-r;i<=r;i++){if(Math.abs(i)!==r&&Math.abs(j)!==r)continue;const q=(cj+j)*N+ci+i;if(q<0||q>=N*N)continue;if(S.own[q]===p.slot){const d=i*i+j*j;if(d<bd){bd=d;best=[(ci+i+.5)*CS,(cj+j+.5)*CS]}}}if(best)return best}return null}
-function dangerAhead(p,a,dist){for(let s=CS;s<dist;s+=CS*.7){const X=p.x+Math.cos(a)*s,Y=p.y+Math.sin(a)*s,ci=X/CS|0,cj=Y/CS|0;if(ci<0||cj<0||ci>=N||cj>=N)return true;const q=cj*N+ci;if(!inArena[q]||S.trail[q]===p.slot)return true}return false}
+function dangerAhead(p,a,dist){for(let s=CS;s<dist;s+=CS*.7){const X=p.x+Math.cos(a)*s,Y=p.y+Math.sin(a)*s,ci=X/CS|0,cj=Y/CS|0;if(ci<0||cj<0||ci>=N||cj>=N)continue;const q=cj*N+ci;if(inArena[q]&&S.trail[q]===p.slot)return true}return false}
 function botThink(p,dt){p.think-=dt;const home=S.own[p.cell]===p.slot;
  // Gefahr: Gegner nahe meiner Spur?
  let threat=false;if(p.tr.length){for(const q of S.pl){if(q===p||!q.alive)continue;for(let k=0;k<p.tr.length;k+=4){const c=p.tr[k],tx=(c%N+.5)*CS,ty=((c/N|0)+.5)*CS;if(Math.hypot(q.x-tx,q.y-ty)<70+p.tr.length*.3){threat=true;break}}if(threat)break}}
@@ -67,7 +70,7 @@ function botThink(p,dt){p.think-=dt;const home=S.own[p.cell]===p.slot;
  else if(p.plan.length){const w=p.plan[0];if(Math.hypot(w[0]-p.x,w[1]-p.y)<CS*2)p.plan.shift();else p.ta=Math.atan2(w[1]-p.y,w[0]-p.x);if(!p.plan.length&&!home)goHome()}
  else if(home&&p.think<=0){p.think=.4+Math.random()*.6;// neue Schleife planen
   const a=p.a+(Math.random()-.5)*1.6,L1=40+Math.random()*(60+p.ag*120),L2=30+Math.random()*(50+p.ag*90),turn=Math.random()<.5?1:-1;
-  const w1=[p.x+Math.cos(a)*L1,p.y+Math.sin(a)*L1],a2=a+turn*Math.PI/2,w2=[w1[0]+Math.cos(a2)*L2,w1[1]+Math.sin(a2)*L2];p.plan=[w1,w2]}
+  const w1=[p.x+Math.cos(a)*L1,p.y+Math.sin(a)*L1],a2=a+turn*Math.PI/2,w2=[w1[0]+Math.cos(a2)*L2,w1[1]+Math.sin(a2)*L2];const inR=w=>{const dx=w[0]-CX,dy=w[1]-CY,d=Math.hypot(dx,dy),R=ARENA-CS*6;return d>R?[CX+dx/d*R,CY+dy/d*R]:w};p.plan=[inR(w1),inR(w2)]}
  else if(!home&&!p.plan.length)goHome();
  // Hindernisse (eigene Spur, Rand)
  if(dangerAhead(p,p.ta,26)){for(const off of[.6,-.6,1.2,-1.2,1.8,-1.8,2.5,-2.5]){if(!dangerAhead(p,p.ta+off,26)){p.ta+=off;break}}p.plan=[]}
@@ -93,7 +96,7 @@ const _lobby=K.lobby;K.lobby=o=>{if(K.room&&!K.room._w){K.room._w=1;room=K.room;
 /* ================= Ablauf ================= */
 let maxPct=0;
 function died(info){if(state!=='play')return;state='dead';K.sfx('lose');const pct=Math.max(maxPct,info.pct||0);if(pct>best){best=pct;K.store.set('rv_best2',best)}
- setTimeout(()=>K.result('ERWISCHT!',`<p style="font-size:17px">${info.by?'Von <b>'+K.esc(info.by)+'</b> erwischt.':'Unfall! Eigene Spur oder Rand berührt.'}</p><table class="k-table"><tr><td>Größtes Gebiet</td><td><b>${pct.toFixed(2)} %</b></td></tr><tr><td>Erwischt</td><td>${info.kills||0}</td></tr><tr><td>Überlebt</td><td>${info.time||0} s</td></tr><tr><td>Rekord</td><td>${best.toFixed(2)} %</td></tr></table>`,[{t:'↻ Nochmal',f:respawn},{t:'Menü',f:toMenu}]),700)}
+ setTimeout(()=>K.result('ERWISCHT!',`<p style="font-size:17px">${info.by?'Von <b>'+K.esc(info.by)+'</b> erwischt.':'Unfall! Eigene Spur berührt.'}</p><table class="k-table"><tr><td>Größtes Gebiet</td><td><b>${pct.toFixed(2)} %</b></td></tr><tr><td>Erwischt</td><td>${info.kills||0}</td></tr><tr><td>Überlebt</td><td>${info.time||0} s</td></tr><tr><td>Rekord</td><td>${best.toFixed(2)} %</td></tr></table>`,[{t:'↻ Nochmal',f:respawn},{t:'Menü',f:toMenu}]),700)}
 function respawn(){K.hideAll();state='play';maxPct=0;if(isHost)spawn(S.by.get(myId));else room.send({t:'respawn'})}
 function startSolo(){room=null;isHost=true;newWorld();cTr.clear();img=null;addPlayer(myId,K.name(),mySkin,false);for(let i=0;i<9;i++)addPlayer('b'+i,K.BOTS[i],mySkin+1+i,true);go()}
 function hostStart(r){room=r;isHost=true;newWorld();cTr.clear();img=null;r.peers.forEach((p,i)=>addPlayer(p.id,p.name,p.skin??i,false));for(let i=0;i<Math.max(3,10-r.peers.length);i++)addPlayer('b'+i,K.BOTS[i],i+5,true);r.send({t:'start'});setTimeout(()=>r.send(snap(true)),300);go()}
@@ -142,7 +145,7 @@ let snapT=0;K.loop((dt,t)=>{input(dt);if(isHost&&S&&state!=='menu'){sim(Math.min
 const mbtn=document.createElement('button');mbtn.className='k-btn-float';mbtn.style.cssText='left:12px;top:142px;display:none';mbtn.textContent='☰';mbtn.onclick=()=>{if(confirm('Zurück ins Menü?'))toMenu()};document.body.appendChild(mbtn);setInterval(()=>mbtn.style.display=state==='play'?'':'none',300);
 function menu(){K.menu({title:'REVIER',emoji:'🟩',sub:'Lenke frei, kreise Land ein, schneide Gegnern die Spur ab und erobere die Arena!',
  body:`<div class="k-box"><h3>Farbe</h3><div class="k-chips" id="skins">${COL.map((c,i)=>`<button data-v="${i}" style="background:${c};min-width:36px;height:36px;border:3px solid ${i==mySkin?'#fff':'transparent'}"></button>`).join('')}</div><div class="k-mut">Rekord: <b>${best.toFixed(2)} %</b></div></div>`,
- solo:[{t:'▶ Spielen (mit Bots)',f:startSolo}],online:{game:'revier2',max:10,info:()=>({skin:mySkin}),onStart:hostStart},help:'Steuern: irgendwo auf den Bildschirm tippen und ziehen (Joystick), Maus oder Pfeiltasten. Außerhalb deines Gebiets ziehst du eine Spur – kehrst du heim, wird alles Eingekreiste deins. Wer deine Spur berührt, erwischt dich! Auch die eigene Spur und der Rand sind tödlich.'});
+ solo:[{t:'▶ Spielen (mit Bots)',f:startSolo}],online:{game:'revier2',max:10,info:()=>({skin:mySkin}),onStart:hostStart},help:'Steuern: irgendwo auf den Bildschirm tippen und ziehen (Joystick), Maus oder Pfeiltasten. Außerhalb deines Gebiets ziehst du eine Spur – kehrst du heim, wird alles Eingekreiste deins. Wer deine Spur berührt, erwischt dich! Auch die eigene Spur ist tödlich – am Rand kannst du gefahrlos entlangfahren.'});
  K.$('skins').onclick=e=>{const b=e.target.closest('button');if(!b)return;mySkin=+b.dataset.v;K.store.set('rv_skin',mySkin);menu()}}
 menu();
 window.RV={get S(){return S},get view(){return view}};
