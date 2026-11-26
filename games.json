@@ -22,7 +22,7 @@
   "title": "KI-Labor",
   "emoji": "🧠",
   "path": "ki-labor/",
-  "desc": "Trainiere deine eigene KI! Male oder lade Bilder hoch, gib ihnen Namen und bring der KI bei, Tiere, Formen und Farben zu erkennen. Dann teste, wie schlau sie geworden ist.",
+  "desc": "Trainiere deine eigene KI! Male oder lade Bilder hoch, gib ihnen Namen und bring ihr Tiere, Formen, Farben und Buchstaben bei. Sie erkennt mehrere Dinge auf einmal und liest ganze Wörter.",
   "players": "1 Spieler",
   "tags": [
    "KI",
@@ -33,7 +33,7 @@
    "#18dcff",
    "#7d5fff"
   ],
-  "badge": "Neu"
+  "badge": "Update"
  },
  {
   "id": "turbolauf",

@@ -53,7 +53,7 @@ label.btn{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-si
 .prog{height:14px;border-radius:8px;background:rgba(255,255,255,.1);overflow:hidden}.prog i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--a),var(--b))}
 #lossC{width:100%;height:110px;display:block;border-radius:10px;background:rgba(0,0,0,.3)}
 #trBrain{width:100%;aspect-ratio:2/1;display:block;border-radius:12px;background:rgba(0,0,0,.3)}
-.k-toast{z-index:50}
+.k-toast{z-index:50}.word{font-size:40px;letter-spacing:6px;color:#ffd23f;display:block;margin-top:4px;word-break:break-all}.mlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.mlist .chip{display:flex;align-items:center;gap:6px}.mlist .num{background:#ffd23f;color:#000;border-radius:50%;width:20px;height:20px;font-size:12px;display:inline-flex;align-items:center;justify-content:center}
 @media(max-width:760px){section.on{flex-direction:column}.pcol{width:100%;max-width:none}#projBtn{display:none}}
 </style>
 </head>
@@ -67,14 +67,15 @@ label.btn{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-si
    <div class="col side">
     <div class="card"><h3>1️⃣ Was ist das?</h3><input id="lab" maxlength="24" placeholder="z. B. Löwe, Rot, Kreis …" autocomplete="off"><div class="chips" id="labChips"></div>
      <div class="row" style="margin-top:10px"><button class="pri" id="addBtn">➕ Der KI zeigen</button><label class="btn">📷 Bilder hochladen<input type="file" id="upA" accept="image/*" multiple hidden></label></div>
-     <div class="mut" style="margin-top:6px">Tipp: Zeig der KI von jedem Ding mehrere Beispiele (mindestens 3–5). Mehrere Bilder auf einmal hochladen = alle bekommen den Namen oben.</div></div>
+     <div class="mut" style="margin-top:6px">Tipp: Zeig der KI von jedem Ding mehrere Beispiele (mindestens 3–5). Mehrere Bilder auf einmal hochladen = alle bekommen den Namen oben. ✂️ Schreib mehrere Buchstaben (z. B. „HUND“) und als Namen dasselbe Wort – die KI schneidet sie automatisch auseinander!</div></div>
     <button class="pri" id="trainBtn">🧠 2️⃣ KI trainieren</button>
     <div class="card"><div class="row sp"><h3>📚 Was die KI kennt</h3><span class="mut" id="cnt"></span></div><div id="classes"></div></div>
    </div>
   </section>
   <section id="t-test">
-   <div class="col pcol"><div class="padwrap"><canvas id="padB"></canvas><div class="padhint" id="hintB">Male etwas – die KI rät sofort mit!</div></div><div class="tools" id="toolsB"></div></div>
+   <div class="col pcol"><div class="padwrap"><canvas id="padB"></canvas><canvas id="ovB" width="384" height="384" style="position:absolute;inset:0;pointer-events:none"></canvas><div class="padhint" id="hintB">Male etwas – die KI rät sofort mit!<br>Mehrere Dinge oder Buchstaben mit etwas Abstand malen.</div></div><div class="tools" id="toolsB"></div></div>
    <div class="col side">
+    <div class="card"><div class="row sp"><b>Erkennen:</b><div class="chips" id="modeB" style="margin:0"></div></div></div>
     <div class="card" id="ans"></div>
     <div class="card" id="why"></div>
     <div class="card" id="fb"></div>
@@ -85,7 +86,7 @@ label.btn{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-si
    <canvas id="brainC" width="900" height="450"></canvas>
    <div class="card"><div class="stats" id="stats"></div></div>
    <div class="card"><h3>👀 Worauf soll die KI achten?</h3><div class="chips" id="focus"></div><div class="mut" style="margin-top:6px">„Farbe“ ist gut für Farben-Spiele, „Form“ für Zeichnungen von Tieren & Dingen. „Beides“ schaut auf alles.</div></div>
-   <div class="card"><h3>📦 Starthilfe-Pakete</h3><div class="row"><button id="pkCol">🎨 Farben (6 Farben)</button><button id="pkShape">🔷 Formen (Kreis, Quadrat …)</button><button id="pkSmile">🙂 Gesichter (froh / traurig)</button></div><div class="mut" style="margin-top:6px">Die Pakete malen automatisch Beispiele. Danach: trainieren und testen!</div></div>
+   <div class="card"><h3>📦 Starthilfe-Pakete</h3><div class="row"><button id="pkCol">🎨 Farben (6 Farben)</button><button id="pkShape">🔷 Formen (Kreis, Quadrat …)</button><button id="pkSmile">🙂 Gesichter (froh / traurig)</button><button id="pkAbc">🔤 ABC (A–Z)</button><button id="pkNum">🔢 Zahlen (0–9)</button></div><div class="mut" style="margin-top:6px">Die Pakete malen automatisch Beispiele. Danach: trainieren und testen!</div></div>
    <div class="card"><h3>🏅 Erfolge</h3><div class="achs" id="achs"></div></div>
    <div class="card"><h3>📁 Meine KIs</h3><div id="projs"></div><div class="row" style="margin-top:8px"><button id="pNew">➕ Neue KI</button><button id="pExp">💾 Exportieren</button><label class="btn">📂 Importieren<input type="file" id="pImp" accept=".json,application/json" hidden></label></div></div>
    <div class="mut" style="text-align:center;padding:8px">Die Form-Erkennung nutzt ein kleines neuronales Netz, vortrainiert mit Zeichnungen aus Google „Quick, Draw!“ (CC BY 4.0). Alles läuft nur auf deinem Gerät – deine Bilder werden nirgends hochgeladen.</div>
@@ -150,8 +151,8 @@ function features(cv){const d=cv.getContext('2d',{willReadFrequently:true}).getI
  for(let i=0;i<12;i++)hist[i]/=Math.max(1,n);const color=l2(hist.map(Math.sqrt));
  let shape;
  if(!bb){shape=new Float32Array(NET?128:196)}else{
-  let fill=0,cnt=0;for(let y=bb[1];y<=bb[3];y++)for(let x=bb[0];x<=bb[2];x++){fill+=ink[y*FS+x];cnt++}fill/=cnt;
-  let map=ink;if(fill>.4){map=new Float32Array(FS*FS);for(let y=1;y<FS-1;y++)for(let x=1;x<FS-1;x++){const i=y*FS+x;map[i]=Math.min(1,1.6*Math.max(Math.abs(ink[i+1]-ink[i-1]),Math.abs(ink[i+FS]-ink[i-FS])))}}
+  let tot=0,core=0;const E=3,on=i=>ink[i]>.35;for(let y=E;y<FS-E;y++)for(let x=E;x<FS-E;x++){const i=y*FS+x;if(!on(i))continue;tot++;if(on(i-E)&&on(i+E)&&on(i-E*FS)&&on(i+E*FS)&&on(i-E-E*FS)&&on(i+E+E*FS))core++}
+  let map=ink;if(tot&&core/tot>.45){map=new Float32Array(FS*FS);for(let y=1;y<FS-1;y++)for(let x=1;x<FS-1;x++){const i=y*FS+x;map[i]=Math.min(1,1.6*Math.max(Math.abs(ink[i+1]-ink[i-1]),Math.abs(ink[i+FS]-ink[i-FS])))}}
   const id=m96c.createImageData(FS,FS);for(let i=0;i<FS*FS;i++){const v=map[i]*255;id.data[i*4]=id.data[i*4+1]=id.data[i*4+2]=v;id.data[i*4+3]=255}m96c.putImageData(id,0,0);
   const bw=bb[2]-bb[0]+1,bh=bb[3]-bb[1]+1,s=24/Math.max(bw,bh);m28c.fillStyle='#000';m28c.fillRect(0,0,28,28);m28c.drawImage(m96,bb[0],bb[1],bw,bh,(28-bw*s)/2,(28-bh*s)/2,bw*s,bh*s);
   const dd=m28c.getImageData(0,0,28,28).data,img=new Float32Array(784);let mx=0;for(let i=0;i<784;i++){img[i]=dd[i*4]/255;mx=Math.max(mx,img[i])}if(mx>0)for(let i=0;i<784;i++)img[i]=Math.min(1,img[i]/mx*1.1);
@@ -162,6 +163,30 @@ let MEAN=null;const MEAN0=[0,0,0.024,0.0221,0.0303,0.1472,0.0912,0.1424,0.0757,0
 const FC=new Map();// Merkmal-Cache pro Beispiel
 function loadImg(src){return new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=src})}
 async function featOf(it){if(FC.has(it.id))return FC.get(it.id);try{const im=await loadImg(it.src);const c=document.createElement('canvas');c.width=c.height=FS;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,FS,FS);x.drawImage(im,0,0,FS,FS);const f=features(c);FC.set(it.id,f);return f}catch(e){return null}}
+
+
+/* ---------- Mehrere Dinge: Bild in Teile zerlegen ---------- */
+function segment(src){const S=src.width,G=96,cs=S/G,d=src.getContext('2d',{willReadFrequently:true}).getImageData(0,0,S,S).data,bg=borderBg(d,S,S);
+ const g=new Uint8Array(G*G);for(let y=0;y<S;y++)for(let x=0;x<S;x++){const i=(y*S+x)*4,dr=d[i]-bg[0],dg=d[i+1]-bg[1],db=d[i+2]-bg[2];if(dr*dr+dg*dg+db*db>3600)g[Math.floor(y/cs)*G+Math.floor(x/cs)]=1}
+ const R2=1,dil=new Uint8Array(G*G);for(let y=0;y<G;y++)for(let x=0;x<G;x++)if(g[y*G+x])for(let a=-R2;a<=R2;a++)for(let b=-R2;b<=R2;b++){const yy=y+a,xx=x+b;if(yy>=0&&yy<G&&xx>=0&&xx<G)dil[yy*G+xx]=1}
+ const lab=new Int32Array(G*G).fill(-1),comps=[];
+ for(let s0=0;s0<G*G;s0++){if(!dil[s0]||lab[s0]>=0)continue;const id=comps.length,c={id,x0:G,y0:G,x1:-1,y1:-1,n:0},st=[s0];lab[s0]=id;
+  while(st.length){const q=st.pop(),x=q%G,y=(q-x)/G;if(g[q]){c.n++;if(x<c.x0)c.x0=x;if(x>c.x1)c.x1=x;if(y<c.y0)c.y0=y;if(y>c.y1)c.y1=y}
+   for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++){const yy=y+a,xx=x+b;if(yy<0||yy>=G||xx<0||xx>=G)continue;const k=yy*G+xx;if(dil[k]&&lab[k]<0){lab[k]=id;st.push(k)}}}comps.push(c)}
+ // Teile zusammenfassen, die übereinander liegen (i-Punkt, Ä, Räder unter dem Auto)
+ const par=comps.map((c,i)=>i),fd=i=>par[i]===i?i:(par[i]=fd(par[i]));let ch=true;
+ const box=i=>{const r={x0:G,y0:G,x1:-1,y1:-1,n:0};comps.forEach((c,j)=>{if(fd(j)===i&&c.n){r.x0=Math.min(r.x0,c.x0);r.y0=Math.min(r.y0,c.y0);r.x1=Math.max(r.x1,c.x1);r.y1=Math.max(r.y1,c.y1);r.n+=c.n}});return r};
+ while(ch){ch=false;const roots=[...new Set(comps.map((c,i)=>fd(i)))].filter(i=>box(i).n);
+  for(let a=0;a<roots.length&&!ch;a++)for(let b=a+1;b<roots.length&&!ch;b++){const A=box(roots[a]),B=box(roots[b]);const ox=Math.min(A.x1,B.x1)-Math.max(A.x0,B.x0)+1,mw=Math.min(A.x1-A.x0,B.x1-B.x0)+1;
+   const vg=Math.max(A.y0,B.y0)-Math.min(A.y1,B.y1),mh=Math.max(A.y1-A.y0,B.y1-B.y0)+1;const oy=Math.min(A.y1,B.y1)-Math.max(A.y0,B.y0)+1;
+   const hA=A.y1-A.y0+1,hB=B.y1-B.y0+1,small=Math.min(hA,hB)<.5*Math.max(hA,hB)&&Math.min(A.n,B.n)<.5*Math.max(A.n,B.n);if((small&&ox>=.5*mw&&vg<.45*mh)||(ox>0&&oy>0&&ox*oy>.3*mw*Math.min(A.y1-A.y0,B.y1-B.y0))){par[fd(roots[b])]=fd(roots[a]);ch=true}}}
+ const roots=[...new Set(comps.map((c,i)=>fd(i)))].map(i=>({root:i,...box(i)})).filter(b=>b.n>=3);const big=Math.max(1,...roots.map(r=>r.n));
+ return roots.filter(r=>r.n>=Math.max(3,big*.04)).slice(0,24).map(r=>{const m=document.createElement('canvas');m.width=m.height=S;const mc=m.getContext('2d');mc.fillStyle='#fff';mc.fillRect(0,0,S,S);
+  const od=mc.getImageData(0,0,S,S);for(let y=0;y<S;y++)for(let x=0;x<S;x++){const cell=Math.floor(y/cs)*G+Math.floor(x/cs);const l=lab[cell];if(l>=0&&fd(l)===r.root){const i=(y*S+x)*4;od.data[i]=d[i];od.data[i+1]=d[i+1];od.data[i+2]=d[i+2]}}mc.putImageData(od,0,0);
+  return{mask:m,x:r.x0*cs,y:r.y0*cs,w:(r.x1-r.x0+1)*cs,h:(r.y1-r.y0+1)*cs}})}
+// Lesereihenfolge: Zeilen von oben nach unten, darin links nach rechts; Lücken = Leerzeichen
+function readOrder(items){const rows=[];for(const it of items.slice().sort((a,b)=>(a.y+a.h/2)-(b.y+b.h/2))){const cy=it.y+it.h/2;let r=rows.find(r=>cy>=r.y0-r.h*.15&&cy<=r.y1+r.h*.15);if(!r){r={y0:it.y,y1:it.y+it.h,h:it.h,its:[]};rows.push(r)}r.its.push(it);r.y0=Math.min(r.y0,it.y);r.y1=Math.max(r.y1,it.y+it.h);r.h=r.y1-r.y0}
+ rows.sort((a,b)=>a.y0-b.y0);rows.forEach(r=>r.its.sort((a,b)=>a.x-b.x));return rows}
 
 /* ---------- Lernen ---------- */
 const FW={both:[1,1],form:[1,.12],color:[.15,1.4]};
@@ -228,6 +253,7 @@ const ACH=[['first','👶 Erstes Beispiel','Zeig der KI das erste Bild',p=>nItem
  ['ex50','📚 Bücherwurm','50 Beispiele gezeigt',p=>nItems(p)>=50],['ex200','🏛️ Bibliothek','200 Beispiele gezeigt',p=>nItems(p)>=200],['train1','🧠 Erstes Training','Die KI zum ersten Mal trainiert',p=>p.stats.trains>=1],['train10','🏋️ Fleißig','10-mal trainiert',p=>p.stats.trains>=10],
  ['right1','🎯 Erster Treffer','Die KI hat richtig geraten',p=>p.stats.right>=1],['right25','🏹 Treffsicher','25 richtige Antworten',p=>p.stats.right>=25],['upload','📷 Foto-Lehrer','Ein Bild hochgeladen',p=>p.stats.uploads>=1],['fix','🧑‍🏫 Nachhilfe','Die KI verbessert',p=>p.stats.fixes>=1],
  ['pack','📦 Starthilfe','Ein Starthilfe-Paket benutzt',p=>p.stats.packs>=1],['acc','🏆 Superhirn','Mind. 10 Tests mit 90 % Treffern',p=>p.stats.tests>=10&&p.stats.right/p.stats.tests>=.9]];
+ACH.push(['word','🔤 Wortbildner','Die KI hat ein ganzes Wort gelesen',p=>p.ach.includes('word')]);
 const nItems=p=>p.classes.reduce((a,c)=>a+c.items.length,0),nCls=p=>p.classes.filter(c=>c.items.length).length;
 function checkAch(){const p=P();for(const [id,t,,f] of ACH)if(!p.ach.includes(id)&&f(p)){p.ach.push(id);K.sfx('win');K.toast('🏅 Erfolg: '+t,3000);p.xp+=15}save();hud()}
 function hud(){const p=P(),l=lvOf(p.xp),a=LV[l],b=LV[l+1]||a+1000;$('lvl').innerHTML=`Lv ${l+1} · ${TIT[l]}<div class="xpbar"><i style="width:${Math.min(100,(p.xp-a)/(b-a)*100)}%"></i></div>`;$('projBtn').textContent='📁 '+p.name;
@@ -244,6 +270,8 @@ async function addExample(src,name,quiet){const p=P();name=cap(name);let c=findC
  if(!quiet){if(isNew){K.sfx('level');K.toast('✨ Neues Wissen: „'+name+'“! Das Gehirn bekommt ein neues Neuron.',2600)}else K.sfx('coin');xp(isNew?10:4);renderBank();checkAch()}return true}
 function labelVal(){return $('lab').value.trim()}
 $('addBtn').onclick=async()=>{const n=labelVal();if(!padA.dirty){K.toast('✏️ Male zuerst etwas oder lade ein Bild hoch');K.sfx('bad');return}if(!n){K.toast('🏷️ Schreib oben hin, was das ist!');$('lab').focus();K.sfx('bad');return}
+ const chars=[...n.replace(/\s+/g,'')];if(chars.length>=2&&chars.length<=24){const segs=segment(padA.cv);if(segs.length===chars.length){const ord=readOrder(segs).flatMap(r=>r.its);for(let i=0;i<ord.length;i++)await addExample(ord[i].mask,chars[i].toUpperCase(),true);
+  K.sfx('level');K.toast('✂️ In '+ord.length+' Teile geschnitten: '+chars.map(c=>c.toUpperCase()).join(' · '),3000);xp(ord.length*4);renderBank();checkAch();padA.clear();return}}
  if(await addExample(padA.cv,n)){padA.clear();flyThumb()}};
 $('lab').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('addBtn').click()}});
 $('upA').onchange=async e=>{const fs=[...e.target.files].filter(f=>f.type.startsWith('image/'));e.target.value='';if(!fs.length)return;const p=P();
@@ -298,9 +326,37 @@ let thinkT=0,lastF=null,answered=false;
 const padB=Pad($('padB'),$('toolsB'),$('hintB'),end=>{clearTimeout(thinkT);thinkT=setTimeout(think,end?150:700)});
 const upB=document.createElement('label');upB.innerHTML='📷<input type="file" accept="image/*" hidden>';upB.title='Bild testen';$('toolsB').appendChild(upB);
 upB.querySelector('input').onchange=async e=>{const f=e.target.files[0];e.target.value='';if(!f)return;try{const im=await loadImg(URL.createObjectURL(f));padB.image(im);P().stats.uploads++;checkAch()}catch(er){K.toast('Bild konnte nicht geladen werden')}};
-async function think(){const p=P();answered=false;if(!padB.dirty){lastF=null;renderTest(null);return}const cv=prep(padB.cv);lastF={f:features(cv),cv};
+let modeB=K.store.get('kil_mode','auto'),lastMulti=null;
+function renderMode(){$('modeB').innerHTML=[['auto','✨ Automatisch'],['one','🖼 Ein Ding'],['multi','🧩 Mehrere & Wörter']].map(([k,t])=>`<button class="chip ${modeB===k?'on':''}" data-m="${k}">${t}</button>`).join('');$('modeB').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{modeB=b.dataset.m;K.store.set('kil_mode',modeB);renderMode();think()})}
+const ovB=$('ovB').getContext('2d');
+async function think(){const p=P();answered=false;lastMulti=null;ovB.clearRect(0,0,384,384);if(!padB.dirty){lastF=null;renderTest(null);return}
+ if(modeB!=='one'&&nCls(p)){const segs=segment(padB.cv);if(segs.length>=2||(modeB==='multi'&&segs.length===1)){const items=[];for(const s of segs){const cv=prep(s.mask),f=features(cv);items.push({...s,cv,f,r:await predict(f)})}lastF={multi:1};renderMulti(items);return}}
+ const cv=prep(padB.cv);lastF={f:features(cv),cv};
  if(!nCls(p)){renderTest(null);return}const r=await predict(lastF.f);lastPred=r&&!r.unknown?r.res[0][0]:null;renderTest(r)}
 function colorChips(f){return f.top.length?f.top.map(([i,v])=>`<span class="chip"><span class="sw" style="background:${COLS[i][1]}"></span>${COLS[i][0]} ${Math.round(v*100)}%</span>`).join(''):'<span class="mut">–</span>'}
+
+const labOf=it=>!it.r||it.r.unknown?'?':it.r.res[0][0];
+function say(t){try{const u=new SpeechSynthesisUtterance(t);u.lang='de-DE';u.rate=.9;speechSynthesis.cancel();speechSynthesis.speak(u)}catch(e){}}
+function renderMulti(items){const p=P();const rows=readOrder(items);const ord=rows.flatMap(r=>r.its);lastMulti=ord;
+ const allChar=ord.every(it=>labOf(it).length===1);
+ // Kästen auf dem Bild
+ const H=['#18dcff','#ffd23f','#2ed573','#ff7ad9','#ff9f1a','#7d5fff'];ovB.clearRect(0,0,384,384);ovB.lineWidth=3;ovB.font='bold 15px sans-serif';
+ ord.forEach((it,i)=>{const c=H[i%H.length];ovB.strokeStyle=c;ovB.setLineDash([7,5]);ovB.strokeRect(it.x-3,it.y-3,it.w+6,it.h+6);ovB.setLineDash([]);const t=(i+1)+' '+labOf(it);const w=ovB.measureText(t).width+10;ovB.fillStyle=c;ovB.fillRect(it.x-3,Math.max(0,it.y-23),w,20);ovB.fillStyle='#000';ovB.fillText(t,it.x+2,Math.max(15,it.y-8))});
+ let head;
+ if(allChar){const lines=rows.map(r=>{let s='';const ws=r.its.map(it=>it.w).sort((a,b)=>a-b),mw=ws[ws.length>>1]||20;r.its.forEach((it,i)=>{if(i&&it.x-(r.its[i-1].x+r.its[i-1].w)>mw*.9)s+=' ';s+=labOf(it)});return s});
+  const word=lines.join('\n');head=`<div class="big">🔤 ${ord.length>1?'Das Wort heißt:':'Das ist der Buchstabe:'}<span class="word">${lines.map(l=>K.esc(l)).join('<br>')}</span></div><button id="sayB" style="margin-top:6px">🔊 Vorlesen</button>`;
+  setTimeout(()=>{const b=$('sayB');if(b)b.onclick=()=>say(word.replace(/\?/g,'').toLowerCase())},0);
+  if(ord.length>=2&&!word.includes('?')&&!p.ach.includes('word')){p.ach.push('word');K.sfx('win');K.toast('🏅 Erfolg: 🔤 Wortbildner',3000);p.xp+=15;save();hud()}}
+ else{const names=ord.map(labOf);const cnt={};names.forEach(n=>cnt[n]=(cnt[n]||0)+1);head=`<div class="big">🧩 Ich sehe ${ord.length} ${ord.length===1?'Ding':'Dinge'}:</div><div style="font-size:19px;font-weight:800;margin-top:4px">${Object.entries(cnt).map(([n,c])=>(c>1?c+'× ':'')+K.esc(n==='?'?'❓ Unbekanntes':n)).join(', ')}</div>`}
+ $('ans').innerHTML=head+`<div class="mlist">${ord.map((it,i)=>`<button class="chip" data-mi="${i}"><span class="num">${i+1}</span>${K.esc(labOf(it))} <span class="mut">${it.r?Math.round(it.r.res[0][1]*100):0}%</span></button>`).join('')}</div><div class="mut" style="margin-top:6px">Tippe auf ein Teil, um es der KI zu erklären.</div>`;
+ $('ans').querySelectorAll('[data-mi]').forEach(b=>b.onclick=()=>fixPart(ord[+b.dataset.mi]));
+ $('why').innerHTML=`<h3>🔎 So habe ich es gemacht</h3><div class="mut">Ich habe das Bild in ${ord.length} ${ord.length===1?'Teil':'Teile'} zerlegt und jedes Teil einzeln angeschaut${allChar?' – dann von links nach rechts gelesen':''}.</div><div class="mlist">${ord.map((it,i)=>`<span class="chip"><span class="num">${i+1}</span>${it.f.top[0]?`<span class="sw" style="background:${COLS[it.f.top[0][0]][1]}"></span>${COLS[it.f.top[0][0]][0]}`:''}</span>`).join('')}</div>`;
+ $('fb').style.display='';$('fb').innerHTML=`<h3>Hatte ich recht?</h3><div class="row"><button class="pri" id="fbAll" style="background:var(--ok)">✅ Alles richtig!</button><span class="mut">Falsch? Tippe oben auf das Teil.</span></div>`;
+ $('fbAll').onclick=async()=>{if(answered)return;answered=true;let n=0;for(const it of ord){if(labOf(it)==='?')continue;await addExample(it.mask,labOf(it),true);n++}p.stats.tests+=ord.length;p.stats.right+=n;p.dirty=true;save();K.sfx('win');burst();K.toast('🎯 Super! Ich merke mir alle '+n+' Teile.',2400);xp(4+n*2);checkAch();renderScore();$('fb').innerHTML='<div class="big">🎯 Richtig!</div>'};
+ renderScore()}
+function fixPart(it){const p=P();$('dlgP').innerHTML=`<div class="big">🧑‍🏫 Was ist dieses Teil?</div><img src="${it.cv.toDataURL()}" style="width:110px;height:110px;border-radius:12px;background:#fff;align-self:center"><div class="chips">${p.classes.map((c,i)=>`<button class="chip" data-k="${i}">${K.esc(c.name)}</button>`).join('')}</div><div class="row"><input id="fxIn" maxlength="24" placeholder="… oder etwas Neues" style="flex:1"><button class="pri" id="fxGo">Lernen</button></div><div class="row" style="justify-content:flex-end"><button id="fxNo">Abbrechen</button></div>`;
+ $('dlg').classList.add('show');const go=async n=>{n=(n||'').trim();if(!n)return;$('dlg').classList.remove('show');p.stats.tests++;p.stats.fixes++;await addExample(it.mask,n,true);await quickTrain();K.sfx('good');K.toast('🧠 Danke! Gelernt: „'+cap(n)+'“',2200);xp(6);checkAch();think()};
+ $('dlgP').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>go(p.classes[+b.dataset.k].name));$('fxGo').onclick=()=>go($('fxIn').value);$('fxIn').onkeydown=e=>{if(e.key==='Enter')go($('fxIn').value)};$('fxNo').onclick=()=>$('dlg').classList.remove('show')}
 function renderTest(r){const p=P();
  if(!lastF){$('ans').innerHTML=`<div class="big">🤖 Zeig mir etwas!</div><div class="mut">Male links etwas oder lade mit 📷 ein Bild hoch. Ich sage dir, was ich sehe.</div>`;$('why').innerHTML='<h3>🔎 Was ich erkenne</h3><div class="mut">Farben, Formen und welches gelernte Ding am ähnlichsten ist.</div>';$('fb').style.display='none';renderScore();return}
  const f=lastF.f;
@@ -342,6 +398,20 @@ const R=(a,b)=>a+Math.random()*(b-a);
 function hsl(h,s,l){return`hsl(${h},${s}%,${l}%)`}
 function wob(x,pts,close,w,col){x.strokeStyle=col;x.lineWidth=w;x.lineCap=x.lineJoin='round';x.beginPath();pts.forEach(([a,b],i)=>{a+=R(-4,4);b+=R(-4,4);i?x.lineTo(a,b):x.moveTo(a,b)});if(close)x.closePath();x.stroke()}
 function scratch(){const c=document.createElement('canvas');c.width=c.height=384;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,384,384);return[c,x]}
+
+// Handschrift-Vorlagen (Einheitsquadrat, y nach unten)
+const arc=(cx,cy,rx,ry,a0,a1,n=16)=>[...Array(n+1)].map((_,i)=>{const a=a0+(a1-a0)*i/n;return[cx+Math.cos(a)*rx,cy+Math.sin(a)*ry]});
+const PI=Math.PI,HW={A:[[[0,1],[.5,0],[1,1]],[[.25,.55],[.75,.55]]],B:[[[0,0],[0,1]],[[0,0],[.7,0],[.9,.12],[.9,.35],[.7,.5],[0,.5]],[[.7,.5],[1,.65],[1,.88],[.75,1],[0,1]]],C:[arc(.55,.5,.5,.5,.3*PI,1.7*PI).reverse()],
+ D:[[[0,0],[0,1]],[[0,0],[.5,0],[.9,.2],[1,.5],[.9,.8],[.5,1],[0,1]]],E:[[[1,0],[0,0],[0,1],[1,1]],[[0,.5],[.8,.5]]],F:[[[1,0],[0,0],[0,1]],[[0,.5],[.8,.5]]],G:[arc(.55,.5,.5,.5,.3*PI,1.75*PI).reverse(),[[.55,.55],[1,.55],[1,.85]]],
+ H:[[[0,0],[0,1]],[[1,0],[1,1]],[[0,.5],[1,.5]]],I:[[[.5,0],[.5,1]]],J:[[[.8,0],[.8,.75],[.6,.97],[.3,1],[.05,.8]]],K:[[[0,0],[0,1]],[[1,0],[0,.55]],[[.3,.4],[1,1]]],L:[[[0,0],[0,1],[.9,1]]],M:[[[0,1],[0,0],[.5,.6],[1,0],[1,1]]],
+ N:[[[0,1],[0,0],[1,1],[1,0]]],O:[arc(.5,.5,.5,.5,0,2*PI,20)],P:[[[0,1],[0,0],[.7,0],[1,.15],[1,.4],[.7,.55],[0,.55]]],Q:[arc(.5,.5,.5,.5,0,2*PI,20),[[.6,.7],[1,1.05]]],R:[[[0,1],[0,0],[.7,0],[1,.15],[1,.4],[.7,.55],[0,.55]],[[.4,.55],[1,1]]],
+ S:[[[1,.1],[.7,0],[.3,0],[0,.15],[.05,.4],[.5,.5],[.95,.6],[1,.85],[.7,1],[.3,1],[0,.9]]],T:[[[0,0],[1,0]],[[.5,0],[.5,1]]],U:[[[0,0],[0,.75],[.15,.95],[.5,1],[.85,.95],[1,.75],[1,0]]],V:[[[0,0],[.5,1],[1,0]]],W:[[[0,0],[.25,1],[.5,.4],[.75,1],[1,0]]],
+ X:[[[0,0],[1,1]],[[1,0],[0,1]]],Y:[[[0,0],[.5,.5],[1,0]],[[.5,.5],[.5,1]]],Z:[[[0,0],[1,0],[0,1],[1,1]]],
+ 0:[arc(.5,.5,.38,.5,0,2*PI,20)],1:[[[.2,.25],[.6,0],[.6,1]]],2:[[[0,.2],[.3,0],[.75,0],[1,.25],[.9,.5],[0,1],[1,1]]],3:[[[0,.1],[.4,0],[.9,.1],[.9,.4],[.4,.5],[.95,.65],[.95,.9],[.5,1],[0,.9]]],4:[[[.7,1],[.7,0],[0,.7],[1,.7]]],
+ 5:[[[.9,0],[.1,0],[0,.45],[.6,.4],[1,.65],[.9,.95],[.4,1],[0,.9]]],6:[[[.8,0],[.3,.2],[0,.6],[.15,.95],[.6,1],[.95,.75],[.7,.5],[.3,.5],[.05,.65]]],7:[[[0,0],[1,0],[.35,1]]],8:[arc(.5,.25,.32,.25,0,2*PI,14),arc(.5,.72,.4,.28,0,2*PI,14)],
+ 9:[[[.95,.45],[.6,.55],[.15,.45],[.1,.15],[.5,0],[.9,.15],[.95,.45],[.8,1]]]};
+function hand(x,ch){const t=HW[ch];if(!t)return;const w=R(120,210),h=R(170,250),ox=192-w/2+R(-30,30),oy=192-h/2+R(-25,25),sl=R(-.18,.18),lw=R(7,22),col=hsl(R(0,360),R(20,60),R(10,35));
+ for(const st of t)wob(x,st.map(([u,v])=>[ox+u*w+(1-v)*h*sl,oy+v*h]),0,lw,col)}
 async function pack(kind){const p=P();const items=[];
  if(kind==='col'){const H=[['Rot',0,0],['Orange',28,0],['Gelb',54,0],['Grün',125,0],['Blau',215,0],['Lila',280,0]];
   for(const [n,h] of H)for(let k=0;k<6;k++){const [c,x]=scratch();const hh=(h+R(-6,6)+360)%360,col=hsl(hh,R(70,95),R(40,58)*(n==='Gelb'?1.1:1));x.fillStyle=col;x.strokeStyle=col;
@@ -351,12 +421,15 @@ async function pack(kind){const p=P();const items=[];
    [c,x]=scratch();const s=R(130,250),a=R(-.2,.2),q=[[-1,-1],[1,-1],[1,1],[-1,1]].map(([u,v])=>[192+(u*Math.cos(a)-v*Math.sin(a))*s/2,192+(u*Math.sin(a)+v*Math.cos(a))*s/2]);wob(x,q,1,w,dark());items.push([c,'Quadrat']);
    [c,x]=scratch();const t=R(-.25,.25);wob(x,[0,1,2].map(i=>[192+Math.cos(t-1.5708+i*2.094)*r*1.15,205+Math.sin(t-1.5708+i*2.094)*r*1.15]),1,w,dark());items.push([c,'Dreieck']);
    [c,x]=scratch();wob(x,[...Array(10)].map((_,i)=>{const rr=i%2?r*.45:r*1.1,an=-1.5708+i*.6283+t;return[192+Math.cos(an)*rr,192+Math.sin(an)*rr]}),1,w,dark());items.push([c,'Stern'])}}
+ if(kind==='abc'||kind==='num'){const set=kind==='abc'?'ABCDEFGHIJKLMNOPQRSTUVWXYZ':'0123456789';const fonts=['bold {s}px sans-serif','{s}px sans-serif','bold {s}px serif','bold {s}px "Comic Sans MS",cursive','{s}px "Courier New",monospace','bold {s}px Arial Rounded MT Bold,Verdana,sans-serif'];
+  for(const ch of set)for(let k=0;k<8;k++){const [c,x]=scratch();if(k>=2){hand(x,ch);items.push([c,ch]);continue}x.save();x.translate(192+R(-40,40),200+R(-30,30));x.rotate(R(-.18,.18));x.scale(R(.85,1.15),R(.85,1.15));x.fillStyle=hsl(R(0,360),R(20,60),R(10,35));x.font=fonts[k%fonts.length].replace('{s}',Math.round(R(170,250)));x.textAlign='center';x.textBaseline='middle';
+   if(k%3===2){x.strokeStyle=x.fillStyle;x.lineWidth=R(8,14);x.lineJoin='round';x.strokeText(ch,0,0)}else x.fillText(ch,0,0);x.restore();items.push([c,ch])}}
  if(kind==='smile'){for(let k=0;k<6;k++)for(const mood of ['Fröhlich','Traurig']){const [c,x]=scratch();const col=hsl(R(0,360),60,R(20,40)),r=R(110,150),w=R(7,11);
    wob(x,[...Array(26)].map((_,i)=>[192+Math.cos(i/26*6.283)*r,192+Math.sin(i/26*6.283)*r]),1,w,col);x.fillStyle=col;[-1,1].forEach(s=>{x.beginPath();x.arc(192+s*r*.35,192-r*.25,w*1.2,0,7);x.fill()});
    const my=192+r*.38;wob(x,[...Array(9)].map((_,i)=>{const u=(i/8-.5)*2;return[192+u*r*.45,my+(mood==='Fröhlich'?1-u*u:u*u-1)*r*.22]}),0,w,col);items.push([c,mood])}}
  K.toast('📦 Paket wird gemalt …');for(const [c,n] of items)if(!await addExample(c,n,true))break;p.stats.packs++;K.sfx('level');xp(20);renderBank();checkAch();
- if(kind==='col'&&p.focus!=='color'){p.focus='color';save();K.toast('📦 Fertig! Ich achte jetzt auf Farben. Jetzt trainieren!',3200)}else K.toast('📦 Fertig! Jetzt trainieren!',2600);renderBrain();showTab('bank')}
-$('pkCol').onclick=()=>pack('col');$('pkShape').onclick=()=>pack('shape');$('pkSmile').onclick=()=>pack('smile');
+ if(kind==='col'&&p.focus!=='color'){p.focus='color';save();K.toast('📦 Fertig! Ich achte jetzt auf Farben. Jetzt trainieren!',3200)}else if((kind==='abc'||kind==='num')&&p.focus!=='form'){p.focus='form';save();K.toast('📦 Fertig! Ich achte jetzt auf Formen. Jetzt trainieren – dann schreib Wörter im Test!',3600)}else K.toast('📦 Fertig! Jetzt trainieren!',2600);renderBrain();showTab('bank')}
+$('pkCol').onclick=()=>pack('col');$('pkAbc').onclick=()=>pack('abc');$('pkNum').onclick=()=>pack('num');$('pkShape').onclick=()=>pack('shape');$('pkSmile').onclick=()=>pack('smile');
 
 /* ---------- Allgemein ---------- */
 function ask(html,btns){$('dlgP').innerHTML=html+`<div class="row" style="justify-content:flex-end;margin-top:6px">${btns.map((b,i)=>`<button class="${b[2]?'pri':''}" data-b="${i}">${b[0]}</button>`).join('')}</div>`;$('dlg').classList.add('show');
@@ -370,7 +443,7 @@ document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{K.sfx('click')
 async function openProject(i){DB.cur=i;save();lastPred=null;padB.clear();lastF=null;hud();renderBank();renderBrain();renderTest(null);
  for(const c of P().classes)for(const it of c.items)await featOf(it);
  const p=P(),v=nCls(p)&&p.classes.find(c=>c.items.length);if(p.model&&v){const f=FC.get(v.items[0].id);if(f&&vec(f,p.focus).length!==p.model.D){await quickTrain()}}}
-(async()=>{hud();renderBank();renderTest(null);await loadNet();
+(async()=>{renderMode();hud();renderBank();renderTest(null);await loadNet();
  FC.clear();await openProject(DB.cur);loop()})();
 window.KL={P,DB,predict,features,prep,train,pack,addExample,padA:()=>padA,padB:()=>padB,think,quickTrain,FC,setMean:m=>{MEAN=m;FC.clear()}};
 </script>
