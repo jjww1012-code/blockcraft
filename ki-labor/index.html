@@ -16,7 +16,7 @@ header .ttl{font-weight:900;font-size:20px;white-space:nowrap}
 #projBtn{padding:7px 10px;font-size:13px;max-width:34vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #lvl{margin-left:auto;text-align:right;font-size:13px;font-weight:800;min-width:110px}
 .xpbar{height:7px;border-radius:5px;background:rgba(255,255,255,.12);margin-top:3px;overflow:hidden}.xpbar i{display:block;height:100%;background:linear-gradient(90deg,var(--a),var(--b));border-radius:5px;transition:width .4s}
-nav{display:flex;gap:6px;padding:0 12px 8px}nav button{flex:1;padding:10px 6px;font-size:15px;background:rgba(255,255,255,.07)}nav button.on{background:linear-gradient(135deg,var(--a),var(--b));color:#06121a}
+nav{display:flex;gap:6px;padding:0 12px 8px}nav button{flex:1;padding:10px 4px;font-size:15px;white-space:nowrap;background:rgba(255,255,255,.07)}nav button.on{background:linear-gradient(135deg,var(--a),var(--b));color:#06121a}
 nav button .dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#ffd23f;margin-left:5px;box-shadow:0 0 8px #ffd23f;vertical-align:middle}
 main{flex:1;min-height:0;overflow:auto;touch-action:pan-y;padding:0 12px max(14px,env(safe-area-inset-bottom))}
 section{display:none;gap:12px}section.on{display:flex}
@@ -54,13 +54,13 @@ label.btn{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-si
 #lossC{width:100%;height:110px;display:block;border-radius:10px;background:rgba(0,0,0,.3)}
 #trBrain{width:100%;aspect-ratio:2/1;display:block;border-radius:12px;background:rgba(0,0,0,.3)}
 .k-toast{z-index:50}.word{font-size:40px;letter-spacing:6px;color:#ffd23f;display:block;margin-top:4px;word-break:break-all}.mlist{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}.mlist .chip{display:flex;align-items:center;gap:6px}.mlist .num{background:#ffd23f;color:#000;border-radius:50%;width:20px;height:20px;font-size:12px;display:inline-flex;align-items:center;justify-content:center}
-@media(max-width:760px){section.on{flex-direction:column}.pcol{width:100%;max-width:none}#projBtn{display:none}}
+@media(max-width:560px){nav button{font-size:13px}}@media(max-width:760px){section.on{flex-direction:column}.pcol{width:100%;max-width:none}#projBtn{display:none}}
 </style>
 </head>
 <body>
 <div id="app">
  <header><a class="back" href="../">←</a><div class="ttl">🧠 KI-Labor</div><button id="projBtn"></button><div id="lvl"></div></header>
- <nav><button data-t="bank" class="on">🧪 Werkbank</button><button data-t="test">🔍 Testen</button><button data-t="brain">🧠 Gehirn</button></nav>
+ <nav><button data-t="bank" class="on">🧪 Werkbank</button><button data-t="test">🔍 Testen</button><button data-t="make">🎨 KI malt</button><button data-t="brain">🧠 Gehirn</button></nav>
  <main>
   <section id="t-bank" class="on">
    <div class="col pcol"><div class="padwrap"><canvas id="padA"></canvas><div class="padhint" id="hintA">Male hier etwas<br>oder lade ein Bild hoch 📷</div></div><div class="tools" id="toolsA"></div></div>
@@ -80,6 +80,17 @@ label.btn{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-si
     <div class="card" id="why"></div>
     <div class="card" id="fb"></div>
     <div class="card" id="score"></div>
+   </div>
+  </section>
+  <section id="t-make">
+   <div class="col pcol"><div class="padwrap"><canvas id="makeC" width="384" height="384"></canvas><div class="padhint" id="hintM">Hier malt gleich die KI 🎨</div></div>
+    <div class="row" style="justify-content:center"><button id="mkSave">💾 Bild speichern</button><button id="mkAgain">🔁 Nochmal anders</button></div></div>
+   <div class="col side">
+    <div class="card"><h3>🎨 Was soll die KI malen?</h3><input id="mkIn" maxlength="80" placeholder="z. B. Ein Auto neben einem Haus" autocomplete="off">
+     <div class="mut" style="margin-top:6px">Tippe Dinge an, die die KI kennt:</div><div class="chips" id="mkChips"></div>
+     <div class="mut" style="margin-top:6px">Wörter, die sie versteht: <b>und, neben, auf, unter, über, in, vor, hinter</b> und Zahlen (zwei, drei …).</div>
+     <div class="row" style="margin-top:10px"><button class="pri" id="mkGo">🎨 Malen!</button><button id="mkMix">🔀 Mischen</button><button id="mkDream">💭 Traumbild</button></div></div>
+    <div class="card" id="mkOut"><div class="mut">Die KI baut ihre Bilder aus dem, was du ihr beigebracht hast. Je mehr Beispiele, desto mehr Ideen hat sie!</div></div>
    </div>
   </section>
   <section id="t-brain" style="flex-direction:column">
@@ -431,13 +442,104 @@ async function pack(kind){const p=P();const items=[];
  if(kind==='col'&&p.focus!=='color'){p.focus='color';save();K.toast('📦 Fertig! Ich achte jetzt auf Farben. Jetzt trainieren!',3200)}else if((kind==='abc'||kind==='num')&&p.focus!=='form'){p.focus='form';save();K.toast('📦 Fertig! Ich achte jetzt auf Formen. Jetzt trainieren – dann schreib Wörter im Test!',3600)}else K.toast('📦 Fertig! Jetzt trainieren!',2600);renderBrain();showTab('bank')}
 $('pkCol').onclick=()=>pack('col');$('pkAbc').onclick=()=>pack('abc');$('pkNum').onclick=()=>pack('num');$('pkShape').onclick=()=>pack('shape');$('pkSmile').onclick=()=>pack('smile');
 
+
+/* ---------- KI malt: Bilder aus gelerntem Wissen zusammenbauen ---------- */
+const mkC=$('makeC'),mk=mkC.getContext('2d',{willReadFrequently:true});mk.fillStyle='#fff';mk.fillRect(0,0,384,384);
+const SKY=['sonne','mond','wolke','stern','vogel','flugzeug','hubschrauber','regenbogen','blitz','rakete','ufo','ballon','drachen','schmetterling','biene'];
+const NUMW={ein:1,eine:1,einen:1,einem:1,einer:1,eins:1,zwei:2,drei:3,vier:4,'fünf':5,sechs:6,sieben:7,acht:8,neun:9,zehn:10,viele:5};
+const RELW={auf:'on',aufm:'on',unter:'under',neben:'beside',nebem:'beside','über':'above',im:'in',in:'in',vor:'front',hinter:'behind',und:'and',mit:'and',dazu:'and',links:'and',rechts:'and'};
+const STOP=new Set(['der','die','das','dem','den','des','ein','eine','einen','einem','einer','mal','male','bitte','mir','ich','du','ganz','sehr','großes','großer','große','kleines','kleiner','kleine','steht','sitzt','liegt','fliegt','ist','sind','am','beim','zum','zur','von','vom']);
+function mkParse(text){const p=P(),cls=p.classes.filter(c=>c.items.length).map(c=>({c,w:c.name.toLowerCase().split(/\s+/)})).sort((a,b)=>b.w.join(' ').length-a.w.join(' ').length);
+ const raw=text.replace(/[^\wäöüÄÖÜß\s]/g,' ').split(/\s+/).filter(Boolean),ws=raw.map(w=>w.toLowerCase());const seq=[],unknown=[];let num=0;
+ for(let i=0;i<ws.length;i++){const w=ws[i];
+  if(/^\d+$/.test(w)){num=Math.min(8,+w);continue}if(NUMW[w]&&!(w.startsWith('ein')&&NUMW[w]===1&&num)){if(NUMW[w]>1||!num)num=NUMW[w];continue}
+  if(RELW[w]){if(seq.length&&seq[seq.length-1].t==='o')seq.push({t:'r',r:RELW[w]});continue}
+  let hit=null;for(const k of cls){const n=k.w.length;if(i+n>ws.length)continue;let ok=true;for(let j=0;j<n;j++){const a=ws[i+j],b=k.w[j];if(!(a===b||(j===n-1&&a.startsWith(b)&&a.length-b.length<=3)||(j===n-1&&b.length>3&&a.replace(/ä/g,'a').replace(/ö/g,'o').replace(/ü/g,'u').startsWith(b.replace(/ä/g,'a').replace(/ö/g,'o').replace(/ü/g,'u'))&&a.length-b.length<=3))){ok=false;break}}if(ok){hit=k;i+=n-1;break}}
+  if(hit){if(seq.length&&seq[seq.length-1].t==='o')seq.push({t:'r',r:'and'});seq.push({t:'o',c:hit.c,n:Math.max(1,num||1)});num=0;continue}
+  if(!STOP.has(w)&&w.length>2&&/^[A-ZÄÖÜ]/.test(raw[i]))unknown.push(raw[i])}
+ if(seq.length&&seq[seq.length-1].t==='r')seq.pop();return{seq,unknown}}
+const SPR=new Map();
+async function sprite(it){if(SPR.has(it.id))return SPR.get(it.id);const im=await loadImg(it.src);const c=document.createElement('canvas');c.width=c.height=FS;const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(im,0,0,FS,FS);
+ const id=x.getImageData(0,0,FS,FS),d=id.data,bg=borderBg(d,FS,FS);let x0=FS,y0=FS,x1=-1,y1=-1;
+ for(let i=0;i<FS*FS;i++){const dr=d[i*4]-bg[0],dg=d[i*4+1]-bg[1],db=d[i*4+2]-bg[2],a=Math.min(1,Math.max(0,(Math.sqrt(dr*dr+dg*dg+db*db)-30)/45));d[i*4+3]=a*255;if(a>.3){const px=i%FS,py=(i-px)/FS;if(px<x0)x0=px;if(px>x1)x1=px;if(py<y0)y0=py;if(py>y1)y1=py}}
+ x.putImageData(id,0,0);if(x1<0){SPR.set(it.id,null);return null}const t=document.createElement('canvas');t.width=x1-x0+1;t.height=y1-y0+1;t.getContext('2d').drawImage(c,x0,y0,t.width,t.height,0,0,t.width,t.height);SPR.set(it.id,t);return t}
+async function pickSprite(c){const its=K.shuffle(c.items.slice());for(const it of its){const s=await sprite(it);if(s)return s}return null}
+// Ein „Bauteil“: n Kopien eines Dings nebeneinander, Größe h
+async function part(o,h){const sp=[];for(let k=0;k<o.n;k++)sp.push(await pickSprite(o.c));const ok=sp.filter(Boolean);if(!ok.length)return null;
+ const hh=o.n>1?h*Math.max(.5,1-.12*(o.n-1)):h;const ws=ok.map(s=>s.width/s.height*hh);const gap=hh*.12;return{o,sp:ok,h:hh,ws,w:ws.reduce((a,b)=>a+b,0)+gap*(ok.length-1),gap,sky:SKY.includes(o.c.name.toLowerCase())}}
+let mkLast=null,mkBusy=false;
+async function mkScene(text){const {seq,unknown}=mkParse(text);const objs=seq.filter(t=>t.t==='o');
+ if(!objs.length){mkMsg(`<div class="big">🤔 Das kenne ich noch nicht!</div><div class="mut">${unknown.length?'„'+K.esc(unknown.join('“, „'))+'“ hat mir noch niemand beigebracht. ':''}Bring es mir in der 🧪 Werkbank bei – oder tippe oben auf ein Ding, das ich schon kenne.</div>`);K.sfx('bad');return}
+ // Gruppen: Beziehung „und/neben“ trennt, „auf/in/über/…“ hängt an das nächste Ding
+ const clusters=[];let curC=[seq[0]];for(let i=1;i<seq.length;i+=2){const r=seq[i].r,o=seq[i+1];if(r==='and'||r==='beside'){clusters.push(curC);curC=[o]}else{curC.push({t:'r',r},o)}}clusters.push(curC);
+ const SC={on:.62,in:.45,under:1,above:.6,front:.7,behind:1.1};
+ const placed=[];const groundCl=[],skyCl=[];
+ for(const cl of clusters){const os=cl.filter(t=>t.t==='o'),rs=cl.filter(t=>t.t==='r').map(t=>t.r);const anchor=os[os.length-1];
+  const base=await part(anchor,150);if(!base)continue;const members=[{p:base,rel:null}];let ref=base;
+  for(let i=os.length-2;i>=0;i--){const rel=rs[i];const pt=await part(os[i],base.h*(SC[rel]||.7));if(pt)members.push({p:pt,rel,ref});}
+  const sky=os.length===1&&base.sky;(sky?skyCl:groundCl).push({members,w:Math.max(...members.map(m=>m.p.w))})}
+ if(!groundCl.length&&!skyCl.length){mkMsg('<div class="big">😵 Hoppla</div><div class="mut">Ich konnte meine Beispielbilder nicht lesen.</div>');return}
+ // Platz verteilen
+ const fit=(cls,maxW,maxH)=>{const tot=cls.reduce((a,c)=>a+c.w,0)+16*(cls.length-1);let s=Math.min(1,maxW/Math.max(1,tot));for(const c of cls)for(const m of c.members){const st=m.p.h*s;if(st>maxH)s=Math.min(s,maxH/m.p.h)}return s};
+ const sg=fit(groundCl,360,skyCl.length?230:300),ss=fit(skyCl,360,90);
+ const layout=(cls,s,yBase,isSky)=>{const tot=cls.reduce((a,c)=>a+c.w*s,0)+16*(cls.length-1);let x=192-tot/2;
+  for(const c of cls){const cw=c.w*s;const b=c.members[0].p,bw=b.w*s,bh=b.h*s;const bx=x+(cw-bw)/2,by=isSky?yBase+R(-6,10):yBase-bh;const boxes=[{m:c.members[0],x:bx,y:by,w:bw,h:bh,z:1}];
+   for(const m of c.members.slice(1)){const w=m.p.w*s,h=m.p.h*s,a=boxes[0];let px=a.x+(a.w-w)/2,py,z=2;
+    if(m.rel==='on')py=a.y-h+h*.08;else if(m.rel==='in'){py=a.y+a.h-h-a.h*.08}else if(m.rel==='above'){py=a.y-h-a.h*.18}else if(m.rel==='under'){py=yBase-h;a.y=py-a.h-12;}else if(m.rel==='front'){px=a.x+a.w*.45-w/2;py=yBase-h+6;z=3}else if(m.rel==='behind'){px=a.x+a.w*.65-w/2;py=yBase-h-14;z=0}else py=a.y-h;
+    py=Math.max(4,py);boxes.push({m,x:px,y:py,w,h,z})}
+   for(const bx2 of boxes)placed.push(bx2);x+=cw+16}};
+ layout(skyCl,ss,14,true);layout(groundCl,sg,skyCl.length?368:350,false);
+ placed.sort((a,b)=>a.z-b.z);
+ // Malen mit Animation
+ mkBusy=true;$('hintM').style.display='none';mk.fillStyle='#fff';mk.fillRect(0,0,384,384);const names=objs.map(o=>(o.n>1?o.n+'× ':'')+o.c.name);
+ mkMsg(`<div class="big">🎨 Ich male: ${K.esc(names.join(', '))} …</div><div class="mut">Ich nehme mein Wissen über ${K.esc([...new Set(objs.map(o=>o.c.name))].join(' und '))} und baue daraus ein neues Bild.</div>`);
+ for(const b of placed){const p=b.m.p;const sc=b.h/p.h;const t0=performance.now(),dur=520;K.sfx('pop');
+  await new Promise(res=>{const step=()=>{const q=Math.min(1,(performance.now()-t0)/dur);mk.save();mk.beginPath();mk.rect(b.x-2,b.y-2,(b.w+4)*q,b.h+4);mk.clip();let xx=b.x;p.sp.forEach((s,k)=>{const w=p.ws[k]*sc;mk.drawImage(s,xx,b.y+(b.h-p.h*sc),w,p.h*sc);xx+=w+p.gap*sc});mk.restore();if(q<1)requestAnimationFrame(step);else res()};step()})}
+ mkBusy=false;mkLast={kind:'scene',text};
+ // Selbsttest: erkennt die KI ihr eigenes Bild?
+ const segs=segment(mkC);const seen=[];for(const sgm of segs){const r=await predict(features(prep(sgm.mask)));if(r&&!r.unknown)seen.push(r.res[0][0])}
+ const want=[...new Set(objs.map(o=>o.c.name))],found=want.filter(w=>seen.includes(w));
+ mkMsg(`<div class="big">✨ Fertig: ${K.esc(names.join(', '))}</div>${unknown.length?`<div class="mut">„${K.esc(unknown.join('“, „'))}“ kenne ich noch nicht – das habe ich weggelassen.</div>`:''}<div style="margin-top:8px">🔍 Selbsttest – in meinem Bild erkenne ich: <b>${seen.length?K.esc([...new Set(seen)].join(', ')):'… hm, nichts Sicheres'}</b> ${found.length===want.length?'✅':'🤔'}</div><div class="mut" style="margin-top:4px">${placed.some(b=>b.m.rel&&b.m.rel!=='front'&&b.m.rel!=='behind')?'Dinge, die aufeinander oder ineinander sind, sehe ich manchmal als ein Ding.':'Tipp: Drück „Nochmal anders“ – ich nehme dann andere Beispielbilder.'}</div>`);
+ K.sfx('win');madeOne()}
+function madeOne(){const p=P();p.stats.made=(p.stats.made||0)+1;xp(5);checkAch()}
+function mkMsg(h){$('mkOut').innerHTML=h}
+// Mischmaschine: zwei Dinge zu einem neuen verschmelzen
+async function mkMix(text){const objs=mkParse(text).seq.filter(t=>t.t==='o');let A,B;if(objs.length>=2){A=objs[0].c;B=objs[1].c}else{const cl=K.shuffle(P().classes.filter(c=>c.items.length));if(objs.length===1){A=objs[0].c;B=cl.find(c=>c!==A)}else{A=cl[0];B=cl[1]}}
+ if(!A||!B){mkMsg('<div class="big">🔀 Zum Mischen brauche ich 2 Dinge!</div><div class="mut">Bring mir in der Werkbank mindestens 2 Dinge bei.</div>');K.sfx('bad');return}
+ const a=await pickSprite(A),b=await pickSprite(B);if(!a||!b)return;const style=K.pick(['lr','tb','over']);$('hintM').style.display='none';mk.fillStyle='#fff';mk.fillRect(0,0,384,384);
+ const S=300,ox=42,oy=42;const tmp=document.createElement('canvas');tmp.width=tmp.height=384;const t=tmp.getContext('2d');
+ const draw=(s,ctx)=>{const sc=Math.min(S/s.width,S/s.height),w=s.width*sc,h=s.height*sc;ctx.drawImage(s,ox+(S-w)/2,oy+(S-h)/2,w,h)};
+ if(style==='lr'){mk.save();mk.beginPath();mk.rect(0,0,192,384);mk.clip();draw(a,mk);mk.restore();mk.save();mk.beginPath();mk.rect(192,0,192,384);mk.clip();draw(b,mk);mk.restore()}
+ else if(style==='tb'){mk.save();mk.beginPath();mk.rect(0,0,384,192);mk.clip();draw(a,mk);mk.restore();mk.save();mk.beginPath();mk.rect(0,192,384,192);mk.clip();draw(b,mk);mk.restore()}
+ else{mk.globalAlpha=.75;draw(a,mk);mk.globalAlpha=.6;draw(b,mk);mk.globalAlpha=1}
+ const na=A.name,nb=B.name,nm=na.slice(0,Math.max(2,Math.ceil(na.length/2)))+nb.slice(Math.floor(nb.length/2)).toLowerCase();
+ const r=await predict(features(prep(mkC)));const pa=r?(r.res.find(x=>x[0]===na)||[0,0])[1]:0,pb=r?(r.res.find(x=>x[0]===nb)||[0,0])[1]:0;
+ mkLast={kind:'mix',text};K.sfx('whoosh');
+ mkMsg(`<div class="big">🔀 Neues Wesen: „${K.esc(nm)}“!</div><div class="mut">${style==='lr'?'Links':style==='tb'?'Oben':'Halb durchsichtig'} ${K.esc(na)}, ${style==='lr'?'rechts':style==='tb'?'unten':'darüber'} ${K.esc(nb)}.</div><div class="bars" style="margin-top:8px"><div class="b"><i style="width:${Math.round(pa*100)}%"></i><span>${K.esc(na)}</span><em>${Math.round(pa*100)} %</em></div><div class="b"><i style="width:${Math.round(pb*100)}%"></i><span>${K.esc(nb)}</span><em>${Math.round(pb*100)} %</em></div></div><div class="mut">So sehr erinnert mich mein Mischbild an die beiden Dinge.</div>`);madeOne()}
+// Traumbild: alle Beispiele übereinanderlegen
+async function mkDream(text){const objs=mkParse(text).seq.filter(t=>t.t==='o');const c=objs.length?objs[0].c:K.pick(P().classes.filter(c=>c.items.length));if(!c){mkMsg('<div class="big">💭 Ich kenne noch nichts zum Träumen.</div>');return}
+ const acc=new Float32Array(FS*FS*3);let n=0;const tc=document.createElement('canvas');tc.width=tc.height=FS;const tx=tc.getContext('2d',{willReadFrequently:true});
+ for(const it of c.items.slice(-40)){try{const im=await loadImg(it.src);tx.drawImage(im,0,0,FS,FS);const d=tx.getImageData(0,0,FS,FS).data;for(let i=0;i<FS*FS;i++){acc[i*3]+=d[i*4];acc[i*3+1]+=d[i*4+1];acc[i*3+2]+=d[i*4+2]}n++}catch(e){}}
+ if(!n)return;const id=tx.createImageData(FS,FS);for(let i=0;i<FS*FS;i++){for(let k=0;k<3;k++){const v=acc[i*3+k]/n;id.data[i*4+k]=Math.max(0,Math.min(255,255-(255-v)*Math.min(2.2,1+n*.08)))}id.data[i*4+3]=255}tx.putImageData(id,0,0);
+ $('hintM').style.display='none';mk.fillStyle='#fff';mk.fillRect(0,0,384,384);mk.imageSmoothingQuality='high';
+ const t0=performance.now();await new Promise(res=>{const st=()=>{const q=Math.min(1,(performance.now()-t0)/900);mk.fillStyle='#fff';mk.fillRect(0,0,384,384);mk.globalAlpha=q;mk.drawImage(tc,22,22,340,340);mk.globalAlpha=1;if(q<1)requestAnimationFrame(st);else res()};st()});
+ mkLast={kind:'dream',text};K.sfx('blip');mkMsg(`<div class="big">💭 So stelle ich mir „${K.esc(c.name)}“ vor</div><div class="mut">Ich habe alle ${n} Bilder von „${K.esc(c.name)}“ übereinandergelegt. Was bei vielen Bildern gleich ist, wird kräftig – was nur selten vorkommt, verschwimmt. So „denkt“ die KI an ein Ding.</div>`);madeOne()}
+function mkChipsR(){const cl=P().classes.filter(c=>c.items.length);$('mkChips').innerHTML=cl.length?cl.map((c,i)=>`<button class="chip" data-c="${i}">${K.esc(c.name)}</button>`).join(''):'<span class="mut">Noch nichts – bring der KI zuerst etwas bei!</span>';
+ $('mkChips').querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{const v=$('mkIn').value.trim(),n=cl[+b.dataset.c].name;$('mkIn').value=v?(v+(/\b(und|neben|auf|unter|über|in|im|vor|hinter|mit)$/i.test(v)?' ':' und ')+n):n;K.sfx('click')});
+ if(!$('mkIn').value&&cl.length>=2)$('mkIn').placeholder='z. B. '+cl[0].name+' neben '+cl[1].name}
+const mkRun=f=>async()=>{if(mkBusy)return;if(!nCls(P())){mkMsg('<div class="big">🤷 Ich kenne noch gar nichts!</div><div class="mut">Bring mir in der 🧪 Werkbank etwas bei – dann kann ich malen.</div>');return}await f($('mkIn').value)};
+$('mkGo').onclick=mkRun(mkScene);$('mkMix').onclick=mkRun(mkMix);$('mkDream').onclick=mkRun(mkDream);$('mkIn').onkeydown=e=>{if(e.key==='Enter')$('mkGo').click()};
+$('mkAgain').onclick=()=>{if(!mkLast)return $('mkGo').click();({scene:mkRun(mkScene),mix:mkRun(mkMix),dream:mkRun(mkDream)})[mkLast.kind]()};
+$('mkSave').onclick=()=>{if(!mkLast){K.toast('Lass die KI zuerst etwas malen');return}const a=document.createElement('a');a.href=mkC.toDataURL('image/png');a.download='ki-bild.png';document.body.appendChild(a);a.click();a.remove();K.toast('💾 Bild gespeichert')};
+ACH.push(['art','🎨 Künstler-KI','Die KI hat ein eigenes Bild gemalt',p=>(p.stats.made||0)>=1],['art10','🖼️ Galerie','Die KI hat 10 Bilder gemalt',p=>(p.stats.made||0)>=10]);
+
 /* ---------- Allgemein ---------- */
 function ask(html,btns){$('dlgP').innerHTML=html+`<div class="row" style="justify-content:flex-end;margin-top:6px">${btns.map((b,i)=>`<button class="${b[2]?'pri':''}" data-b="${i}">${b[0]}</button>`).join('')}</div>`;$('dlg').classList.add('show');
  $('dlgP').querySelectorAll('[data-b]').forEach(el=>el.onclick=()=>{const b=btns[+el.dataset.b];$('dlg').classList.remove('show');b[1]&&b[1]()});const inp=$('dlgP').querySelector('input');if(inp)setTimeout(()=>inp.focus(),50)}
 function burst(){const c=document.createElement('div');c.textContent='✨';c.style.cssText='position:fixed;left:50%;top:40%;font-size:80px;z-index:60;pointer-events:none;transform:translate(-50%,-50%)';document.body.appendChild(c);c.animate([{opacity:1,transform:'translate(-50%,-50%) scale(.5)'},{opacity:0,transform:'translate(-50%,-90%) scale(1.8)'}],{duration:900}).onfinish=()=>c.remove()}
 let cur='bank';
 function showTab(t){cur=t;document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));document.querySelectorAll('main section').forEach(s=>s.classList.toggle('on',s.id==='t-'+t));
- if(t==='brain')renderBrain();if(t==='test'){if(padB.dirty)think();else renderTest(null)}if(t==='bank')renderBank();$('app').querySelector('main').scrollTop=0}
+ if(t==='brain')renderBrain();if(t==='test'){if(padB.dirty)think();else renderTest(null)}if(t==='bank')renderBank();if(t==='make')mkChipsR();$('app').querySelector('main').scrollTop=0}
 window.showTab=showTab;
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{K.sfx('click');showTab(b.dataset.t)});
 async function openProject(i){DB.cur=i;save();lastPred=null;padB.clear();lastF=null;hud();renderBank();renderBrain();renderTest(null);
